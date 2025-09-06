@@ -1,8 +1,9 @@
 "use client";
 import React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import LoginForm from "../components/Login";
-import SignUp from "../components/SignUp";
+import LoginForm from "./components/Login";
+import SignUp from "./components/SignUp";
+
 
 const AuthPage: React.FC = () => {
   const searchParams = useSearchParams();
