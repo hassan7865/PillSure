@@ -21,7 +21,7 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="flex items-start justify-start min-h-screen bg-gray-100">
       {view === "login" ? (
         <LoginForm
           onLogin={handleLogin}
