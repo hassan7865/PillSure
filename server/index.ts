@@ -1,13 +1,12 @@
-import "reflect-metadata";
 import express from "express";
 import dotenv from "dotenv";
-import { DataSource } from "typeorm";
-import { User } from "./src/entities/User";
-import { Role } from "./src/entities/Role";
 import { AuthRoutes } from "./src/routes/auth.route";
+import { OnboardingRoutes } from "./src/routes/onboarding.route";
+import { DoctorRoute } from "./src/routes/doctor.route";
 import { AuthService } from "./src/services/authservice";
+import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
-import databaseConfig from "./src/config/database";
+import { db } from "./src/config/database";
 
 // Load environment variables
 dotenv.config();
@@ -32,26 +31,24 @@ app.use((req, res, next) => {
   }
 });
 
-// Database connection
-let dataSource: DataSource;
-
-const initializeDatabase = async () => {
+// Initialize services and routes
+const initializeApp = async () => {
   try {
-    dataSource = await databaseConfig.initialize();
     console.log("Database connected successfully");
     
-    // Initialize repositories
-    const userRepository = dataSource.getRepository(User);
-    const roleRepository = dataSource.getRepository(Role);
-    
     // Initialize services
-    const authService = new AuthService(userRepository, roleRepository);
+    const authService = new AuthService();
+    const onboardingService = new OnboardingService();
     
     // Initialize routes
     const authRoutes = new AuthRoutes(authService);
+    const onboardingRoutes = new OnboardingRoutes(onboardingService);
+    const doctorRoutes = new DoctorRoute();
     
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
+    app.use("/api/onboarding", onboardingRoutes.getRouter());
+    app.use("/api/doctor", doctorRoutes.getRouter());
     
     // Health check endpoint
     app.get("/health", (req, res) => {
@@ -65,14 +62,14 @@ const initializeDatabase = async () => {
     app.use(errorHandler);
     
   } catch (error) {
-    console.error("Database connection failed:", error);
+    console.error("App initialization failed:", error);
     process.exit(1);
   }
 };
 
 // Start server
 const startServer = async () => {
-  await initializeDatabase();
+  await initializeApp();
   
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
@@ -83,17 +80,11 @@ const startServer = async () => {
 // Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("Shutting down server...");
-  if (dataSource && dataSource.isInitialized) {
-    await dataSource.destroy();
-  }
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("Shutting down server...");
-  if (dataSource && dataSource.isInitialized) {
-    await dataSource.destroy();
-  }
   process.exit(0);
 });
 

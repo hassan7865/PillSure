@@ -1,53 +1,62 @@
-import { Repository } from "typeorm";
-import { User } from "../entities/User";
-import { Role } from "../entities/Role";
-import { LoginRequest, RegisterRequest, AuthResponse, JwtPayload, UserRole } from "../core/types";
-import { generateToken } from "../middleware/jwt.handler";
-import { createError } from "../middleware/error.handler";
+import { eq, and } from 'drizzle-orm';
+import { db } from '../config/database';
+import { users, roles } from '../schema';
+import { LoginRequest, RegisterRequest, GoogleLoginRequest, AuthResponse, JwtPayload, UserRole } from '../core/types';
+import { generateToken } from '../middleware/jwt.handler';
+import { createError } from '../middleware/error.handler';
+import bcrypt from 'bcryptjs';
 
 export class AuthService {
-  constructor(
-    private userRepository: Repository<User>,
-    private roleRepository: Repository<Role>
-  ) {}
-
   async register(userData: RegisterRequest): Promise<AuthResponse> {
     try {
       // Check if user already exists
-      const existingUser = await this.userRepository.findOne({
-        where: { email: userData.email }
-      });
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, userData.email))
+        .limit(1);
 
-      if (existingUser) {
+      if (existingUser.length > 0) {
         throw createError("User with this email already exists", 400);
       }
 
       // Find role by name
-      const role = await this.roleRepository.findOne({
-        where: { name: userData.role || UserRole.PATIENT }
-      });
+      const role = await db
+        .select()
+        .from(roles)
+        .where(eq(roles.name, userData.role || UserRole.PATIENT))
+        .limit(1);
 
-      if (!role) {
+      if (role.length === 0) {
         throw createError("Invalid role specified", 400);
       }
 
-      // Create new user
-      const user = this.userRepository.create({
-        email: userData.email,
-        password: userData.password,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        roleId: role.id
-      });
+      // Hash password for non-Google users
+      let hashedPassword = null;
+      if (!userData.isGoogle && userData.password) {
+        hashedPassword = await bcrypt.hash(userData.password, 10);
+      }
 
-      // Save user
-      const savedUser = await this.userRepository.save(user);
+      // Create new user
+      const newUser = await db
+        .insert(users)
+        .values({
+          email: userData.email,
+          password: hashedPassword, // Null for Google users
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          roleId: role[0].id,
+          isGoogle: userData.isGoogle || false
+        })
+        .returning();
+
+      const savedUser = newUser[0];
 
       // Generate token
       const token = generateToken({
         userId: savedUser.id,
         email: savedUser.email,
-        role: role.name
+        role: role[0].name as UserRole
       });
 
       return {
@@ -59,7 +68,8 @@ export class AuthService {
           email: savedUser.email,
           firstName: savedUser.firstName,
           lastName: savedUser.lastName,
-          role: role.name
+          role: role[0].name as UserRole,
+          isGoogle: savedUser.isGoogle
         }
       };
     } catch (error) {
@@ -70,31 +80,46 @@ export class AuthService {
   async login(loginData: LoginRequest): Promise<AuthResponse> {
     try {
       // Find user by email with role details
-      const user = await this.userRepository.findOne({
-        where: { email: loginData.email },
-        relations: ["roleDetails"]
-      });
+      const userWithRole = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          password: users.password,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          isGoogle: users.isGoogle,
+          isActive: users.isActive,
+          roleName: roles.name
+        })
+        .from(users)
+        .innerJoin(roles, eq(users.roleId, roles.id))
+        .where(eq(users.email, loginData.email))
+        .limit(1);
 
-      if (!user) {
+      if (userWithRole.length === 0) {
         throw createError("Invalid email or password", 401);
       }
+
+      const user = userWithRole[0];
 
       // Check if user is active
       if (!user.isActive) {
         throw createError("Account is deactivated", 401);
       }
 
-      // Validate password
-      const isValidPassword = await user.validatePassword(loginData.password);
-      if (!isValidPassword) {
-        throw createError("Invalid email or password", 401);
+      // For Google users, skip password validation
+      if (!user.isGoogle) {
+        // Validate password only for non-Google users
+        if (!user.password || !await bcrypt.compare(loginData.password, user.password)) {
+          throw createError("Invalid email or password", 401);
+        }
       }
 
       // Generate token
       const token = generateToken({
         userId: user.id,
         email: user.email,
-        role: user.roleDetails.name as UserRole
+        role: user.roleName as UserRole
       });
 
       return {
@@ -106,7 +131,8 @@ export class AuthService {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.roleDetails.name as UserRole
+          role: user.roleName as UserRole,
+          isGoogle: user.isGoogle
         }
       };
     } catch (error) {
@@ -114,27 +140,104 @@ export class AuthService {
     }
   }
 
-  async getUserById(userId: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { id: userId },
-      relations: ["roleDetails"]
-    });
+  async googleLogin(loginData: GoogleLoginRequest): Promise<AuthResponse> {
+    try {
+      // Find user by email with role details
+      const userWithRole = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          isGoogle: users.isGoogle,
+          isActive: users.isActive,
+          roleName: roles.name
+        })
+        .from(users)
+        .innerJoin(roles, eq(users.roleId, roles.id))
+        .where(eq(users.email, loginData.email))
+        .limit(1);
+
+      if (userWithRole.length === 0) {
+        throw createError("No account found with this email. Please sign up first.", 404);
+      }
+
+      const user = userWithRole[0];
+
+      // Check if user is active
+      if (!user.isActive) {
+        throw createError("Account is deactivated", 401);
+      }
+
+      // Check if this is a Google user
+      if (!user.isGoogle) {
+        throw createError("This account was created with email/password. Please use regular login.", 400);
+      }
+
+      // Generate token
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        role: user.roleName as UserRole
+      });
+
+      return {
+        success: true,
+        message: "Google login successful",
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.roleName as UserRole,
+          isGoogle: user.isGoogle
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 
-  async updateUserProfile(userId: string, updateData: Partial<User>): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId }
-    });
+  async getUserById(userId: string): Promise<any | null> {
+    const userWithRole = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        isGoogle: users.isGoogle,
+        isActive: users.isActive,
+        roleName: roles.name
+      })
+      .from(users)
+      .innerJoin(roles, eq(users.roleId, roles.id))
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    if (!user) {
+    return userWithRole.length > 0 ? userWithRole[0] : null;
+  }
+
+  async updateUserProfile(userId: string, updateData: Partial<typeof users.$inferInsert>): Promise<any> {
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user.length === 0) {
       throw createError("User not found", 404);
     }
 
     // Remove sensitive fields from update
-    delete updateData.password;
-    delete updateData.email;
+    const { password, email, ...safeUpdateData } = updateData;
 
-    Object.assign(user, updateData);
-    return this.userRepository.save(user);
+    const updatedUser = await db
+      .update(users)
+      .set(safeUpdateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updatedUser[0];
   }
 }

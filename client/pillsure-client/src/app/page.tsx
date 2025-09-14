@@ -1,8 +1,9 @@
+"use client";
 import Image from "next/image";
 import Navbar from "./components/Navbar";
 import HeroSection from "./components/HeroSection";
 import ProductFilterAndCategories from "./components/ProductFilterAndCategories";
-import DealOfTheWeekSection from "./components/DealOfTheWeekSection";
+import FeaturedProductsSection from "./components/FeaturedProductsSection";
 import SpecialOffersSection from "./components/SpecialOffersSection";
 import ProductGridSection from "./components/ProductGridSection";
 import ProductCard from "./components/ProductCard";
@@ -15,14 +16,24 @@ const dealOfTheWeekProducts = [
     imageUrl: "/wf.png",
     name: "Vitamin C 500mg Sugarless",
     priceRange: "$16.00 - $35.00",
-    features: ["3 cleaning programs", "Digital display", "Memory for 1 user"],
+    features: [
+      "Immune system support",
+      "Antioxidant properties", 
+      "Sugar-free formulation",
+      "Pharmaceutical grade quality"
+    ],
     onSale: true,
   },
   {
     imageUrl: "/wf2.png",
     name: "Insulin Lispro Kwikpen",
     priceRange: "$18.88 - $32.88",
-    features: ["3 cleaning programs", "Digital display", "Memory for 1 user"],
+    features: [
+      "Rapid-acting insulin",
+      "Pre-filled pen device",
+      "Precise dosing mechanism",
+      "FDA approved medication"
+    ],
     onSale: false,
   },
 ];
@@ -216,20 +227,20 @@ const moreToLoveProducts = [
   },
 ];
 
+
 export default function Home() {
   return (
     <div>
       <Navbar />
       <HeroSection />
       <ProductFilterAndCategories />
-      <DealOfTheWeekSection products={dealOfTheWeekProducts} />
+      <FeaturedProductsSection products={dealOfTheWeekProducts} />
       <SpecialOffersSection offers={specialOffers} />
       <ProductGridSection
         title="Best Selling Products"
         products={bestSellingProducts}
       />
       <ProductGridSection title="New Products" products={newProducts} />
-      <ProductCard></ProductCard>
       <MoreToLoveGrid products={moreToLoveProducts} />
       <InstagramFeed />
       <Footer />

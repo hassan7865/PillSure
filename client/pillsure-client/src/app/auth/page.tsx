@@ -1,16 +1,17 @@
 "use client";
-import React from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import LoginForm from "./components/Login";
 import SignUp from "./components/SignUp";
-
+import AuthGuard from "@/components/auth-guard";
 
 const AuthPage: React.FC = () => {
   const searchParams = useSearchParams();
-  const router = useRouter();
-
-  // URL-driven view: /auth?page=login or /auth?page=signup
-  const view = (searchParams.get("page") as "login" | "signup") || "login";
+  const role = searchParams.get('role') || 'patient';
+  const mode = searchParams.get('mode') || 'login';
+  
+  // Show signup form if mode=signup, otherwise show login form
+  const [isLogin, setIsLogin] = useState(mode !== 'signup');
 
   const handleLogin = (email: string, password: string) => {
     console.log("Login:", email, password);
@@ -20,17 +21,30 @@ const AuthPage: React.FC = () => {
     console.log("SignUp:", email, password);
   };
 
+  const handleSwitchToSignUp = () => {
+    setIsLogin(false);
+  };
+
+  const handleSwitchToLogin = () => {
+    setIsLogin(true);
+  };
+
   return (
-    <div className="flex items-start justify-start min-h-screen bg-gray-100">
-      {view === "login" ? (
-        <LoginForm
-          onLogin={handleLogin}
-          onSwitchToSignUp={() => router.push("?page=signup")}
-        />
-      ) : (
-        <SignUp />
-      )}
-    </div>
+    <AuthGuard requireAuth={false}>
+      <div className="min-h-screen bg-gray-100">
+        {isLogin ? (
+          <LoginForm
+            onLogin={handleLogin}
+            onSwitchToSignUp={handleSwitchToSignUp}
+          />
+        ) : (
+          <SignUp
+            onSwitchToLogin={handleSwitchToLogin}
+            role={role}
+          />
+        )}
+      </div>
+    </AuthGuard>
   );
 };
 
