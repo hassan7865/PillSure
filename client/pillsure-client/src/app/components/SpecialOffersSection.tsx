@@ -2,16 +2,9 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Star, ArrowRight } from "lucide-react";
 import React from "react";
-
-interface SpecialOffer {
-  fromPrice: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  textColor: string; // Tailwind text color (e.g. "text-white")
-  buttonColor: string; // Tailwind bg color (e.g. "bg-blue-900")
-}
+import { SpecialOffer } from "@/lib/types";
 
 interface SpecialOffersSectionProps {
   offers: SpecialOffer[];
@@ -19,17 +12,27 @@ interface SpecialOffersSectionProps {
 
 const SpecialOffersSection: React.FC<SpecialOffersSectionProps> = ({ offers }) => {
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-24 bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-blue-900 text-center mb-12">
-          Special offers
-        </h2>
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <Star className="h-4 w-4" />
+            Special Offers
+          </div>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Exclusive Healthcare Deals
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Discover limited-time offers on premium healthcare products and services
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {offers.map((offer, index) => (
             <div
               key={index}
-              className="relative rounded-lg shadow-sm overflow-hidden h-[300px] group"
+              className="relative rounded-2xl shadow-lg hover:shadow-xl overflow-hidden h-80 group transition-all duration-300 border border-gray-200"
             >
               {/* Background Image */}
               <div className="absolute inset-0">
@@ -39,7 +42,7 @@ const SpecialOffersSection: React.FC<SpecialOffersSectionProps> = ({ offers }) =
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-black/20" />
+                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-all duration-300" />
               </div>
 
               {/* Content */}
@@ -57,23 +60,10 @@ const SpecialOffersSection: React.FC<SpecialOffersSectionProps> = ({ offers }) =
                 </p>
 
                 <Button
-                  className={`${offer.buttonColor} text-white rounded-full flex items-center w-fit`}
+                  className={`${offer.buttonColor} text-white rounded-xl flex items-center w-fit group/btn`}
                 >
                   Shop now
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 ml-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
+                  <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-300" />
                 </Button>
               </div>
             </div>

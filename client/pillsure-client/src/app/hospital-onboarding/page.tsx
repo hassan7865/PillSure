@@ -2,40 +2,38 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Form,FormControl,FormField,FormItem,FormLabel,FormMessage } from "@/components/ui/form";
+import { useHospitalOnboarding } from "@/hooks/use-onboarding";
+import { HospitalOnboardingRequest, HospitalFormValues } from "@/lib/types";
+import { 
+  Building2, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Globe, 
+  FileText, 
+  User, 
+  Pill
+} from "lucide-react";
 
 
-// Validation Schema
-const hospitalSchema = z.object({
-  hospitalName: z.string().min(2, "Hospital name is required"),
-  hospitalAddress: z.string().min(5, "Hospital address is required"),
-  hospitalContactNo: z.string().min(10, "Hospital contact number required"),
-  hospitalEmail: z.string().email("Invalid hospital email"),
+// Form data type - now imported from @/lib/types
 
-  websiteHospital: z.string().optional(),
-  licenseNo: z.string().nonempty("License number is required"),
-  adminName: z.string().min(2, "Admin/Owner name is required"),
-});
-
-type HospitalFormValues = z.infer<typeof hospitalSchema>;
-
-export default function App() {
+export default function HospitalOnboarding() {
   const [step, setStep] = useState(1);
+  const hospitalOnboardingMutation = useHospitalOnboarding();
+  
   const form = useForm<HospitalFormValues>({
-    resolver: zodResolver(hospitalSchema),
     defaultValues: {
       hospitalName: "",
       hospitalAddress: "",
       hospitalContactNo: "",
       hospitalEmail: "",
-
       websiteHospital: "",
       licenseNo: "",
       adminName: "",
@@ -51,7 +49,17 @@ export default function App() {
   } = form;
 
   const onSubmit = (data: HospitalFormValues) => {
-    console.log("Hospital Form Submitted:", data);
+    const onboardingData: HospitalOnboardingRequest = {
+      hospitalName: data.hospitalName,
+      hospitalAddress: data.hospitalAddress,
+      hospitalContactNo: data.hospitalContactNo,
+      hospitalEmail: data.hospitalEmail,
+      websiteHospital: data.websiteHospital,
+      licenseNo: data.licenseNo,
+      adminName: data.adminName,
+    };
+    
+    hospitalOnboardingMutation.mutate(onboardingData);
   };
 
   const nextStep = async () => {
@@ -83,7 +91,10 @@ export default function App() {
                 name="hospitalName"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Hospital Name</Label>
+                    <Label className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Hospital Name
+                    </Label>
                     <FormControl>
                       <Input placeholder="Hospital Name" {...field} />
                     </FormControl>
@@ -96,7 +107,10 @@ export default function App() {
                 name="hospitalAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Hospital Address</Label>
+                    <Label className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Hospital Address
+                    </Label>
                     <FormControl>
                       <Input placeholder="Hospital Address" {...field} />
                     </FormControl>
@@ -109,7 +123,10 @@ export default function App() {
                 name="hospitalContactNo"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Hospital Contact No.</Label>
+                    <Label className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Hospital Contact No.
+                    </Label>
                     <FormControl>
                       <Input type="tel" placeholder="Hospital Contact No." {...field} />
                     </FormControl>
@@ -122,7 +139,10 @@ export default function App() {
                 name="hospitalEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Hospital Email</Label>
+                    <Label className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Hospital Email
+                    </Label>
                     <FormControl>
                       <Input type="email" placeholder="Hospital Email" {...field} />
                     </FormControl>
@@ -144,7 +164,10 @@ export default function App() {
                 name="websiteHospital"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Hospital Website</Label>
+                    <Label className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Hospital Website
+                    </Label>
                     <FormControl>
                       <Input placeholder="Website (Optional)" {...field} />
                     </FormControl>
@@ -157,7 +180,10 @@ export default function App() {
                 name="licenseNo"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>License No</Label>
+                    <Label className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      License No
+                    </Label>
                     <FormControl>
                       <Input placeholder="License Number" {...field} />
                     </FormControl>
@@ -170,7 +196,10 @@ export default function App() {
                 name="adminName"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Admin & Owner Name</Label>
+                    <Label className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Admin & Owner Name
+                    </Label>
                     <FormControl>
                       <Input placeholder="Admin / Owner Name" {...field} />
                     </FormControl>
@@ -192,29 +221,17 @@ export default function App() {
       <div className="hidden md:flex md:w-1/4 min-w-[280px] bg-[#1a237e] text-white p-6 flex-col justify-between">
         <div className="flex-grow">
           <div className="flex items-center mb-6 md:mb-10">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pill-bottle-0 w-8 h-8 mr-2 text-white"><path d="M15 4a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v2a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1a2 2 0 0 0 2 2h4c1.1 0 2-.9 2-2v-6a2 2 0 0 0-2-2V4Z"/><path d="M8 8h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2Z"/></svg>
+            <Pill className="w-8 h-8 mr-2 text-white" />
             <span className="text-2xl font-bold">PillSure</span>
           </div>
           <nav className="space-y-4 md:space-y-6">
             {navLinks.map((link) => (
               <div key={link.id} onClick={() => setStep(link.id)} className={`flex items-center space-x-4 cursor-pointer p-3 rounded-lg transition-colors ${step === link.id ? 'bg-[#3949ab]' : 'hover:bg-[#283593]'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                  {link.id === 1 && (
-                    <g>
-                      <path d="M2 13s.5-2 2-2 3 1 4 1 2-1 4-1 3 1 4 1 2-2 4-2"/>
-                      <path d="M22 13v-1c-1.2-1.2-2.8-2-4.5-2-1.7 0-3.3.8-4.5 2"/>
-                      <path d="M2 13v-1c1.2-1.2 2.8-2 4.5-2 1.7 0 3.3.8 4.5 2"/>
-                    </g>
-                  )}
-                  {link.id === 2 && (
-                    <g>
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </g>
-                  )}
-                </svg>
+                {link.id === 1 ? (
+                  <Building2 className="w-6 h-6" />
+                ) : (
+                  <User className="w-6 h-6" />
+                )}
                 <div>
                   <div className="text-lg font-medium">{link.name}</div>
                   <p className="text-sm text-gray-400">{link.description}</p>
@@ -262,8 +279,13 @@ export default function App() {
                     </Button>
                   )}
                   {step === 2 && (
-                    <Button type="submit" variant="default" className="flex-1">
-                      Submit
+                    <Button 
+                      type="submit" 
+                      variant="default" 
+                      className="flex-1"
+                      disabled={hospitalOnboardingMutation.isPending}
+                    >
+                      {hospitalOnboardingMutation.isPending ? "Creating Profile..." : "Submit"}
                     </Button>
                   )}
                 </div>

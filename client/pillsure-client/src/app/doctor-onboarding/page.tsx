@@ -1,8 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import React from 'react';
 import { Button } from "@/components/ui/button";
@@ -10,6 +8,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { useDoctorOnboarding } from "@/hooks/use-onboarding";
+import { DoctorOnboardingRequest, DoctorFormValues } from "@/lib/types";
+import { useSpecializations } from "@/hooks/use-doctor";
+import { Specialization } from "@/lib/doctor-api";
+import ReactSelect from "react-select";
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  Calendar, 
+  MapPin, 
+  Stethoscope, 
+  GraduationCap, 
+  Clock, 
+  Camera, 
+  Plus, 
+  X,
+  Pill,
+  CheckCircle
+} from "lucide-react";
 
 
 // Mocked components for this single-file example
@@ -27,48 +45,50 @@ const Select = ({ children, ...props }: SelectProps) => <select className="flex 
 const Checkbox = ({ checked, onCheckedChange, ...props }: CheckboxProps) => <input type="checkbox" checked={checked} onChange={(e) => onCheckedChange(e.target.checked)} className="h-4 w-4 shrink-0 rounded-sm border border-gray-900 ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-gray-900 data-[state=checked]:text-gray-50 dark:border-gray-50 dark:data-[state=checked]:bg-gray-50 dark:data-[state=checked]:text-gray-900" {...props} />;
 
 
-// Validation Schema for Doctor Onboarding
-const doctorSchema = z.object({
-  doctorName: z.string().min(2, "Doctor name is required"),
-  email: z.string().email("Invalid email"),
-  gender: z.enum(["male", "female", "other"], { message: "Gender is required" }),
-  mobile: z.string().regex(/^[0-9]{10}$/, "Mobile number must be exactly 10 digits"),
-  image: z.any().optional(),
-
-  specialization: z.array(z.string()).min(1, "Select at least one specialization"),
-  qualifications: z.array(z.string()).min(1, "Add at least one qualification"),
-  experience: z.number().min(0, "Experience must be a positive number"),
-  consultationModes: z.array(z.string()).min(1, "Select at least one mode"),
-});
-
-type DoctorFormValues = z.infer<typeof doctorSchema>;
+// Form data type - now imported from @/lib/types
 
 export default function DoctorOnboarding() {
   const [step, setStep] = useState(1);
   const [qualificationInput, setQualificationInput] = useState("");
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const doctorOnboardingMutation = useDoctorOnboarding();
+  
+  // Fetch specializations from API
+  const { data: specializationsData, isLoading: specializationsLoading } = useSpecializations();
+  const availableSpecializations = (specializationsData as any)?.data || [];
 
   const form = useForm<DoctorFormValues>({
-    resolver: zodResolver(doctorSchema),
     defaultValues: {
-      doctorName: "",
-      email: "",
       gender: "male",
       mobile: "",
-      specialization: [],
+      specializationIds: [],
       qualifications: [],
-      experience: 0,
+      experienceYears: 0,
+      address: "",
+      feePkr: undefined,
       consultationModes: [],
     },
     mode: "onChange",
   });
 
   const onSubmit = (data: DoctorFormValues) => {
-    console.log("Doctor Form Submitted:", data);
+    const onboardingData: DoctorOnboardingRequest = {
+      gender: data.gender,
+      mobile: data.mobile,
+      specializationIds: data.specializationIds,
+      qualifications: data.qualifications,
+      experienceYears: data.experienceYears,
+      address: data.address,
+      image: data.image ? URL.createObjectURL(data.image) : undefined,
+      feePkr: data.feePkr,
+      consultationModes: data.consultationModes,
+    };
+    
+    doctorOnboardingMutation.mutate(onboardingData);
   };
 
   const qualifications = form.watch("qualifications");
-  const specialization = form.watch("specialization");
+  const specializations = form.watch("specializationIds");
   const consultationModes = form.watch("consultationModes");
 
   const handleAddQualification = () => {
@@ -87,17 +107,20 @@ export default function DoctorOnboarding() {
     }
   };
 
-  const handleSelectSpecialization = (val: string) => {
-    if (val && !specialization.includes(val)) {
-      form.setValue("specialization", [...specialization, val], { shouldValidate: true });
-    }
-  };
 
   const nextStep = async () => {
-    const fieldsToValidate = ['doctorName', 'email', 'gender', 'mobile'];
-    const isValid = await form.trigger(fieldsToValidate as any);
-    if (isValid) {
-      setStep(2);
+    if (step === 1) {
+      const fieldsToValidate = ['gender', 'mobile'];
+      const isValid = await form.trigger(fieldsToValidate as any);
+      if (isValid) {
+        setStep(2);
+      }
+    } else if (step === 2) {
+      const fieldsToValidate = ['specializationIds', 'qualifications', 'experienceYears'];
+      const isValid = await form.trigger(fieldsToValidate as any);
+      if (isValid) {
+        setStep(3);
+      }
     }
   };
 
@@ -116,25 +139,19 @@ export default function DoctorOnboarding() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="doctorName"
+                name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Doctor Name</Label>
+                    <Label className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Gender
+                    </Label>
                     <FormControl>
-                      <Input id="doctorName" placeholder="Doctor Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label>Email</Label>
-                    <FormControl>
-                      <Input id="email" type="email" placeholder="Email" {...field} />
+                      <Select {...field}>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -145,9 +162,12 @@ export default function DoctorOnboarding() {
                 name="mobile"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Mobile Number</Label>
+                    <Label className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Mobile Number
+                    </Label>
                     <FormControl>
-                      <Input id="mobile" type="tel" placeholder="Mobile Number" {...field} />
+                      <Input type="tel" placeholder="Mobile Number" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -155,17 +175,15 @@ export default function DoctorOnboarding() {
               />
               <FormField
                 control={form.control}
-                name="gender"
+                name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Gender</Label>
+                    <Label className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Address
+                    </Label>
                     <FormControl>
-                      <Select id="gender" onChange={field.onChange} value={field.value}>
-                        <option value="" disabled>Select Gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </Select>
+                      <Input placeholder="Address" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -173,18 +191,22 @@ export default function DoctorOnboarding() {
               />
             </div>
             <div className="mt-4">
-              <Label htmlFor="image">Doctor Image</Label>
+              <Label htmlFor="image" className="flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                Doctor Image
+              </Label>
               <Input
                 id="image"
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
+                className="mt-2"
               />
               <div className="mt-4 w-24 h-24 rounded-md overflow-hidden flex items-center justify-center border-2 border-gray-300 bg-gray-200">
                 {imagePreviewUrl ? (
                   <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-gray-500 text-xs text-center">Image Preview</span>
+                  <Camera className="text-gray-500 h-8 w-8" />
                 )}
               </div>
             </div>
@@ -198,37 +220,74 @@ export default function DoctorOnboarding() {
             <div className="space-y-4">
               <FormField
                 control={form.control}
-                name="specialization"
+                name="specializationIds"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Specialization</Label>
+                    <Label className="flex items-center gap-2">
+                      <Stethoscope className="h-4 w-4" />
+                      Specializations (Select multiple)
+                    </Label>
+                    <p className="text-sm text-gray-500 mb-2">Choose all your areas of expertise</p>
                     <FormControl>
-                      <div>
-                        <Select id="specialization" onChange={(e) => handleSelectSpecialization(e.target.value)} value="">
-                          <option value="" disabled>Select Specialization</option>
-                          <option value="Cardiologist">Cardiologist</option>
-                          <option value="Dermatologist">Dermatologist</option>
-                          <option value="Neurologist">Neurologist</option>
-                          <option value="Orthopedic">Orthopedic</option>
-                          <option value="Pediatrician">Pediatrician</option>
-                          <option value="General Physician">General Physician</option>
-                        </Select>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {specialization.map((spec) => (
-                            <Badge key={spec} variant="secondary">{spec}</Badge>
-                          ))}
-                        </div>
-                      </div>
+                      <ReactSelect
+                        isMulti
+                        options={availableSpecializations.map((spec: Specialization) => ({
+                          value: spec.name,
+                          label: spec.name
+                        }))}
+                        value={specializations.map((spec: string) => ({
+                          value: spec,
+                          label: spec
+                        }))}
+                        onChange={(selectedOptions) => {
+                          const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
+                          form.setValue("specializationIds", values, { shouldValidate: true });
+                        }}
+                        isLoading={specializationsLoading}
+                        placeholder="Select your specializations..."
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                        styles={{
+                          control: (provided) => ({
+                            ...provided,
+                            minHeight: '40px',
+                            borderColor: '#d1d5db',
+                            '&:hover': {
+                              borderColor: '#9ca3af'
+                            }
+                          }),
+                          multiValue: (provided) => ({
+                            ...provided,
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '6px'
+                          }),
+                          multiValueLabel: (provided) => ({
+                            ...provided,
+                            color: '#374151',
+                            fontSize: '14px'
+                          }),
+                          multiValueRemove: (provided) => ({
+                            ...provided,
+                            color: '#6b7280',
+                            '&:hover': {
+                              backgroundColor: '#ef4444',
+                              color: 'white'
+                            }
+                          })
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <div>
-                <Label htmlFor="qualifications">Qualifications</Label>
+                <Label htmlFor="qualifications" className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Qualifications
+                </Label>
                 <div className="flex gap-2">
                   <Input
-                    id="qualifications"
                     value={qualificationInput}
                     onChange={(e) => setQualificationInput(e.target.value)}
                     placeholder="Add Qualification (e.g., MBBS, MD)"
@@ -239,35 +298,70 @@ export default function DoctorOnboarding() {
                       }
                     }}
                   />
-                  <Button type="button" onClick={handleAddQualification} variant="default">Add</Button>
+                  <Button type="button" onClick={handleAddQualification} variant="default" size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {qualifications.map((q) => (
-                    <Badge key={q} variant="outline">{q}</Badge>
+                    <Badge key={q} variant="outline" className="flex items-center gap-1">
+                      {q}
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                        onClick={() => {
+                          const updated = qualifications.filter((_, i) => i !== qualifications.indexOf(q));
+                          form.setValue("qualifications", updated);
+                        }}
+                      />
+                    </Badge>
                   ))}
                 </div>
                 {form.formState.errors.qualifications && <p className="text-red-500 text-sm mt-1">{form.formState.errors.qualifications.message}</p>}
               </div>
-              <FormField
-                control={form.control}
-                name="experience"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label>Years of Experience</Label>
-                    <FormControl>
-                      <Input id="experience" type="number" placeholder="Years of Experience" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="experienceYears"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Years of Experience
+                      </Label>
+                      <FormControl>
+                        <Input type="number" placeholder="Years of Experience" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="feePkr"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-2">
+                        <Pill className="h-4 w-4" />
+                        Consultation Fee (PKR)
+                      </Label>
+                      <FormControl>
+                        <Input type="number" placeholder="Fee in PKR" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="consultationModes"
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex flex-col gap-2">
-                      <Label className="text-sm font-medium">Consultation Modes</Label>
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Consultation Modes
+                      </Label>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <FormControl>
@@ -323,28 +417,17 @@ export default function DoctorOnboarding() {
       <div className="hidden md:flex w-full md:w-1/4 min-w-[280px] bg-[#1a237e] text-white p-6 flex-col justify-between">
         <div className="flex-grow">
           <div className="flex items-center mb-6 md:mb-10">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pill-bottle-0 w-8 h-8 mr-2 text-white"><path d="M15 4a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v2a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1a2 2 0 0 0 2 2h4c1.1 0 2-.9 2-2v-6a2 2 0 0 0-2-2V4Z"/><path d="M8 8h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2Z"/></svg>
+            <Pill className="w-8 h-8 mr-2 text-white" />
             <span className="text-2xl font-bold">PillSure</span>
           </div>
           <nav className="space-y-4 md:space-y-6">
             {navLinks.map((link) => (
               <div key={link.id} onClick={() => setStep(link.id)} className={`flex items-center space-x-4 cursor-pointer p-3 rounded-lg transition-colors ${step === link.id ? 'bg-[#3949ab]' : 'hover:bg-[#283593]'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                  {link.id === 1 && (
-                    <g>
-                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </g>
-                  )}
-                  {link.id === 2 && (
-                    <g>
-                      <path d="M12 21h7a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-5" />
-                      <path d="M16 3a2 2 0 0 1 2 2" />
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="8.5" cy="11.5" r="4.5" />
-                    </g>
-                  )}
-                </svg>
+                {link.id === 1 ? (
+                  <User className="w-6 h-6" />
+                ) : (
+                  <Stethoscope className="w-6 h-6" />
+                )}
                 <div>
                   <div className="text-lg font-medium">{link.name}</div>
                   <p className="text-sm text-gray-400">{link.description}</p>
@@ -389,8 +472,13 @@ export default function DoctorOnboarding() {
                   </Button>
                 )}
                 {step === 2 && (
-                  <Button type="submit" variant="default" className="flex-1">
-                    Submit
+                  <Button 
+                    type="submit" 
+                    variant="default" 
+                    className="flex-1"
+                    disabled={doctorOnboardingMutation.isPending}
+                  >
+                    {doctorOnboardingMutation.isPending ? "Creating Profile..." : "Submit"}
                   </Button>
                 )}
               </div>

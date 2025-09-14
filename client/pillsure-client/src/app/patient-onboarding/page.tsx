@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import React from 'react';
 import { Button } from "@/components/ui/button";
@@ -11,6 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { usePatientOnboarding } from "@/hooks/use-onboarding";
+import { PatientOnboardingRequest, PatientFormValues } from "@/lib/types";
+import { 
+  User, 
+  Heart, 
+  Calendar, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Droplets, 
+  Shield, 
+  Plus, 
+  X,
+  Pill
+} from "lucide-react";
 
 
 // Shadcn UI components (mocked for this single-file example)
@@ -32,32 +45,15 @@ interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
 const Checkbox = ({ checked, onCheckedChange, ...props }: CheckboxProps) => <input type="checkbox" checked={checked} onChange={(e) => onCheckedChange(e.target.checked)} className="h-4 w-4 shrink-0 rounded-sm border border-gray-900 ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-gray-900 data-[state=checked]:text-gray-50 dark:border-gray-50 dark:data-[state=checked]:bg-gray-50 dark:data-[state=checked]:text-gray-900" {...props} />;
 
 
-// Validation Schema
-const patientSchema = z.object({
-  patientName: z.string().min(2, "Patient name is required"),
-  email: z.string().email("Invalid email"),
-  gender: z.enum(["male", "female", "other"], { message: "Gender is required" }),
-  mobile: z.string().min(10, "Mobile number required"),
-  dateOfBirth: z.string().nonempty("Date of birth is required"),
-  address: z.string().min(5, "Address is required"),
-  
-  bloodGroup: z.string().nonempty("Blood group is required"),
-  hasCovid: z.boolean().optional(),
-  pastMedicalHistory: z.array(z.string()).optional(),
-  surgicalHistory: z.string().optional(),
-  allergies: z.string().optional(),
-});
-
-type PatientFormValues = z.infer<typeof patientSchema>;
+// Form data type - now imported from @/lib/types
 
 export default function PatientOnboarding() {
   const [step, setStep] = useState(1);
   const [pastMedicalHistoryInput, setPastMedicalHistoryInput] = useState("");
+  const patientOnboardingMutation = usePatientOnboarding();
+  
   const form = useForm<PatientFormValues>({
-    resolver: zodResolver(patientSchema),
     defaultValues: {
-      patientName: "",
-      email: "",
       gender: "male",
       mobile: "",
       dateOfBirth: "",
@@ -68,11 +64,23 @@ export default function PatientOnboarding() {
       surgicalHistory: "",
       allergies: "",
     },
-    mode : "onChange"
+    mode: "onChange"
   });
 
   const onSubmit = (data: PatientFormValues) => {
-    console.log("Patient Form Submitted:", data);
+    const onboardingData: PatientOnboardingRequest = {
+      gender: data.gender,
+      mobile: data.mobile,
+      dateOfBirth: data.dateOfBirth,
+      address: data.address,
+      bloodGroup: data.bloodGroup,
+      hasCovid: data.hasCovid,
+      pastMedicalHistory: data.pastMedicalHistory,
+      surgicalHistory: data.surgicalHistory,
+      allergies: data.allergies,
+    };
+    
+    patientOnboardingMutation.mutate(onboardingData);
   };
 
   const pastMedicalHistory = form.watch("pastMedicalHistory");
@@ -85,7 +93,7 @@ export default function PatientOnboarding() {
   };
   
   const nextStep = async () => {
-    const fieldsToValidate = ['patientName', 'email', 'gender', 'mobile', 'dateOfBirth', 'address'];
+    const fieldsToValidate = ['gender', 'mobile', 'dateOfBirth', 'address', 'bloodGroup'];
     const isValid = await form.trigger(fieldsToValidate as any);
     if (isValid) {
       setStep(2);
@@ -107,25 +115,19 @@ export default function PatientOnboarding() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="patientName"
+                name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Patient Name</Label>
+                    <Label className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Gender
+                    </Label>
                     <FormControl>
-                      <Input  id="patientName" placeholder="Patient Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label>Email</Label>
-                    <FormControl>
-                      <Input type="email" placeholder="Email" {...field} />
+                      <Select {...field}>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -136,7 +138,10 @@ export default function PatientOnboarding() {
                 name="mobile"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Mobile Number</Label>
+                    <Label className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Mobile Number
+                    </Label>
                     <FormControl>
                       <Input type="tel" placeholder="Mobile Number" {...field} />
                     </FormControl>
@@ -149,27 +154,12 @@ export default function PatientOnboarding() {
                 name="dateOfBirth"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Date of Birth</Label>
+                    <Label className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Date of Birth
+                    </Label>
                     <FormControl>
                       <Input type="date" placeholder="Date of Birth" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label>Gender</Label>
-                    <FormControl>
-                      <Select onChange={field.onChange} value={field.value}>
-                        <SelectItem value="" disabled>Select Gender</SelectItem>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -181,7 +171,10 @@ export default function PatientOnboarding() {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <Label>Address</Label>
+                      <Label className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Address
+                      </Label>
                       <FormControl>
                         <Input placeholder="Address" {...field} />
                       </FormControl>
@@ -204,7 +197,10 @@ export default function PatientOnboarding() {
                 name="bloodGroup"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Blood Group</Label>
+                    <Label className="flex items-center gap-2">
+                      <Droplets className="h-4 w-4" />
+                      Blood Group
+                    </Label>
                     <FormControl>
                       <Select onChange={field.onChange} value={field.value}>
                         <SelectItem value="" disabled>Select Blood Group</SelectItem>
@@ -233,12 +229,18 @@ export default function PatientOnboarding() {
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <Label className="text-sm font-medium text-gray-700">Do you have Covid?</Label>
+                    <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Do you have Covid?
+                    </Label>
                   </FormItem>
                 )}
               />
               <div>
-                <Label className="pb-2">Past Medical History</Label>
+                <Label className="pb-2 flex items-center gap-2">
+                  <Heart className="h-4 w-4" />
+                  Past Medical History
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     value={pastMedicalHistoryInput}
@@ -251,11 +253,22 @@ export default function PatientOnboarding() {
                       }
                     }}
                   />
-                  <Button type="button" onClick={handleAddMedicalHistory} variant="default">Add</Button>
+                  <Button type="button" onClick={handleAddMedicalHistory} variant="default" size="icon">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {pastMedicalHistory?.map((item, index) => (
-                    <Badge key={index} variant="outline">{item}</Badge>
+                    <Badge key={index} variant="outline" className="flex items-center gap-1">
+                      {item}
+                      <X 
+                        className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                        onClick={() => {
+                          const updated = pastMedicalHistory.filter((_, i) => i !== index);
+                          form.setValue("pastMedicalHistory", updated);
+                        }}
+                      />
+                    </Badge>
                   ))}
                 </div>
                 {form.formState.errors.pastMedicalHistory && <p className="text-red-500 text-sm mt-1">{form.formState.errors.pastMedicalHistory.message}</p>}
@@ -265,7 +278,10 @@ export default function PatientOnboarding() {
                 name="surgicalHistory"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Surgical History</Label>
+                    <Label className="flex items-center gap-2">
+                      <Pill className="h-4 w-4" />
+                      Surgical History
+                    </Label>
                     <FormControl>
                       <Input placeholder="Surgical History (if any)" {...field} />
                     </FormControl>
@@ -278,7 +294,10 @@ export default function PatientOnboarding() {
                 name="allergies"
                 render={({ field }) => (
                   <FormItem>
-                    <Label>Allergies</Label>
+                    <Label className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      Allergies
+                    </Label>
                     <FormControl>
                       <Input placeholder="Allergies (if any)" {...field} />
                     </FormControl>
@@ -299,29 +318,17 @@ export default function PatientOnboarding() {
       <div className="hidden md:flex md:w-1/4 min-w-[280px] bg-[#1a237e] text-white p-6 flex-col justify-between">
         <div className="flex-grow">
           <div className="flex items-center mb-6 md:mb-10">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pill-bottle-0 w-8 h-8 mr-2 text-white"><path d="M15 4a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v2a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1a2 2 0 0 0 2 2h4c1.1 0 2-.9 2-2v-6a2 2 0 0 0-2-2V4Z"/><path d="M8 8h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2Z"/></svg>
+            <Pill className="w-8 h-8 mr-2 text-white" />
             <span className="text-2xl font-bold">PillSure</span>
           </div>
           <nav className="space-y-4 md:space-y-6">
             {navLinks.map((link) => (
               <div key={link.id} onClick={() => setStep(link.id)} className={`flex items-center space-x-4 cursor-pointer p-3 rounded-lg transition-colors ${step === link.id ? 'bg-[#3949ab]' : 'hover:bg-[#283593]'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-                  {link.id === 1 && (
-                    <g>
-                      <path d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/>
-                      <path d="M17 12a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/>
-                      <path d="M7 12a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/>
-                    </g>
-                  )}
-                  {link.id === 2 && (
-                    <g>
-                      <path d="M22 10s-2-2-6-2-6 2-6 2"/>
-                      <path d="M22 10v12c0 1-2 2-6 2s-6-1-6-2V10"/>
-                      <path d="M16 8v6"/>
-                      <path d="M16 17v2"/>
-                    </g>
-                  )}
-                </svg>
+                {link.id === 1 ? (
+                  <User className="w-6 h-6" />
+                ) : (
+                  <Heart className="w-6 h-6" />
+                )}
                 <div>
                   <div className="text-lg font-medium">{link.name}</div>
                   <p className="text-sm text-gray-400">{link.description}</p>
@@ -364,8 +371,13 @@ export default function PatientOnboarding() {
                   </Button>
                 )}
                 {step === 2 && (
-                  <Button type="submit" variant="default" className="flex-1">
-                    Submit
+                  <Button 
+                    type="submit" 
+                    variant="default" 
+                    className="flex-1"
+                    disabled={patientOnboardingMutation.isPending}
+                  >
+                    {patientOnboardingMutation.isPending ? "Creating Profile..." : "Submit"}
                   </Button>
                 )}
               </div>
