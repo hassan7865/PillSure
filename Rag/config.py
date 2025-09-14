@@ -13,7 +13,7 @@ class Settings:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "pillsure123")
     
     # Gemini API
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","AIzaSyC8SAi7en-PwTB5ABYJzruwuUpX-E61Sls")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","")
     
     # ChromaDB Configuration
     CHROMA_PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
