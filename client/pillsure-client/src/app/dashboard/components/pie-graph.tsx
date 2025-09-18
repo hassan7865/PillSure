@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { IconTrendingUp } from '@tabler/icons-react';
+import { TrendingUp } from 'lucide-react';
 import { Label, Pie, PieChart } from 'recharts';
 
 import {
@@ -59,20 +59,20 @@ export function PieGraph() {
   }, []);
 
   return (
-    <Card className='@container/card'>
-      <CardHeader>
-        <CardTitle>Pie Chart - Donut with Text</CardTitle>
-        <CardDescription>
-          <span className='hidden @[540px]/card:block'>
+    <Card className='w-full max-w-full overflow-hidden'>
+      <CardHeader className='pb-3'>
+        <CardTitle className='text-lg sm:text-xl'>Pie Chart - Donut with Text</CardTitle>
+        <CardDescription className='text-sm'>
+          <span className='hidden sm:block'>
             Total visitors by browser for the last 6 months
           </span>
-          <span className='@[540px]/card:hidden'>Browser distribution</span>
+          <span className='sm:hidden'>Browser distribution</span>
         </CardDescription>
       </CardHeader>
-      <CardContent className='px-2 pt-4 sm:px-6 sm:pt-6'>
+      <CardContent className='px-2 pt-2 sm:px-4 sm:pt-4'>
         <ChartContainer
           config={chartConfig}
-          className='mx-auto aspect-square h-[250px]'
+          className='mx-auto aspect-square h-[200px] sm:h-[250px]'
         >
           <PieChart>
             <defs>
@@ -152,7 +152,7 @@ export function PieGraph() {
         <div className='flex items-center gap-2 leading-none font-medium'>
           Chrome leads with{' '}
           {((chartData[0].visitors / totalVisitors) * 100).toFixed(1)}%{' '}
-          <IconTrendingUp className='h-4 w-4' />
+          <TrendingUp className='h-4 w-4' />
         </div>
         <div className='text-muted-foreground leading-none'>
           Based on data from January - June 2024

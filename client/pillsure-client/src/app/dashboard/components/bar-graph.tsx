@@ -124,10 +124,6 @@ const chartConfig = {
   mobile: {
     label: 'Mobile',
     color: 'var(--primary)'
-  },
-  error: {
-    label: 'Error',
-    color: 'var(--primary)'
   }
 } satisfies ChartConfig;
 
@@ -149,43 +145,38 @@ export function BarGraph() {
     setIsClient(true);
   }, []);
 
-  React.useEffect(() => {
-    if (activeChart === 'error') {
-      throw new Error('Mocking Error');
-    }
-  }, [activeChart]);
 
   if (!isClient) {
     return null;
   }
 
   return (
-    <Card className='@container/card !pt-3'>
-      <CardHeader className='flex flex-col items-stretch space-y-0 border-b !p-0 sm:flex-row'>
-        <div className='flex flex-1 flex-col justify-center gap-1 px-6 !py-0'>
-          <CardTitle>Bar Chart - Interactive</CardTitle>
-          <CardDescription>
-            <span className='hidden @[540px]/card:block'>
+    <Card className='w-full max-w-full overflow-hidden'>
+      <CardHeader className='flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row'>
+        <div className='flex flex-1 flex-col justify-center gap-1 px-4 py-4 sm:px-6'>
+          <CardTitle className='text-lg sm:text-xl'>Bar Chart - Interactive</CardTitle>
+          <CardDescription className='text-sm'>
+            <span className='hidden sm:block'>
               Total for the last 3 months
             </span>
-            <span className='@[540px]/card:hidden'>Last 3 months</span>
+            <span className='sm:hidden'>Last 3 months</span>
           </CardDescription>
         </div>
-        <div className='flex'>
-          {['desktop', 'mobile', 'error'].map((key) => {
+        <div className='flex border-t sm:border-t-0 sm:border-l'>
+          {['desktop', 'mobile'].map((key) => {
             const chart = key as keyof typeof chartConfig;
             if (!chart || total[key as keyof typeof total] === 0) return null;
             return (
               <button
                 key={chart}
                 data-active={activeChart === chart}
-                className='data-[active=true]:bg-primary/5 hover:bg-primary/5 relative flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left transition-colors duration-200 even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6'
+                className='data-[active=true]:bg-primary/5 hover:bg-primary/5 relative flex flex-1 flex-col justify-center gap-1 px-4 py-3 text-left transition-colors duration-200 even:border-l sm:px-6 sm:py-4'
                 onClick={() => setActiveChart(chart)}
               >
                 <span className='text-muted-foreground text-xs'>
                   {chartConfig[chart].label}
                 </span>
-                <span className='text-lg leading-none font-bold sm:text-3xl'>
+                <span className='text-base leading-none font-bold sm:text-xl lg:text-2xl'>
                   {total[key as keyof typeof total]?.toLocaleString()}
                 </span>
               </button>
@@ -193,10 +184,10 @@ export function BarGraph() {
           })}
         </div>
       </CardHeader>
-      <CardContent className='px-2 pt-4 sm:px-6 sm:pt-6'>
+      <CardContent className='px-2 pt-4 sm:px-4 sm:pt-4'>
         <ChartContainer
           config={chartConfig}
-          className='aspect-auto h-[250px] w-full'
+          className='aspect-auto h-[200px] sm:h-[250px] w-full'
         >
           <BarChart
             data={chartData}

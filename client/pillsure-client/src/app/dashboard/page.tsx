@@ -9,31 +9,18 @@ import { RecentSales } from './components/recent-sales';
 
 const DashboardPage = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+    <div className="p-4 sm:p-6 max-w-full overflow-x-hidden">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">Dashboard</h1>
 
-        {/* Overview - includes cards and layout for main charts */}
-        <OverViewPage />
+      {/* Overview - includes cards and layout for main charts */}
+      <OverViewPage />
 
-        {/* In case we want standalone sections below the overview */}
-        <div className="grid grid-cols-1 gap-6 mt-6 lg:grid-cols-3">
-          <div className="col-span-2">
-            <AreaGraph />
-          </div>
-          <div>
-            <BarGraph />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 mt-6 lg:grid-cols-3">
-          <div>
-            <PieGraph />
-          </div>
-          <div className="col-span-2">
-            <RecentSales />
-          </div>
-        </div>
+      {/* Charts section - all charts on separate lines */}
+      <div className="space-y-6 mt-6">
+        <AreaGraph />
+        <BarGraph />
+        <PieGraph />
+        <RecentSales />
       </div>
     </div>
   );

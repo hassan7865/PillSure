@@ -29,33 +29,25 @@ import {
   SidebarRail
 } from '@/components/ui/sidebar';
 import {
-  IconBell,
-  IconChevronRight,
-  IconChevronsDown,
-  IconCreditCard,
-  IconDashboard,
-  IconUsers,
-  IconSettings,
-  IconChart,
-  IconFiles,
-  IconLogout,
-  IconPhotoUp,
-  IconUserCircle
-} from '@tabler/icons-react';
+  Bell,
+  ChevronRight,
+  CreditCard,
+  LayoutDashboard,
+  Users,
+  Settings,
+  BarChart3,
+  Files,
+  LogOut,
+  ImageIcon,
+  UserCircle
+} from 'lucide-react';
 import * as React from 'react';
 
 // Static data
 const company = {
-  name: 'Acme Inc',
-  logo: IconPhotoUp,
-  plan: 'Enterprise'
+  name: 'PillSure',
+  logo: ImageIcon
 };
-
-const tenants = [
-  { id: '1', name: 'Acme Inc' },
-  { id: '2', name: 'Beta Corp' },
-  { id: '3', name: 'Gamma Ltd' }
-];
 
 const staticUser = {
   name: 'John Doe',
@@ -67,13 +59,13 @@ const navItems = [
   {
     title: 'Dashboard',
     url: '/dashboard',
-    icon: IconDashboard,
+    icon: LayoutDashboard,
     isActive: true
   },
   {
     title: 'Analytics',
     url: '/analytics',
-    icon: IconChart,
+    icon: BarChart3,
     items: [
       { title: 'Overview', url: '/analytics/overview' },
       { title: 'Reports', url: '/analytics/reports' },
@@ -83,12 +75,12 @@ const navItems = [
   {
     title: 'Users',
     url: '/users',
-    icon: IconUsers
+    icon: Users
   },
   {
     title: 'Files',
     url: '/files',
-    icon: IconFiles,
+    icon: Files,
     items: [
       { title: 'Documents', url: '/files/documents' },
       { title: 'Images', url: '/files/images' },
@@ -98,44 +90,25 @@ const navItems = [
   {
     title: 'Settings',
     url: '/settings',
-    icon: IconSettings
+    icon: Settings
   }
 ];
 
-// Simple Org Switcher Component
-const OrgSwitcher = ({ tenants, defaultTenant }) => {
-  const [selectedTenant, setSelectedTenant] = React.useState(defaultTenant);
+// Types
+interface User {
+  name: string;
+  email: string;
+  avatar: string;
+}
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <div className="flex items-center gap-2 p-2 hover:bg-sidebar-accent rounded-md cursor-pointer">
-          <IconPhotoUp className="h-6 w-6" />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{selectedTenant.name}</span>
-            <span className="text-xs text-muted-foreground">{company.plan}</span>
-          </div>
-          <IconChevronsDown className="ml-auto h-4 w-4" />
-        </div>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel>Switch Organization</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {tenants.map((tenant) => (
-          <DropdownMenuItem
-            key={tenant.id}
-            onClick={() => setSelectedTenant(tenant)}
-          >
-            {tenant.name}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
+interface UserAvatarProfileProps {
+  user: User;
+  className?: string;
+  showInfo?: boolean;
+}
 
 // Simple User Avatar Component
-const UserAvatarProfile = ({ user, className, showInfo }) => {
+const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps) => {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
@@ -153,9 +126,8 @@ const UserAvatarProfile = ({ user, className, showInfo }) => {
 
 export default function AppSidebar() {
   const [activeItem, setActiveItem] = React.useState('/dashboard');
-  const activeTenant = tenants[0];
 
-  const handleNavigation = (url) => {
+  const handleNavigation = (url: string) => {
     setActiveItem(url);
     console.log('Navigate to:', url);
   };
@@ -179,10 +151,13 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible='icon'>
       <SidebarHeader>
-        <OrgSwitcher
-          tenants={tenants}
-          defaultTenant={activeTenant}
-        />
+        <div className="flex items-center gap-2 p-2">
+          <ImageIcon className="h-6 w-6" />
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{company.name}</span>
+            <span className="text-xs text-muted-foreground">Dashboard</span>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent className='overflow-x-hidden'>
         <SidebarGroup>
@@ -206,7 +181,7 @@ export default function AppSidebar() {
                       >
                         {Icon && <Icon />}
                         <span>{item.title}</span>
-                        <IconChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />
+                        <ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -255,7 +230,7 @@ export default function AppSidebar() {
                     showInfo
                     user={staticUser}
                   />
-                  <IconChevronsDown className='ml-auto size-4' />
+                  <ChevronRight className='ml-auto size-4' />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -277,21 +252,21 @@ export default function AppSidebar() {
 
                 <DropdownMenuGroup>
                   <DropdownMenuItem onClick={handleProfileClick}>
-                    <IconUserCircle className='mr-2 h-4 w-4' />
+                    <UserCircle className='mr-2 h-4 w-4' />
                     Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleBillingClick}>
-                    <IconCreditCard className='mr-2 h-4 w-4' />
+                    <CreditCard className='mr-2 h-4 w-4' />
                     Billing
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleNotificationsClick}>
-                    <IconBell className='mr-2 h-4 w-4' />
+                    <Bell className='mr-2 h-4 w-4' />
                     Notifications
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
-                  <IconLogout className='mr-2 h-4 w-4' />
+                  <LogOut className='mr-2 h-4 w-4' />
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
