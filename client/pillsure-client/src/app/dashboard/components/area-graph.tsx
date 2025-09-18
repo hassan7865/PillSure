@@ -1,6 +1,6 @@
 'use client';
 
-import { IconTrendingUp } from '@tabler/icons-react';
+import { TrendingUp } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 
 import {
@@ -43,17 +43,17 @@ const chartConfig = {
 
 export function AreaGraph() {
   return (
-    <Card className='@container/card'>
-      <CardHeader>
-        <CardTitle>Area Chart - Stacked</CardTitle>
-        <CardDescription>
+    <Card className='w-full max-w-full overflow-hidden'>
+      <CardHeader className='pb-3'>
+        <CardTitle className='text-lg sm:text-xl'>Area Chart - Stacked</CardTitle>
+        <CardDescription className='text-sm'>
           Showing total visitors for the last 6 months
         </CardDescription>
       </CardHeader>
-      <CardContent className='px-2 pt-4 sm:px-6 sm:pt-6'>
+      <CardContent className='px-2 pt-2 sm:px-4 sm:pt-4'>
         <ChartContainer
           config={chartConfig}
-          className='aspect-auto h-[250px] w-full'
+          className='aspect-auto h-[200px] sm:h-[250px] w-full'
         >
           <AreaChart
             data={chartData}
@@ -95,7 +95,7 @@ export function AreaGraph() {
               axisLine={false}
               tickMargin={8}
               minTickGap={32}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value: string) => value.slice(0, 3)}
             />
             <ChartTooltip
               cursor={false}
@@ -123,7 +123,7 @@ export function AreaGraph() {
           <div className='grid gap-2'>
             <div className='flex items-center gap-2 leading-none font-medium'>
               Trending up by 5.2% this month{' '}
-              <IconTrendingUp className='h-4 w-4' />
+              <TrendingUp className='h-4 w-4' />
             </div>
             <div className='text-muted-foreground flex items-center gap-2 leading-none'>
               January - June 2024

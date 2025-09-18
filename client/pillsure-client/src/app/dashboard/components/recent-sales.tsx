@@ -47,12 +47,12 @@ const salesData = [
 
 export function RecentSales() {
   return (
-    <Card className='h-full'>
-      <CardHeader>
-        <CardTitle>Recent Sales</CardTitle>
-        <CardDescription>You made 265 sales this month.</CardDescription>
+    <Card className='w-full max-w-full overflow-hidden'>
+      <CardHeader className='pb-3'>
+        <CardTitle className='text-lg sm:text-xl'>Recent Sales</CardTitle>
+        <CardDescription className='text-sm'>You made 265 sales this month.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className='px-4 py-2 sm:px-6 sm:py-4'>
         <div className='space-y-8'>
           {salesData.map((sale, index) => (
             <div key={index} className='flex items-center'>
