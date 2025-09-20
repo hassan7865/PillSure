@@ -100,16 +100,18 @@ const ProductFilterAndCategories: React.FC = () => {
         {/* Search Bar */}
         <div className="max-w-5xl mx-auto mb-16">
           <div className="flex flex-col md:flex-row gap-4 bg-white p-8 rounded-3xl shadow-2xl border-0 backdrop-blur-sm">
-            <div className="flex-1">
+            {/* Use a 3-column layout on md+: input | select | button with equal widths */}
+            <div className="md:w-1/3 w-full min-w-0">
               <Input
                 type="text"
                 placeholder="Search medicines, doctors, or symptoms..."
-                className="w-full h-16 text-xl rounded-2xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300"
+                className="w-full h-12 text-base rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-300 px-4"
               />
             </div>
-            <div className="flex gap-4">
+
+            <div className="md:w-1/3 w-full min-w-0">
               <Select>
-                <SelectTrigger className="w-[200px] h-16 rounded-2xl border-2 border-gray-200 focus:border-blue-500">
+                <SelectTrigger className="w-full h-12 rounded-xl border-2 border-gray-200 focus:border-blue-500">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -119,7 +121,10 @@ const ProductFilterAndCategories: React.FC = () => {
                   <SelectItem value="symptoms">Symptoms</SelectItem>
                 </SelectContent>
               </Select>
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 px-10 h-16 rounded-2xl text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300">
+            </div>
+
+            <div className="md:w-1/3 w-full">
+              <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl text-base font-semibold shadow-md hover:shadow-lg transition-all duration-300 px-4">
                 Search
               </Button>
             </div>
