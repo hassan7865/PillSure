@@ -5,12 +5,12 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Clock, 
-  Pill, 
-  Shield, 
-  Star, 
-  ShoppingCart, 
+import {
+  Clock,
+  Pill,
+  Shield,
+  Star,
+  ShoppingCart,
   Heart,
   CheckCircle,
   AlertCircle
@@ -37,7 +37,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ produ
             Premium Medical Solutions
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover our curated selection of high-quality medicines and healthcare products, 
+            Discover our curated selection of high-quality medicines and healthcare products,
             all verified for authenticity and safety.
           </p>
         </div>
@@ -77,7 +77,6 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ produ
                   className="object-contain max-h-40 group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
-
               {/* Product Details */}
               <CardContent className="p-6 flex flex-col flex-grow h-full">
                 <div className="mb-4">

@@ -13,17 +13,17 @@ import { DoctorOnboardingRequest, DoctorFormValues } from "@/lib/types";
 import { useSpecializations } from "@/hooks/use-doctor";
 import { Specialization } from "@/lib/doctor-api";
 import ReactSelect from "react-select";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  MapPin, 
-  Stethoscope, 
-  GraduationCap, 
-  Clock, 
-  Camera, 
-  Plus, 
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Stethoscope,
+  GraduationCap,
+  Clock,
+  Camera,
+  Plus,
   X,
   Pill,
   CheckCircle
@@ -52,7 +52,7 @@ export default function DoctorOnboarding() {
   const [qualificationInput, setQualificationInput] = useState("");
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const doctorOnboardingMutation = useDoctorOnboarding();
-  
+
   // Fetch specializations from API
   const { data: specializationsData, isLoading: specializationsLoading } = useSpecializations();
   const availableSpecializations = (specializationsData as any)?.data || [];
@@ -72,6 +72,11 @@ export default function DoctorOnboarding() {
   });
 
   const onSubmit = (data: DoctorFormValues) => {
+    // Validate qualifications array
+    if (!data.qualifications || data.qualifications.length === 0) {
+      form.setError("qualifications", { type: "manual", message: "At least one qualification is required" });
+      return;
+    }
     const onboardingData: DoctorOnboardingRequest = {
       gender: data.gender,
       mobile: data.mobile,
@@ -83,7 +88,7 @@ export default function DoctorOnboarding() {
       feePkr: data.feePkr,
       consultationModes: data.consultationModes,
     };
-    
+
     doctorOnboardingMutation.mutate(onboardingData);
   };
 
@@ -160,14 +165,35 @@ export default function DoctorOnboarding() {
               <FormField
                 control={form.control}
                 name="mobile"
+                rules={{
+                  required: "Phone number is required",
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Phone number must be exactly 10 digits",
+                  },
+                }}
                 render={({ field }) => (
                   <FormItem>
-                    <Label className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Mobile Number
-                    </Label>
+                    <Label>Mobile Number</Label>
                     <FormControl>
-                      <Input type="tel" placeholder="Mobile Number" {...field} />
+                      <div className="flex items-center space-x-2">
+                        <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-700">
+                          +92
+                        </span>
+                        <Input
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="Enter mobile number"
+                          {...field}
+                          maxLength={10}
+                          onChange={(e) => {
+                            // only digits allow
+                            const value = e.target.value.replace(/[^0-9]/g, "");
+                            field.onChange(value);
+                          }}
+                          className="rounded-l-none"
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -221,6 +247,10 @@ export default function DoctorOnboarding() {
               <FormField
                 control={form.control}
                 name="specializationIds"
+                rules={{
+                  validate: (value) =>
+                    value && value.length > 0 ? true : "At least one specialization is required"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -286,7 +316,7 @@ export default function DoctorOnboarding() {
                   <GraduationCap className="h-4 w-4" />
                   Qualifications
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-3">
                   <Input
                     value={qualificationInput}
                     onChange={(e) => setQualificationInput(e.target.value)}
@@ -306,8 +336,8 @@ export default function DoctorOnboarding() {
                   {qualifications.map((q) => (
                     <Badge key={q} variant="outline" className="flex items-center gap-1">
                       {q}
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                      <X
+                        className="h-3 w-3 cursor-pointer hover:text-red-500"
                         onClick={() => {
                           const updated = qualifications.filter((_, i) => i !== qualifications.indexOf(q));
                           form.setValue("qualifications", updated);
@@ -316,12 +346,20 @@ export default function DoctorOnboarding() {
                     </Badge>
                   ))}
                 </div>
+                {/* Validation for qualifications */}
                 {form.formState.errors.qualifications && <p className="text-red-500 text-sm mt-1">{form.formState.errors.qualifications.message}</p>}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="experienceYears"
+                  rules={{
+                    required: "Experience is required",
+                    min: {
+                      value: 1,
+                      message: "Experience must be at least 1 year"
+                    }
+                  }}
                   render={({ field }) => (
                     <FormItem>
                       <Label className="flex items-center gap-2">
@@ -338,6 +376,13 @@ export default function DoctorOnboarding() {
                 <FormField
                   control={form.control}
                   name="feePkr"
+                  rules={{
+                    required: "Consultation fee is required",
+                    min: {
+                      value: 1,
+                      message: "Fee must be greater than 0"
+                    }
+                  }}
                   render={({ field }) => (
                     <FormItem>
                       <Label className="flex items-center gap-2">
@@ -355,6 +400,10 @@ export default function DoctorOnboarding() {
               <FormField
                 control={form.control}
                 name="consultationModes"
+                rules={{
+                  validate: (value) =>
+                    value && value.length > 0 ? true : "Select at least one consultation mode"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex flex-col gap-2">
@@ -371,10 +420,10 @@ export default function DoctorOnboarding() {
                                 return checked
                                   ? field.onChange([...field.value, "inperson"])
                                   : field.onChange(
-                                      field.value.filter(
-                                        (value) => value !== "inperson"
-                                      )
-                                    );
+                                    field.value.filter(
+                                      (value) => value !== "inperson"
+                                    )
+                                  );
                               }}
                             />
                           </FormControl>
@@ -388,10 +437,10 @@ export default function DoctorOnboarding() {
                                 return checked
                                   ? field.onChange([...field.value, "online"])
                                   : field.onChange(
-                                      field.value.filter(
-                                        (value) => value !== "online"
-                                      )
-                                    );
+                                    field.value.filter(
+                                      (value) => value !== "online"
+                                    )
+                                  );
                               }}
                             />
                           </FormControl>
@@ -440,7 +489,7 @@ export default function DoctorOnboarding() {
           © All rights reserved PillSure
         </div>
       </div>
-      
+
       {/* Main content area */}
       <div className="w-full md:w-3/4 flex justify-center p-6 md:p-10">
         <div className="w-full max-w-2xl">
@@ -472,9 +521,9 @@ export default function DoctorOnboarding() {
                   </Button>
                 )}
                 {step === 2 && (
-                  <Button 
-                    type="submit" 
-                    variant="default" 
+                  <Button
+                    type="submit"
+                    variant="default"
                     className="flex-1"
                     disabled={doctorOnboardingMutation.isPending}
                   >
