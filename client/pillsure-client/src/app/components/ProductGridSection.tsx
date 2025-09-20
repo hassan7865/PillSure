@@ -45,13 +45,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       {/* Image Section */}
       <CardHeader className="relative bg-gray-50 p-6 h-56 flex justify-center items-center group-hover:bg-gray-100 transition-all duration-300">
-        <Image
-          src={imageUrl}
-          alt={name}
-          width={140}
-          height={140}
-          className="object-contain max-h-40 group-hover:scale-105 transition-transform duration-300"
-        />
+        <div className="relative w-full max-w-[160px] h-40">
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            sizes="(max-width: 640px) 120px, (max-width: 1024px) 140px, 160px"
+            className="object-contain group-hover:scale-105 transition-transform duration-300"
+          />
+        </div>
       </CardHeader>
 
       {/* Text Section */}
