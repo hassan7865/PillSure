@@ -46,9 +46,22 @@ export default function HospitalOnboarding() {
     trigger,
     control,
     formState: { errors },
+    setError,
   } = form;
 
   const onSubmit = (data: HospitalFormValues) => {
+    // Step 2 validation
+    let valid = true;
+    if (!data.licenseNo) {
+      setError("licenseNo", { type: "manual", message: "License number is required" });
+      valid = false;
+    }
+    if (!data.adminName) {
+      setError("adminName", { type: "manual", message: "Admin/Owner name is required" });
+      valid = false;
+    }
+    if (!valid) return;
+
     const onboardingData: HospitalOnboardingRequest = {
       hospitalName: data.hospitalName,
       hospitalAddress: data.hospitalAddress,
@@ -84,11 +97,13 @@ export default function HospitalOnboarding() {
           <>
             <h2 className="text-2xl font-bold mb-4">Hospital Info</h2>
             <p className="text-gray-500 mb-6">Provide your hospital's details to get started.</p>
-            {/* Updated layout to show two inputs per row on medium screens and up */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={control}
                 name="hospitalName"
+                rules={{
+                  required: "Hospital name is required"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -105,6 +120,9 @@ export default function HospitalOnboarding() {
               <FormField
                 control={control}
                 name="hospitalAddress"
+                rules={{
+                  required: "Hospital address is required"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -121,6 +139,13 @@ export default function HospitalOnboarding() {
               <FormField
                 control={control}
                 name="hospitalContactNo"
+                rules={{
+                  required: "Contact number is required",
+                  pattern: {
+                    value: /^[0-9]{10,15}$/,
+                    message: "Enter a valid contact number (10-15 digits)"
+                  }
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -128,7 +153,16 @@ export default function HospitalOnboarding() {
                       Hospital Contact No.
                     </Label>
                     <FormControl>
-                      <Input type="tel" placeholder="Hospital Contact No." {...field} />
+                      <Input
+                        type="tel"
+                        placeholder="Hospital Contact No."
+                        {...field}
+                        onChange={e => {
+                          // Only allow numbers
+                          const value = e.target.value.replace(/[^0-9]/g, "");
+                          field.onChange(value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -137,6 +171,13 @@ export default function HospitalOnboarding() {
               <FormField
                 control={control}
                 name="hospitalEmail"
+                rules={{
+                  required: "Email is required",
+                  pattern: {
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: "Enter a valid email address"
+                  }
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -178,6 +219,9 @@ export default function HospitalOnboarding() {
               <FormField
                 control={control}
                 name="licenseNo"
+                rules={{
+                  required: "License number is required"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -194,6 +238,9 @@ export default function HospitalOnboarding() {
               <FormField
                 control={control}
                 name="adminName"
+                rules={{
+                  required: "Admin/Owner name is required"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">

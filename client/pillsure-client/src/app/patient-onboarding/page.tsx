@@ -8,21 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { usePatientOnboarding } from "@/hooks/use-onboarding";
 import { PatientOnboardingRequest, PatientFormValues } from "@/lib/types";
-import { 
-  User, 
-  Heart, 
-  Calendar, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Droplets, 
-  Shield, 
-  Plus, 
+import {
+  User,
+  Heart,
+  MapPin,
+  Phone,
+  Mail,
+  Droplets,
+  Shield,
+  Plus,
   X,
-  Pill
+  Pill,
+  Calendar as CalendarIcon
 } from "lucide-react";
 
 
@@ -37,7 +39,7 @@ interface SelectItemProps extends React.OptionHTMLAttributes<HTMLOptionElement> 
 }
 
 const Select = ({ children, ...props }: SelectProps) => <select className="flex h-10 w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-gray-800 dark:bg-gray-950 dark:ring-offset-gray-950 dark:placeholder:text-gray-400 dark:focus:ring-blue-300" {...props}>{children}</select>;
-const SelectItem = ({ children, value, ...props }: SelectItemProps) => <option value={value} className="relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-gray-100 focus:text-gray-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 dark:focus:bg-gray-800 dark:focus:text-gray-50" {...props}>{children}</option>;
+const SelectItem = ({ children, value, ...props }: SelectItemProps) => <option value={value} {...props}>{children}</option>;
 interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -51,10 +53,10 @@ export default function PatientOnboarding() {
   const [step, setStep] = useState(1);
   const [pastMedicalHistoryInput, setPastMedicalHistoryInput] = useState("");
   const patientOnboardingMutation = usePatientOnboarding();
-  
+
   const form = useForm<PatientFormValues>({
     defaultValues: {
-      gender: "male",
+      gender: "male", // 
       mobile: "",
       dateOfBirth: "",
       address: "",
@@ -79,7 +81,7 @@ export default function PatientOnboarding() {
       surgicalHistory: data.surgicalHistory,
       allergies: data.allergies,
     };
-    
+
     patientOnboardingMutation.mutate(onboardingData);
   };
 
@@ -91,7 +93,7 @@ export default function PatientOnboarding() {
       setPastMedicalHistoryInput("");
     }
   };
-  
+
   const nextStep = async () => {
     const fieldsToValidate = ['gender', 'mobile', 'dateOfBirth', 'address', 'bloodGroup'];
     const isValid = await form.trigger(fieldsToValidate as any);
@@ -124,6 +126,7 @@ export default function PatientOnboarding() {
                     </Label>
                     <FormControl>
                       <Select {...field}>
+                        <SelectItem value="" disabled>Select Gender</SelectItem>
                         <SelectItem value="male">Male</SelectItem>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
@@ -136,32 +139,86 @@ export default function PatientOnboarding() {
               <FormField
                 control={form.control}
                 name="mobile"
+                rules={{
+                  required: "Phone number is required",
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Phone number must be exactly 10 digits",
+                  },
+                }}
                 render={({ field }) => (
                   <FormItem>
-                    <Label className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Mobile Number
-                    </Label>
+                    <Label>Mobile Number</Label>
                     <FormControl>
-                      <Input type="tel" placeholder="Mobile Number" {...field} />
+                      <div className="flex items-center space-x-2">
+                        <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-700">
+                          +92
+                        </span>
+                        <Input
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="Enter mobile number"
+                          {...field}
+                          maxLength={10}
+                          onChange={(e) => {
+                            // only digits allow
+                            const value = e.target.value.replace(/[^0-9]/g, "");
+                            field.onChange(value);
+                          }}
+                          className="rounded-l-none"
+                        />
+                      </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage/>
                   </FormItem>
                 )}
               />
               <FormField
                 control={form.control}
                 name="dateOfBirth"
+                rules={{
+                  required: "date of birth is required"
+                }}
                 render={({ field }) => (
-                  <FormItem>
-                    <Label className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
+                  <FormItem className="flex flex-col">
+                    <Label>
                       Date of Birth
                     </Label>
-                    <FormControl>
-                      <Input type="date" placeholder="Date of Birth" {...field} />
-                    </FormControl>
-                    <FormMessage />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className=
+                            " justify-start text-left font-normal rounded-l-md shadow-sm"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4 text-gray-600" />
+                            {field.value ? (
+                              new Date(field.value).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })
+                            ) : (
+                              <span>Select date of birth</span>
+                            )}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={field.value ? new Date(field.value) : undefined}
+                          onSelect={(date) => field.onChange(date)}
+                          disabled={(date) => date > new Date()}
+                          captionLayout="dropdown" //  year & month dropdown
+                          fromYear={1900}          //  start year
+                          toYear={new Date().getFullYear()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage/>
                   </FormItem>
                 )}
               />
@@ -195,6 +252,9 @@ export default function PatientOnboarding() {
               <FormField
                 control={form.control}
                 name="bloodGroup"
+                rules={{
+                  required: "Blood group is required"
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -261,8 +321,8 @@ export default function PatientOnboarding() {
                   {pastMedicalHistory?.map((item, index) => (
                     <Badge key={index} variant="outline" className="flex items-center gap-1">
                       {item}
-                      <X 
-                        className="h-3 w-3 cursor-pointer hover:text-red-500" 
+                      <X
+                        className="h-3 w-3 cursor-pointer hover:text-red-500"
                         onClick={() => {
                           const updated = pastMedicalHistory.filter((_, i) => i !== index);
                           form.setValue("pastMedicalHistory", updated);
@@ -276,6 +336,12 @@ export default function PatientOnboarding() {
               <FormField
                 control={form.control}
                 name="surgicalHistory"
+                rules={{
+                  maxLength: {
+                    value: 100,
+                    message: "Surgical history must be less than 100 characters"
+                  }
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -292,6 +358,12 @@ export default function PatientOnboarding() {
               <FormField
                 control={form.control}
                 name="allergies"
+                rules={{
+                  maxLength: {
+                    value: 100,
+                    message: "Allergies must be less than 100 characters"
+                  }
+                }}
                 render={({ field }) => (
                   <FormItem>
                     <Label className="flex items-center gap-2">
@@ -341,7 +413,7 @@ export default function PatientOnboarding() {
           © All rights reserved PillSure
         </div>
       </div>
-      
+
       <div className="w-full md:w-3/4 flex justify-center p-6 md:p-10">
         <div className="w-full max-w-2xl">
           <p className="text-sm text-blue-600 font-semibold mb-2">Step {step}/2</p>
@@ -371,9 +443,9 @@ export default function PatientOnboarding() {
                   </Button>
                 )}
                 {step === 2 && (
-                  <Button 
-                    type="submit" 
-                    variant="default" 
+                  <Button
+                    type="submit"
+                    variant="default"
                     className="flex-1"
                     disabled={patientOnboardingMutation.isPending}
                   >

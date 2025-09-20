@@ -17,7 +17,6 @@ export default function FindDoctorPage() {
       name: "Dr Sophia Riz",
       specialization: "Gynecologist",
       experience: 7,
-      status: "Available" as const,
       fee: 20,
       rating: 4.8,
       image: "https://randomuser.me/api/portraits/women/44.jpg",
@@ -27,7 +26,6 @@ export default function FindDoctorPage() {
       name: "Dr Maria Carter",
       specialization: "Dermatologist",
       experience: 6,
-      status: "Available" as const,
       fee: 25,
       rating: 4.9,
       image: "https://randomuser.me/api/portraits/women/65.jpg",
@@ -37,7 +35,7 @@ export default function FindDoctorPage() {
       name: "Dr John Smith",
       specialization: "Cardiologist",
       experience: 10,
-      status: "Not Available",
+      
       fee: 40,
       rating: 4.7,
       image: "https://randomuser.me/api/portraits/men/31.jpg",
@@ -47,7 +45,6 @@ export default function FindDoctorPage() {
       name: "Dr Ali Khan",
       specialization: "Neurologist",
       experience: 8,
-      status: "Available",
       fee: 35,
       rating: 4.6,
       image: "https://randomuser.me/api/portraits/men/55.jpg",
@@ -57,7 +54,6 @@ export default function FindDoctorPage() {
       name: "Dr Sarah Lee",
       specialization: "Pediatrician",
       experience: 5,
-      status: "Not Available",
       fee: 22,
       rating: 4.5,
       image: "https://randomuser.me/api/portraits/women/72.jpg",
@@ -67,7 +63,6 @@ export default function FindDoctorPage() {
       name: "Dr Michael Brown",
       specialization: "General Physician",
       experience: 12,
-      status: "Available",
       fee: 18,
       rating: 4.3,
       image: "https://randomuser.me/api/portraits/men/29.jpg",
@@ -91,6 +86,9 @@ export default function FindDoctorPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+        <h1 className="text-3xl font-bold text-center text-[#1a237e] pt-1">
+          Find Your Doctor
+        </h1>
       {/*Sticky Search + Filters + Clear */}
       <div className="sticky top-0 bg-gray-50 p-4 z-10 border-b shadow-sm space-y-3">
         {/* Search + MultiSelect in one row */}
