@@ -26,7 +26,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarRail
+  SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   Bell,
@@ -125,6 +126,7 @@ const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps
 };
 
 export default function AppSidebar() {
+  const { state } = useSidebar();
   const [activeItem, setActiveItem] = React.useState('/dashboard');
 
   const handleNavigation = (url: string) => {
@@ -153,10 +155,12 @@ export default function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2 p-2">
           <ImageIcon className="h-6 w-6" />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{company.name}</span>
-            <span className="text-xs text-muted-foreground">Dashboard</span>
-          </div>
+          {state !== 'collapsed' && (
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">{company.name}</span>
+              <span className="text-xs text-muted-foreground">Dashboard</span>
+            </div>
+          )}
         </div>
       </SidebarHeader>
       <SidebarContent className='overflow-x-hidden'>
