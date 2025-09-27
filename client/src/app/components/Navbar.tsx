@@ -69,135 +69,133 @@ const Navbar: React.FC = () => {
   }, [isMobileMenuOpen]);
   
   return (
-    <nav className="bg-white py-3 shadow-sm border-b relative">
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center space-x-2">
-          <Image
-            src="/Pilllogo.png"
-            alt="Pill Sure Logo"
-            width={32}
-            height={32}
-            className="h-8 w-auto"
-          />
-          <span className="text-lg md:text-2xl font-bold text-blue-900 leading-tight">
-            Pill Sure
-          </span>
-        </div>
-
-        {/* Desktop Menu */}
-        <div className="hidden md:flex space-x-6 text-blue-900 font-medium">
-          <Button variant="link" className="hover:text-blue-500 px-3 py-2">Home</Button>
-          <Button variant="link" className="hover:text-blue-500 px-3 py-2">Medicines</Button>
-          <Button variant="link" className="hover:text-blue-500 px-3 py-2">Categories</Button>
-          <Button variant="link" className="hover:text-blue-500 px-3 py-2">About</Button>
-          <Button variant="link" className="hover:text-blue-500 px-3 py-2">Contact</Button>
-        </div>
-
-        {/* Right Side Actions */}
-        <div className="flex items-center space-x-3">
-          {/* Join as Doctor Button - Only show when not logged in */}
-          {!user && (
-            <Button 
-              onClick={handleJoinAsDoctor}
-              variant="outline" 
-              className="hidden md:flex items-center space-x-1.5 text-blue-600 border-blue-600 hover:bg-blue-50 px-3 py-2 text-sm"
-            >
-              <Stethoscope className="h-4 w-4" />
-              <span>Join as Doctor</span>
-            </Button>
-          )}
-
-          {/* Register as Hospital Button - Only show when not logged in */}
-          {!user && (
-            <Button 
-              onClick={handleRegisterAsHospital}
-              variant="outline" 
-              className="hidden md:flex items-center space-x-1.5 text-green-600 border-green-600 hover:bg-green-50 px-3 py-2 text-sm"
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Register as Hospital</span>
-            </Button>
-          )}
-
-          {/* Shopping Cart */}
-          <Button variant="ghost" className="relative hover:text-blue-500 p-2" aria-label="Shopping Cart">
-            <ShoppingCart className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              0
+    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex items-center space-x-3">
+            <Image
+              src="/Pilllogo.png"
+              alt="PillSure Logo"
+              width={32}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <span className="text-xl font-bold text-gray-900">
+              PillSure
             </span>
-          </Button>
+          </div>
 
-          {/* Wishlist */}
-          <Button variant="ghost" className="hover:text-blue-500 p-2" aria-label="Wishlist">
-            <Heart className="h-5 w-5" />
-          </Button>
-
-          {/* Profile Dropdown */}
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <User className="h-5 w-5 text-blue-600" />
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground capitalize">
-                      {user.role}
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/profile')}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/orders')}>
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  <span>Orders</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/wishlist')}>
-                  <Heart className="mr-2 h-4 w-4" />
-                  <span>Wishlist</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-                  ) : (
-                    <Button
-                      onClick={() => router.push('/auth')}
-                      variant="outline"
-                      className="border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-700 font-medium px-4 py-2 rounded-lg transition-all duration-200 text-sm"
-                    >
-                      Sign In
-                    </Button>
-                  )}
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <Button 
-              variant="ghost" 
-              className="text-gray-600 hover:text-blue-500 p-2" 
-              aria-label="Toggle mobile menu"
-              onClick={toggleMobileMenu}
-              type="button"
-            >
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+              Home
             </Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+              Find Doctors
+            </Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+              Medicines
+            </Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+              Hospitals
+            </Button>
+            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+              About
+            </Button>
+          </div>
+
+          {/* Right Side Actions */}
+          <div className="flex items-center space-x-4">
+            {/* Join as Doctor Button - Only show when not logged in */}
+            {!user && (
+              <Button 
+                onClick={handleJoinAsDoctor}
+                variant="outline" 
+                className="hidden md:flex items-center space-x-2 text-primary border-primary hover:bg-primary/10 px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                <Stethoscope className="h-4 w-4" />
+                <span>For Doctors</span>
+              </Button>
+            )}
+
+            {/* Register as Hospital Button - Only show when not logged in */}
+            {!user && (
+              <Button 
+                onClick={handleRegisterAsHospital}
+                variant="outline" 
+                className="hidden md:flex items-center space-x-2 text-green-600 border-green-600 hover:bg-green-50 px-4 py-2 text-sm font-medium rounded-lg"
+              >
+                <Building2 className="h-4 w-4" />
+                <span>For Hospitals</span>
+              </Button>
+            )}
+
+            {/* Profile Dropdown */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                        {user.role}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/orders')}>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    <span>Orders</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/wishlist')}>
+                    <Heart className="mr-2 h-4 w-4" />
+                    <span>Wishlist</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                onClick={() => router.push('/auth')}
+                className="px-6 py-2 text-sm font-medium rounded-lg transition-all duration-200"
+              >
+                Sign In
+              </Button>
+            )}
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <Button 
+                variant="ghost" 
+                className="text-muted-foreground hover:text-primary p-2" 
+                aria-label="Toggle mobile menu"
+                onClick={toggleMobileMenu}
+                type="button"
+              >
+                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
