@@ -111,11 +111,11 @@ const TopSellingSection: React.FC = () => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
       if (rating - i >= 1) {
-        stars.push(<Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />);
+        stars.push(<Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />);
       } else if (rating - i > 0) {
-        stars.push(<Star key={i} className="h-4 w-4 fill-yellow-400/50 text-yellow-400/50" />);
+        stars.push(<Star key={i} className="h-4 w-4 fill-amber-400/50 text-amber-400/50" />);
       } else {
-        stars.push(<Star key={i} className="h-4 w-4 text-gray-300" />);
+        stars.push(<Star key={i} className="h-4 w-4 text-muted-foreground/30" />);
       }
     }
     return stars;
@@ -124,19 +124,19 @@ const TopSellingSection: React.FC = () => {
   const getBadgeColor = (badge: string) => {
     switch (badge) {
       case "Best Seller":
-        return "bg-red-500 text-white";
+        return "bg-destructive text-white";
       case "Trending":
-        return "bg-orange-500 text-white";
+        return "bg-accent text-accent-foreground";
       case "Popular":
-        return "bg-blue-500 text-white";
+        return "bg-primary text-primary-foreground";
       case "Top Rated":
-        return "bg-green-500 text-white";
+        return "bg-green-600 text-white";
       case "Sale":
-        return "bg-purple-500 text-white";
+        return "bg-primary/80 text-primary-foreground";
       case "Fast Moving":
-        return "bg-pink-500 text-white";
+        return "bg-accent/80 text-accent-foreground";
       default:
-        return "bg-gray-500 text-white";
+        return "bg-muted text-muted-foreground";
     }
   };
 
@@ -150,28 +150,25 @@ const TopSellingSection: React.FC = () => {
         transition={{ duration: 1 }}
       >
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-green-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl" />
       </motion.div>
       
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
         <motion.div 
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          className="max-w-2xl mb-12"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-6 py-3 rounded-full text-sm font-medium mb-8 border border-primary/20 backdrop-blur-sm">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span>Top Selling Products</span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <span className="font-medium">Top Selling Products</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            <span className="block">Most</span>
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-600">
-              Popular Choices
-            </span>
+          <h2 className="text-3xl font-bold text-primary mb-4">
+            Most Popular Choices
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-lg leading-relaxed">
             Discover our best-selling medicines and supplements, trusted by thousands of customers 
             for their effectiveness and quality.
           </p>
@@ -192,7 +189,7 @@ const TopSellingSection: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
+              <Card className="group hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden">
                 <CardContent className="p-0">
                   {/* Product Image */}
                   <div className="relative h-48 bg-muted/30 overflow-hidden">
@@ -202,12 +199,18 @@ const TopSellingSection: React.FC = () => {
                       fill
                       className="object-contain group-hover:scale-110 transition-transform duration-500"
                     />
+                    
+                    {/* Badge */}
+                    <div className="absolute top-3 left-3">
+                      <div className={`text-xs font-bold px-3 py-1 rounded-full ${getBadgeColor(product.badge)}`}>
+                        {product.badge}
+                      </div>
+                    </div>
+                    
                     {product.prescriptionRequired && (
-                      <div className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-r from-white to-orange-300 rounded-full" />
-                        </div>
-                        Prescription
+                      <div className="absolute top-3 right-3 bg-accent text-accent-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-accent-foreground/50" />
+                        Rx
                       </div>
                     )}
                   </div>
@@ -281,7 +284,7 @@ const TopSellingSection: React.FC = () => {
               transition={{ duration: 0.6, delay: 1 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
+              <Card className="group hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden">
                 <CardContent className="p-0">
                   {/* Product Image */}
                   <div className="relative h-40 bg-muted/30 overflow-hidden">
@@ -291,12 +294,18 @@ const TopSellingSection: React.FC = () => {
                       fill
                       className="object-contain group-hover:scale-110 transition-transform duration-500"
                     />
+                    
+                    {/* Badge */}
+                    <div className="absolute top-2 left-2">
+                      <div className={`text-xs font-bold px-2 py-1 rounded-full ${getBadgeColor(product.badge)}`}>
+                        {product.badge}
+                      </div>
+                    </div>
+                    
                     {product.prescriptionRequired && (
-                      <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-r from-white to-orange-300 rounded-full" />
-                        </div>
-                        Prescription
+                      <div className="absolute top-2 right-2 bg-accent text-accent-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-accent-foreground/50" />
+                        Rx
                       </div>
                     )}
                   </div>
@@ -357,7 +366,7 @@ const TopSellingSection: React.FC = () => {
           <Button 
             size="lg" 
             variant="outline"
-            className="px-8 py-3 text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5"
+            className="px-8 py-3 text-base font-semibold rounded-xl border-primary/30 text-primary hover:bg-primary/5"
           >
             <TrendingUp className="h-4 w-4 mr-2" />
             View All Top Sellers

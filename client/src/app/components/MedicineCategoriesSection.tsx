@@ -12,7 +12,7 @@ import {
   Zap,
   Droplets,
   ArrowRight,
-  Pill
+  Activity
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -20,200 +20,163 @@ import { Button } from "@/components/ui/button";
 const categories = [
   {
     id: 1,
-    name: "Asthma & Respiratory",
-    description: "Breathing support and lung health",
+    name: "Respiratory Care",
+    subtitle: "Asthma & Breathing",
+    description: "INHALERS & NEBULIZERS",
     icon: Heart,
     imageUrl: "/p1.png",
     productCount: "150+",
-    color: "from-blue-500 to-cyan-500",
-    bgColor: "bg-blue-50",
-    textColor: "text-blue-600"
+    bgColor: "bg-primary/5",
+    accentColor: "text-primary"
   },
   {
     id: 2,
-    name: "Face Care & Beauty",
-    description: "Skincare and beauty products",
+    name: "Beauty & Skincare",
+    subtitle: "Face Care & Cosmetics",
+    description: "PREMIUM SKINCARE",
     icon: Eye,
     imageUrl: "/cos.png",
     productCount: "200+",
-    color: "from-pink-500 to-rose-500",
-    bgColor: "bg-pink-50",
-    textColor: "text-pink-600"
+    bgColor: "bg-accent/10",
+    accentColor: "text-accent"
   },
   {
     id: 3,
-    name: "Mental Health",
-    description: "Brain health and wellness",
+    name: "Mental Wellness",
+    subtitle: "Brain Health",
+    description: "COGNITIVE SUPPORT",
     icon: Brain,
     imageUrl: "/p2.png",
     productCount: "80+",
-    color: "from-purple-500 to-indigo-500",
-    bgColor: "bg-purple-50",
-    textColor: "text-purple-600"
+    bgColor: "bg-primary/10",
+    accentColor: "text-primary"
   },
   {
     id: 4,
-    name: "Kids Health",
-    description: "Children's medicines and supplements",
+    name: "Pediatric Care",
+    subtitle: "Kids Health",
+    description: "CHILDREN'S MEDICINE",
     icon: Baby,
     imageUrl: "/pills.png",
     productCount: "120+",
-    color: "from-green-500 to-emerald-500",
-    bgColor: "bg-green-50",
-    textColor: "text-green-600"
+    bgColor: "bg-secondary/20",
+    accentColor: "text-secondary-foreground"
   },
   {
     id: 5,
-    name: "Immune System",
-    description: "Boost your body's defenses",
+    name: "Immune Support",
+    subtitle: "Defense System",
+    description: "VITAMINS & BOOSTERS",
     icon: Shield,
     imageUrl: "/wf.png",
     productCount: "90+",
-    color: "from-orange-500 to-red-500",
-    bgColor: "bg-orange-50",
-    textColor: "text-orange-600"
+    bgColor: "bg-primary/8",
+    accentColor: "text-primary"
   },
   {
     id: 6,
-    name: "Bone & Joint",
-    description: "Strong bones and flexible joints",
+    name: "Orthopedic Care",
+    subtitle: "Bone & Joint",
+    description: "MOBILITY SOLUTIONS",
     icon: Bone,
     imageUrl: "/p3.png",
     productCount: "110+",
-    color: "from-gray-500 to-slate-500",
-    bgColor: "bg-gray-50",
-    textColor: "text-gray-600"
-  },
-  {
-    id: 7,
-    name: "Energy & Vitality",
-    description: "Boost your energy levels",
-    icon: Zap,
-    imageUrl: "/p4.png",
-    productCount: "75+",
-    color: "from-yellow-500 to-amber-500",
-    bgColor: "bg-yellow-50",
-    textColor: "text-yellow-600"
-  },
-  {
-    id: 8,
-    name: "Digestive Health",
-    description: "Gut health and digestion",
-    icon: Droplets,
-    imageUrl: "/p5.png",
-    productCount: "95+",
-    color: "from-teal-500 to-cyan-500",
-    bgColor: "bg-teal-50",
-    textColor: "text-teal-600"
+    bgColor: "bg-muted/30",
+    accentColor: "text-muted-foreground"
   }
 ];
 
 const MedicineCategoriesSection: React.FC = () => {
   return (
-    <section className="relative py-20 overflow-hidden bg-gradient-to-b from-muted/30 to-background">
-      {/* Background Elements */}
-      <motion.div 
-        className="absolute inset-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1 }}
-      >
-        <div className="absolute top-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl" />
-      </motion.div>
-      
-      <div className="container mx-auto px-4 relative z-10">
+    <section className="py-16 bg-background">
+      <div className="container mx-auto px-4">
         {/* Section Header */}
         <motion.div 
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          className="max-w-2xl mb-12"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-6 py-3 rounded-full text-sm font-medium mb-8 border border-primary/20 backdrop-blur-sm">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span>Medicine Categories</span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+            <Activity className="h-4 w-4 text-primary" />
+            <span className="font-medium">Health Categories</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            <span className="block">Shop by</span>
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">
-              Health Category
-            </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-primary mb-4">
+            Shop by Health Category
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Find the right medicines and supplements for your specific health needs. 
-            Browse our comprehensive categories to discover products tailored to your wellness journey.
+          <p className="text-muted-foreground text-lg">
+            Browse our comprehensive range of medical products organized by health condition
           </p>
         </motion.div>
 
-        {/* Categories Grid */}
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
+        {/* Categories Grid - 3 columns, 2 rows */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {categories.map((category, index) => {
             const IconComponent = category.icon;
             return (
               <motion.div
                 key={category.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -5 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group cursor-pointer"
               >
-                <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden cursor-pointer">
-                  <CardContent className="p-6">
-                    {/* Category Header */}
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className={`w-12 h-12 ${category.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                        <IconComponent className={`h-6 w-6 ${category.textColor}`} />
+                <Card className={`h-64 ${category.bgColor} border border-border/50 overflow-hidden hover:shadow-purple hover:-translate-y-1 transition-all duration-300 relative`}>
+                  <CardContent className="p-6 h-full flex flex-col justify-between relative">
+                    {/* Content */}
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        {category.subtitle}
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-card-foreground group-hover:text-primary transition-colors duration-300">
-                          {category.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {category.productCount} products
-                        </p>
+                      <h3 className="text-2xl font-bold text-foreground mb-2 leading-tight">
+                        {category.name.toUpperCase()}
+                      </h3>
+                      <div className={`text-xs font-bold ${category.accentColor} tracking-wider mb-4`}>
+                        {category.description}
                       </div>
                     </div>
-                    
-                    {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {category.description}
-                    </p>
 
-                    {/* Category Image */}
-                    <div className="relative h-24 bg-gradient-to-br from-muted/30 to-muted/10 rounded-lg overflow-hidden">
+                    {/* Product Image - Large and prominent */}
+                    <div className="absolute -right-4 -bottom-4 w-32 h-32">
                       <Image
                         src={category.imageUrl}
                         alt={category.name}
                         fill
-                        className="object-contain group-hover:scale-110 transition-transform duration-500"
+                        className="object-contain group-hover:scale-110 transition-transform duration-300"
                       />
+                    </div>
+
+                    {/* Shop Now Button */}
+                    <div className="relative z-10">
+                      <Button 
+                        size="sm" 
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 h-9"
+                      >
+                        SHOP NOW
+                        <ArrowRight className="h-3 w-3 ml-2" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
             );
           })}
-        </motion.div>
+        </div>
 
-        {/* View All Categories Button */}
+        {/* View All Categories */}
         <motion.div 
-          className="text-center mt-12"
-          initial={{ opacity: 0, y: 30 }}
+          className="text-center"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
         >
-          <Button
-            size="lg" 
+          <Button 
             variant="outline"
-            className="px-8 py-3 text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5"
+            size="lg"
+            className="px-8 border-primary/30 text-primary hover:bg-primary/5"
           >
-            Explore All Categories
+            View All Categories
+            <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </motion.div>
       </div>
