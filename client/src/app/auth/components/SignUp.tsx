@@ -7,7 +7,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { Separator } from "@/components/ui/separator";
 import { Pill, Mail, Lock } from "lucide-react";
-import Image from "next/image";
 import { useSignup, useGoogleSignup } from "@/hooks/use-auth";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
@@ -69,63 +68,70 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <style jsx>{`
-        @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-          100% { transform: translateY(0px); }
-        }
-        .floating-icon {
-          animation: float 2s ease-in-out infinite;
-        }
-      `}</style>
+    <div className="min-h-screen bg-background flex flex-col">
 
       {/* Desktop Split Layout */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Left Brand Panel - Hidden on Mobile */}
-        <div className="hidden md:flex md:w-1/2 bg-[#1a237e] relative overflow-hidden">
-          {/* Background decoration */}
+    {/* Left Brand Panel - Hidden on Mobile */}
+    <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary via-primary/95 to-accent relative overflow-hidden">
+          {/* Enhanced background pattern */}
           <div className="absolute inset-0">
-            <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-            <div className="absolute bottom-20 right-10 w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
+            <div className="absolute top-10 left-10 w-32 h-32 bg-white/15 rounded-full blur-2xl animate-pulse"></div>
+            <div className="absolute top-1/3 right-16 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+            <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-white/8 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-10 right-10 w-20 h-20 bg-white/12 rounded-full blur-lg"></div>
           </div>
 
-          <div className="relative z-10 flex flex-col items-center justify-center p-8 text-white">
-            {/* Logo and brand */}
-            <div className="flex items-center mb-8">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-2 mr-4">
-                <Image 
-                  src="/logo.png" 
-                  alt="Pillsure Logo" 
-                  width={40} 
-                  height={40} 
-                  className="rounded-full"
-                />
-              </div>
-              <span className="text-3xl font-bold">Pillsure</span>
+          {/* Content */}
+          <div className="relative z-10 flex flex-col justify-between h-full p-10 lg:p-12">
+            {/* Header */}
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Pillsure</h1>
+              <div className="w-12 h-1 bg-white/30 rounded-full"></div>
             </div>
 
-            {/* Main content */}
-            <div className="text-center max-w-lg">
-              <h1 className="text-4xl lg:text-5xl font-bold mb-6 leading-tight">
-                Join Pillsure
-              </h1>
-              <p className="text-lg text-blue-100 mb-12 leading-relaxed">
-                Create your account to start managing your healthcare journey with confidence.
-              </p>
+            {/* Main content - centered */}
+            <div className="flex-1 flex flex-col justify-center items-center py-8">
+              <div className="text-center max-w-md">
+                {/* Icon with enhanced styling */}
+                <div className="relative mb-8">
+                  <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20">
+                    <Pill className="h-10 w-10 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-white/20 rounded-full animate-ping"></div>
+                </div>
 
-              {/* Floating icon */}
-              <div className="flex justify-center">
-                <div className="bg-white/10 backdrop-blur-sm rounded-full p-6">
-                  <Pill className="h-16 w-16 text-white floating-icon" />
+                <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
+                  Join Pillsure
+                </h2>
+                <p className="text-lg text-white/90 leading-relaxed">
+                  Create your account to start managing your healthcare journey with confidence.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature highlights and footer */}
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 text-white/80">
+                  <div className="w-2 h-2 bg-white/60 rounded-full"></div>
+                  <span className="text-sm">Smart medication reminders</span>
+                </div>
+                <div className="flex items-center space-x-3 text-white/80">
+                  <div className="w-2 h-2 bg-white/60 rounded-full"></div>
+                  <span className="text-sm">Health tracking & insights</span>
+                </div>
+                <div className="flex items-center space-x-3 text-white/80">
+                  <div className="w-2 h-2 bg-white/60 rounded-full"></div>
+                  <span className="text-sm">Secure & private data</span>
                 </div>
               </div>
-            </div>
-
-            {/* Footer */}
-            <div className="absolute bottom-8 text-center">
-              <p className="text-blue-200 text-sm">© 2024 Pillsure. All rights reserved.</p>
+              
+              {/* Footer */}
+              <div>
+                <p className="text-xs text-white/50">© 2024 Pillsure. All rights reserved.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -133,13 +139,13 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
         {/* Form Section */}
         <div className="flex-1 md:w-1/2 flex items-center justify-center p-4 md:p-8">
           <div className="w-full max-w-sm">
-            <Card className="bg-white border border-gray-200 rounded-xl shadow-lg md:shadow-2xl">
+            <Card className="bg-card border border-border rounded-xl shadow-lg md:shadow-2xl">
               {/* Card Header */}
               <CardHeader className="p-6 pb-4">
-                <CardTitle className="text-xl md:text-2xl font-bold text-gray-900 mb-2 text-left">
+                <CardTitle className="text-xl md:text-2xl font-bold text-card-foreground mb-2 text-left">
                   Sign Up
                 </CardTitle>
-                <CardDescription className="text-gray-600 text-sm text-left">
+                <CardDescription className="text-muted-foreground text-sm text-left">
                   Create your account to continue
                 </CardDescription>
               </CardHeader>
@@ -157,20 +163,20 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">
+                          <FormLabel className="text-sm font-medium text-card-foreground">
                             Email
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input
                                 placeholder="Enter your email"
                                 {...field}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:border-[#1a237e] focus:ring-2 focus:ring-[#1a237e]/10 transition-colors"
+                                className="w-full pl-10 pr-4 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
                               />
                             </div>
                           </FormControl>
-                          <FormMessage className="text-red-500 text-xs" />
+                          <FormMessage className="text-destructive text-xs" />
                         </FormItem>
                       )}
                     />
@@ -184,17 +190,17 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                         }}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">
+                            <FormLabel className="text-sm font-medium text-card-foreground">
                               First Name
                             </FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="First name"
                                 {...field}
-                                className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm focus:border-[#1a237e] focus:ring-2 focus:ring-[#1a237e]/10 transition-colors"
+                                className="w-full px-3 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
                               />
                             </FormControl>
-                            <FormMessage className="text-red-500 text-xs" />
+                            <FormMessage className="text-destructive text-xs" />
                           </FormItem>
                         )}
                       />
@@ -207,17 +213,17 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                         }}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">
+                            <FormLabel className="text-sm font-medium text-card-foreground">
                               Last Name
                             </FormLabel>
                             <FormControl>
                               <Input
                                 placeholder="Last name"
                                 {...field}
-                                className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm focus:border-[#1a237e] focus:ring-2 focus:ring-[#1a237e]/10 transition-colors"
+                                className="w-full px-3 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
                               />
                             </FormControl>
-                            <FormMessage className="text-red-500 text-xs" />
+                            <FormMessage className="text-destructive text-xs" />
                           </FormItem>
                         )}
                       />
@@ -232,21 +238,21 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">
+                          <FormLabel className="text-sm font-medium text-card-foreground">
                             Password
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input
                                 type="password"
                                 placeholder="Enter your password"
                                 {...field}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:border-[#1a237e] focus:ring-2 focus:ring-[#1a237e]/10 transition-colors"
+                                className="w-full pl-10 pr-4 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
                               />
                             </div>
                           </FormControl>
-                          <FormMessage className="text-red-500 text-xs" />
+                          <FormMessage className="text-destructive text-xs" />
                         </FormItem>
                       )}
                     />
@@ -260,21 +266,21 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">
+                          <FormLabel className="text-sm font-medium text-card-foreground">
                             Confirm Password
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input
                                 type="password"
                                 placeholder="Confirm your password"
                                 {...field}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:border-[#1a237e] focus:ring-2 focus:ring-[#1a237e]/10 transition-colors"
+                                className="w-full pl-10 pr-4 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
                               />
                             </div>
                           </FormControl>
-                          <FormMessage className="text-red-500 text-xs" />
+                          <FormMessage className="text-destructive text-xs" />
                         </FormItem>
                       )}
                     />
@@ -282,7 +288,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                     <div className="pt-2">
                       <Button
                         type="submit"
-                        className="w-full bg-[#1a237e] hover:bg-[#283593] text-white py-3 px-4 rounded-lg text-sm font-medium transition-colors"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-4 rounded-lg text-sm font-medium transition-colors"
                         disabled={signupMutation.isPending}
                       >
                         {signupMutation.isPending ? (
@@ -309,16 +315,16 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                     )}
 
                     <div className="relative my-4">
-                      <Separator className="bg-gray-200" />
+                      <Separator className="bg-border" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="bg-white px-3 text-xs text-gray-500">or</span>
+                        <span className="bg-card px-3 text-xs text-muted-foreground">or</span>
                       </div>
                     </div>
 
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 text-sm transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-input rounded-lg hover:bg-accent text-foreground text-sm transition-colors"
                       onClick={handleGoogleSignup}
                       disabled={googleSignupMutation.isPending}
                     >
@@ -344,14 +350,14 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
               </CardContent>
 
               {/* Card Footer */}
-              <CardFooter className="px-6 py-4 bg-gray-50 rounded-b-xl">
-                <p className="text-sm text-gray-600 text-center w-full">
+              <CardFooter className="px-6 py-4 bg-muted/50 rounded-b-xl">
+                <p className="text-sm text-muted-foreground text-center w-full">
                   Already have an account?{" "}
                   <Button
                     type="button"
                     variant="link"
                     onClick={onSwitchToLogin}
-                    className="text-[#1a237e] hover:text-[#283593] p-0 h-auto font-medium text-sm"
+                    className="text-primary hover:text-primary/80 p-0 h-auto font-medium text-sm"
                   >
                     Sign in
                   </Button>

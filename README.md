@@ -1,230 +1,140 @@
-# PillSure 🏥💊
+# PillSure Monorepo
 
-> **Transforming Healthcare Through Secure Digital Medicine Management**
+A healthcare management platform built with Next.js frontend and Node.js/Express backend.
 
-PillSure is a comprehensive digital healthcare platform that revolutionizes the way patients, doctors, pharmacists, and administrators interact in the medical ecosystem. Our platform addresses critical challenges in healthcare including prescription fraud, self-medication risks, and inefficient communication between healthcare providers.
+## Project Structure
 
-## 🌟 Key Features
-
-### 🔐 **Security First**
-- **End-to-end encryption** for all sensitive data
-- **Role-based access control** with JWT authentication
-- **Audit logs** for complete transaction tracking
-- **Prescription verification** by certified doctors
-- **Pharmacist validation** before dispensing
-
-### 👥 **Four Core User Roles**
-- **👨‍⚕️ Doctor**: Prescribe medications and verify prescriptions
-- **💊 Pharmacist**: Review and validate prescriptions before dispensing
-- **👤 Patient**: Browse medicines, consult doctors, and place orders
-- **⚙️ Admin**: System management and oversight
-
-### 🛒 **Patient Experience**
-- **User-friendly e-store** for browsing medications
-- **Doctor consultation** for prescription-based drugs
-- **Automated order forwarding** to pharmacists
-- **Real-time order tracking** and status updates
-
-## 🏗️ Architecture
-
-### Frontend (Client)
-- **Framework**: Next.js 15 with React 19
-- **UI Components**: shadcn/ui with Radix UI primitives
-- **Styling**: Tailwind CSS
-- **TypeScript**: Full type safety
-
-### Backend (Server)
-- **Runtime**: Node.js with Express.js
-- **Database**: PostgreSQL with TypeORM
-- **Authentication**: JWT with bcrypt password hashing
-- **Architecture**: Clean architecture with services, entities, and middleware
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ 
-- PostgreSQL 12+
-- npm or yarn
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/PillSure.git
-cd PillSure
+```
+pillsure-monorepo/
+├── client/          # Next.js frontend application
+├── server/          # Node.js/Express backend API
+├── package.json     # Root package.json with workspace configuration
+└── README.md        # This file
 ```
 
-### 2. Backend Setup
+## Prerequisites
+
+- Node.js (>= 18.0.0)
+- npm (>= 8.0.0)
+- Docker Desktop (for PostgreSQL database)
+
+## Getting Started
+
+### 1. Install Dependencies
+
+Install all dependencies for both frontend and backend:
+
 ```bash
-cd server
-npm install
+npm run install:all
+```
 
-# Create .env file
-cp .env.example .env
-# Edit .env with your database credentials
+### 2. Environment Setup
 
-# Run database migrations
-npm run migration:run
+Run the setup script to create environment files:
 
-# Initialize roles
+```bash
+npm run setup
+```
+
+This creates:
+- `client/.env.local` - Frontend environment variables
+- `server/.env` - Backend environment variables with Docker database config
+
+### 3. Development
+
+Start the complete development environment (Docker + Backend + Frontend):
+
+```bash
+npm run dev
+```
+
+This will start:
+- **Docker PostgreSQL**: Database container (port 5432)
+- **Backend**: Express.js API server (port 3001)
+- **Frontend**: Next.js application (port 3000)
+
+### 4. Database Setup
+
+After starting the development environment, run database migrations:
+
+```bash
+npm run db:migrate
 npm run init:roles
-
-# Start development server
-npm run dev
 ```
 
-### 3. Frontend Setup
+### 5. Individual Development
+
+To run only the frontend:
 ```bash
-cd client/pillsure-client
-npm install
-
-# Start development server
-npm run dev
+npm run dev:client
 ```
 
-### 4. Access the Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-
-## 📁 Project Structure
-
-```
-PillSure/
-├── client/
-│   └── pillsure-client/          # Next.js frontend application
-│       ├── src/
-│       │   ├── app/              # App router pages
-│       │   ├── components/       # Reusable UI components
-│       │   ├── hooks/            # Custom React hooks
-│       │   ├── layout/           # Layout components
-│       │   └── lib/              # Utilities and configurations
-│       └── package.json
-├── server/                       # Node.js backend application
-│   ├── src/
-│   │   ├── config/              # Database and app configuration
-│   │   ├── core/                # Core types and interfaces
-│   │   ├── entities/            # TypeORM database entities
-│   │   ├── middleware/          # Express middleware
-│   │   ├── routes/              # API route handlers
-│   │   ├── services/            # Business logic services
-│   │   └── migrations/          # Database migrations
-│   └── package.json
-└── README.md
+To run only the backend:
+```bash
+npm run dev:server
 ```
 
-## 🔧 API Documentation
+## Available Scripts
 
-### Authentication Endpoints
+### Root Level Scripts
 
-#### Register User
-```http
-POST /api/auth/register
-Content-Type: application/json
+- `npm run dev` - Start both frontend and backend in development mode
+- `npm run build` - Build both applications
+- `npm run start` - Start both applications in production mode
+- `npm run install:all` - Install dependencies for all workspaces
+- `npm run clean` - Clean node_modules and build artifacts
 
-{
-  "email": "user@example.com",
-  "password": "password123",
-  "firstName": "John",
-  "lastName": "Doe",
-  "role": "user"
-}
-```
+### Database Scripts
 
-#### Login
-```http
-POST /api/auth/login
-Content-Type: application/json
+- `npm run db:generate` - Generate database migrations
+- `npm run db:migrate` - Run database migrations
+- `npm run db:studio` - Open Drizzle Studio
+- `npm run init:roles` - Initialize user roles
 
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
+### Docker Scripts
 
-#### Get Profile
-```http
-GET /api/auth/profile
-Authorization: Bearer <jwt_token>
-```
+- `npm run docker:up` - Start PostgreSQL container
+- `npm run docker:down` - Stop PostgreSQL container
+- `npm run docker:logs` - View container logs
+- `npm run docker:restart` - Restart PostgreSQL container
 
-### User Roles
-- **USER**: Basic patient access
-- **ADMIN**: Full system administration
-- **DOCTOR**: Medical professional access
-- **PHARMACIST**: Pharmacy staff access
+## Technology Stack
 
-## 🛡️ Security Features
+### Frontend (client/)
+- Next.js 15
+- React 19
+- TypeScript
+- Tailwind CSS
+- Radix UI
+- TanStack Query
+- Firebase Authentication
 
-- **Password Security**: bcrypt hashing with 12 rounds
-- **JWT Tokens**: 24-hour expiration with secure signing
-- **Role-Based Access**: Granular permissions per user type
-- **Input Validation**: Comprehensive request validation
-- **CORS Protection**: Configurable cross-origin policies
-- **Error Handling**: Secure error responses without data leakage
+### Backend (server/)
+- Node.js
+- Express.js
+- TypeScript
+- Drizzle ORM
+- PostgreSQL
+- JWT Authentication
+- bcryptjs
 
-## 🔮 Future Roadmap
+## Development Workflow
 
-### Phase 1: Core Platform ✅
-- [x] User authentication and authorization
-- [x] Role-based access control
-- [x] Basic UI framework setup
+1. Make changes to either frontend or backend code
+2. Both applications will hot-reload automatically
+3. Frontend runs on port 3000, backend on port 3001
+4. API calls from frontend are proxied to backend
 
-### Phase 2: Medicine Management 🚧
-- [ ] Medicine catalog and inventory
-- [ ] Prescription management system
-- [ ] Order processing workflow
-- [ ] Payment integration
+## Production Deployment
 
-### Phase 3: Advanced Features 📋
-- [ ] Insurance provider integration
-- [ ] AI-powered prescription recommendations
-- [ ] Home delivery service
-- [ ] Mobile application (React Native)
+1. Build both applications: `npm run build`
+2. Start both applications: `npm run start`
+3. Configure environment variables for production
+4. Set up reverse proxy (nginx) to serve frontend and route API calls to backend
 
-### Phase 4: Analytics & Optimization 📊
-- [ ] Advanced analytics dashboard
-- [ ] Machine learning for fraud detection
-- [ ] Performance optimization
-- [ ] Multi-language support
+## Contributing
 
-## 🤝 Contributing
-
-We welcome contributions to PillSure! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Write comprehensive tests
-- Update documentation for new features
-- Follow the existing code style and structure
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🏥 Healthcare Compliance
-
-PillSure is designed with healthcare compliance in mind:
-- **HIPAA-ready architecture** for patient data protection
-- **Audit trails** for all medical transactions
-- **Prescription verification** workflows
-- **Secure communication** between healthcare providers
-
-## 📞 Support
-
-For support, email support@pillsure.com or join our community discussions.
-
-## 🙏 Acknowledgments
-
-- Healthcare professionals who provided domain expertise
-- Open source community for the amazing tools and libraries
-- Beta testers and early adopters
-
----
-
-**PillSure** - *Making Healthcare Accessible, Secure, and Efficient* 🏥✨
-
-> **Note**: This is a development version. For production deployment, additional security measures and compliance certifications may be required.
+1. Create a feature branch
+2. Make your changes
+3. Test both frontend and backend
+4. Submit a pull request

@@ -18,7 +18,9 @@ import {
   Pill,
   Grid3X3,
   Info,
-  Phone
+  Phone,
+  Search,
+  ChevronDown
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +35,7 @@ const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const handleJoinAsDoctor = () => {
@@ -50,6 +53,15 @@ const Navbar: React.FC = () => {
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
   };
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -69,108 +81,165 @@ const Navbar: React.FC = () => {
   }, [isMobileMenuOpen]);
   
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      scrolled ? 'bg-white/95 backdrop-blur-xl shadow-md' : 'bg-white/80 backdrop-blur-md'
+    }`}>
+      <div className="container mx-auto px-4 lg:px-6">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <Image
-              src="/Pilllogo.png"
-              alt="PillSure Logo"
-              width={32}
-              height={32}
-              className="h-8 w-auto"
-            />
-            <span className="text-xl font-bold text-gray-900">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => router.push('/')}>
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+              <Pill className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
               PillSure
             </span>
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+          <div className="hidden lg:flex items-center space-x-1">
+            <Button 
+              variant="ghost" 
+              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
+              onClick={() => router.push('/')}
+            >
               Home
             </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+            <Button 
+              variant="ghost" 
+              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
+              onClick={() => router.push('/doctors')}
+            >
               Find Doctors
             </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+            <Button 
+              variant="ghost" 
+              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
+              onClick={() => router.push('/medicines')}
+            >
               Medicines
             </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+            <Button 
+              variant="ghost" 
+              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
+              onClick={() => router.push('/hospitals')}
+            >
               Hospitals
             </Button>
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium">
+            <Button 
+              variant="ghost" 
+              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
+              onClick={() => router.push('/about')}
+            >
               About
             </Button>
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Join as Doctor Button - Only show when not logged in */}
+          <div className="flex items-center space-x-3">
+            {/* Search Icon - Hidden on mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+
+            {/* Cart Icon */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all"
+              onClick={() => router.push('/cart')}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                0
+              </span>
+            </Button>
+
+            {/* Wishlist Icon */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all"
+              onClick={() => router.push('/wishlist')}
+            >
+              <Heart className="h-5 w-5" />
+            </Button>
+
+            {/* Join as Doctor/Hospital Dropdown - Only show when not logged in */}
             {!user && (
-              <Button 
-                onClick={handleJoinAsDoctor}
-                variant="outline" 
-                className="hidden md:flex items-center space-x-2 text-primary border-primary hover:bg-primary/10 px-4 py-2 text-sm font-medium rounded-lg"
-              >
-                <Stethoscope className="h-4 w-4" />
-                <span>For Doctors</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="hidden lg:flex items-center space-x-2 border-primary/20 hover:border-primary  hover:bg-primary/5 text-primary hover:text-primary px-4 py-2 rounded-lg transition-all"
+                  >
+                    <span className="font-medium">For Professionals</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={handleJoinAsDoctor} className="cursor-pointer">
+                    <Stethoscope className="mr-2 h-4 w-4 text-primary" />
+                    <div>
+                      <p className="font-medium">For Doctors</p>
+                      <p className="text-xs text-muted-foreground">Join our medical network</p>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRegisterAsHospital} className="cursor-pointer">
+                    <Building2 className="mr-2 h-4 w-4 text-green-600" />
+                    <div>
+                      <p className="font-medium">For Hospitals</p>
+                      <p className="text-xs text-muted-foreground">Register your facility</p>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
-            {/* Register as Hospital Button - Only show when not logged in */}
-            {!user && (
-              <Button 
-                onClick={handleRegisterAsHospital}
-                variant="outline" 
-                className="hidden md:flex items-center space-x-2 text-green-600 border-green-600 hover:bg-green-50 px-4 py-2 text-sm font-medium rounded-lg"
-              >
-                <Building2 className="h-4 w-4" />
-                <span>For Hospitals</span>
-              </Button>
-            )}
-
-            {/* Profile Dropdown */}
+            {/* Profile Dropdown or Sign In */}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-5 w-5 text-primary" />
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:ring-2 hover:ring-primary/20 transition-all">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-semibold shadow-lg">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent className="w-64" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
+                    <div className="flex flex-col space-y-2 p-2">
+                      <p className="text-base font-semibold leading-none">
                         {user.firstName} {user.lastName}
                       </p>
-                      <p className="text-xs leading-none text-muted-foreground">
+                      <p className="text-sm leading-none text-muted-foreground">
                         {user.email}
                       </p>
-                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize w-fit">
                         {user.role}
-                      </p>
+                      </span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                  <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer py-3">
+                    <User className="mr-3 h-4 w-4 text-primary" />
+                    <span>My Profile</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/orders')}>
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    <span>Orders</span>
+                  <DropdownMenuItem onClick={() => router.push('/orders')} className="cursor-pointer py-3">
+                    <ShoppingCart className="mr-3 h-4 w-4 text-primary" />
+                    <span>My Orders</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/wishlist')}>
-                    <Heart className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem onClick={() => router.push('/wishlist')} className="cursor-pointer py-3">
+                    <Heart className="mr-3 h-4 w-4 text-primary" />
                     <span>Wishlist</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer py-3 text-red-600 focus:text-red-600">
+                    <LogOut className="mr-3 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -178,132 +247,184 @@ const Navbar: React.FC = () => {
             ) : (
               <Button
                 onClick={() => router.push('/auth')}
-                className="px-6 py-2 text-sm font-medium rounded-lg transition-all duration-200"
+                className="hidden md:flex bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white px-6 py-2.5 rounded-lg font-medium shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
               >
                 Sign In
               </Button>
             )}
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden">
-              <Button 
-                variant="ghost" 
-                className="text-muted-foreground hover:text-primary p-2" 
-                aria-label="Toggle mobile menu"
-                onClick={toggleMobileMenu}
-                type="button"
-              >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="lg:hidden text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-lg transition-all" 
+              onClick={toggleMobileMenu}
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div ref={mobileMenuRef} className="md:hidden bg-white border-t border-gray-200 shadow-lg absolute left-0 right-0 z-50">
-          <div className="container mx-auto px-4 py-3">
-            {/* Navigation Links */}
-            <div className="space-y-1 mb-4">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/'); closeMobileMenu(); }}
-              >
-                <Home className="mr-3 h-4 w-4" />
-                Home
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/medicines'); closeMobileMenu(); }}
-              >
-                <Pill className="mr-3 h-4 w-4" />
-                Medicines
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/categories'); closeMobileMenu(); }}
-              >
-                <Grid3X3 className="mr-3 h-4 w-4" />
-                Categories
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/about'); closeMobileMenu(); }}
-              >
-                <Info className="mr-3 h-4 w-4" />
-                About
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/contact'); closeMobileMenu(); }}
-              >
-                <Phone className="mr-3 h-4 w-4" />
-                Contact
-              </Button>
-            </div>
+        <>
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm lg:hidden" onClick={closeMobileMenu} />
+          <div 
+            ref={mobileMenuRef} 
+            className="fixed top-20 right-0 w-80 max-w-full h-[calc(100vh-5rem)] bg-white shadow-2xl lg:hidden overflow-y-auto"
+          >
+            <div className="p-6 space-y-6">
+              {/* User Info Section (if logged in) */}
+              {user && (
+                <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 border border-primary/10">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-semibold shadow-lg">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground truncate">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white capitalize">
+                    {user.role}
+                  </span>
+                </div>
+              )}
 
-            {/* Action Buttons - Only show when not logged in */}
-            {!user && (
-              <div className="space-y-2 mb-4">
+              {/* Navigation Links */}
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-3">
+                  Navigation
+                </p>
                 <Button 
-                  onClick={() => { handleJoinAsDoctor(); closeMobileMenu(); }}
-                  variant="outline" 
-                  className="w-full items-center space-x-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+                  variant="ghost" 
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                  onClick={() => { router.push('/'); closeMobileMenu(); }}
                 >
-                  <Stethoscope className="h-4 w-4" />
-                  <span>Join as Doctor</span>
+                  <Home className="mr-3 h-5 w-5" />
+                  <span className="font-medium">Home</span>
                 </Button>
                 <Button 
-                  onClick={() => { handleRegisterAsHospital(); closeMobileMenu(); }}
-                  variant="outline" 
-                  className="w-full items-center space-x-2 text-green-600 border-green-600 hover:bg-green-50"
+                  variant="ghost" 
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                  onClick={() => { router.push('/medicines'); closeMobileMenu(); }}
                 >
-                  <Building2 className="h-4 w-4" />
-                  <span>Register as Hospital</span>
+                  <Pill className="mr-3 h-5 w-5" />
+                  <span className="font-medium">Medicines</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                  onClick={() => { router.push('/doctors'); closeMobileMenu(); }}
+                >
+                  <Stethoscope className="mr-3 h-5 w-5" />
+                  <span className="font-medium">Find Doctors</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                  onClick={() => { router.push('/hospitals'); closeMobileMenu(); }}
+                >
+                  <Building2 className="mr-3 h-5 w-5" />
+                  <span className="font-medium">Hospitals</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                  onClick={() => { router.push('/about'); closeMobileMenu(); }}
+                >
+                  <Info className="mr-3 h-5 w-5" />
+                  <span className="font-medium">About</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                  onClick={() => { router.push('/contact'); closeMobileMenu(); }}
+                >
+                  <Phone className="mr-3 h-5 w-5" />
+                  <span className="font-medium">Contact</span>
                 </Button>
               </div>
-            )}
 
-            {/* User Actions */}
-            <div className="space-y-1">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/cart'); closeMobileMenu(); }}
-              >
-                <ShoppingCart className="mr-3 h-4 w-4" />
-                Shopping Cart
-                <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  0
-                </span>
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-blue-900 hover:text-blue-500 hover:bg-blue-50"
-                onClick={() => { router.push('/wishlist'); closeMobileMenu(); }}
-              >
-                <Heart className="mr-3 h-4 w-4" />
-                Wishlist
-              </Button>
-              
+              {/* Professional Options - Only show when not logged in */}
               {!user && (
+                <div className="space-y-2 pt-4 border-t">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-3">
+                    For Professionals
+                  </p>
+                  <Button 
+                    onClick={() => { handleJoinAsDoctor(); closeMobileMenu(); }}
+                    variant="outline" 
+                    className="w-full justify-start border-primary/20 text-primary hover:bg-primary/5 rounded-lg py-6"
+                  >
+                    <Stethoscope className="mr-3 h-5 w-5" />
+                    <span className="font-medium">Join as Doctor</span>
+                  </Button>
+                  <Button 
+                    onClick={() => { handleRegisterAsHospital(); closeMobileMenu(); }}
+                    variant="outline" 
+                    className="w-full justify-start border-green-200 text-green-600 hover:bg-green-50 rounded-lg py-6"
+                  >
+                    <Building2 className="mr-3 h-5 w-5" />
+                    <span className="font-medium">Register as Hospital</span>
+                  </Button>
+                </div>
+              )}
+
+              {/* Account Actions */}
+              {user ? (
+                <div className="space-y-2 pt-4 border-t">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-3">
+                    Account
+                  </p>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                    onClick={() => { router.push('/profile'); closeMobileMenu(); }}
+                  >
+                    <User className="mr-3 h-5 w-5" />
+                    <span className="font-medium">My Profile</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                    onClick={() => { router.push('/orders'); closeMobileMenu(); }}
+                  >
+                    <ShoppingCart className="mr-3 h-5 w-5" />
+                    <span className="font-medium">My Orders</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-6"
+                    onClick={() => { router.push('/wishlist'); closeMobileMenu(); }}
+                  >
+                    <Heart className="mr-3 h-5 w-5" />
+                    <span className="font-medium">Wishlist</span>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg py-6"
+                    onClick={() => { logout(); closeMobileMenu(); }}
+                  >
+                    <LogOut className="mr-3 h-5 w-5" />
+                    <span className="font-medium">Log out</span>
+                  </Button>
+                </div>
+              ) : (
                 <Button 
                   onClick={() => { router.push('/auth'); closeMobileMenu(); }}
-                  variant="outline"
-                  className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-700 font-medium px-4 py-2 rounded-lg transition-all duration-200 text-sm"
+                  className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white py-6 rounded-lg font-medium shadow-lg shadow-primary/25 transition-all"
                 >
                   Sign In
                 </Button>
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
     </nav>
   );

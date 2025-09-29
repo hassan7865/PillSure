@@ -9,10 +9,9 @@ import {
   Star, 
   CheckCircle,
   XCircle,
-  Pill,
-  Shield,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Shield
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -97,209 +96,167 @@ const featuredProducts = [
 const FeaturedProductsSection: React.FC = () => {
   const renderStars = (rating: number) => {
     const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+
     for (let i = 0; i < 5; i++) {
-      if (rating - i >= 1) {
-        stars.push(<Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />);
-      } else if (rating - i > 0) {
-        stars.push(<Star key={i} className="h-4 w-4 fill-yellow-400/50 text-yellow-400/50" />);
+      if (i < fullStars) {
+        stars.push(<Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />);
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(<Star key={i} className="h-3.5 w-3.5 fill-amber-400/50 text-amber-400" />);
       } else {
-        stars.push(<Star key={i} className="h-4 w-4 text-gray-300" />);
+        stars.push(<Star key={i} className="h-3.5 w-3.5 text-slate-300" />);
       }
     }
     return stars;
   };
 
   return (
-    <section className="relative py-20 overflow-hidden bg-gradient-to-b from-background to-muted/30">
-      {/* Background Elements */}
-      <motion.div 
-        className="absolute inset-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1 }}
-      >
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl" />
-      </motion.div>
-      
-      <div className="container mx-auto px-4 relative z-10">
+    <section className="py-16 bg-muted/30">
+      <div className="container mx-auto px-4">
         {/* Section Header */}
         <motion.div 
-          className="text-center mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          className="max-w-2xl mb-12"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-6 py-3 rounded-full text-sm font-medium mb-8 border border-primary/20 backdrop-blur-sm">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span>Featured Products</span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+            <Shield className="h-4 w-4 text-primary" />
+            <span className="font-medium">Featured Products</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            <span className="block">Premium</span>
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">
-              Healthcare Products
-            </span>
+          <h2 className="text-3xl font-bold mb-4 text-primary">
+            Premium Healthcare Solutions
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Discover our curated selection of high-quality medicines and supplements, 
-            carefully selected for your health and wellness needs.
+          <p className="text-muted-foreground text-md leading-relaxed">
+            Carefully curated selection of high-quality medicines and supplements 
+            to support your health and wellness journey.
           </p>
         </motion.div>
 
         {/* Products Grid */}
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredProducts.map((product, index) => (
             <motion.div
               key={product.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
-              whileHover={{ scale: 1.05, y: -5 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="group hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 border-border/50 hover:border-primary/30 bg-gradient-to-br from-card to-card/80 backdrop-blur-sm overflow-hidden relative">
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                <CardContent className="p-0 relative z-10">
+              <Card className="group h-full bg-card border-border hover:border-primary/30 hover:shadow-purple transition-all duration-300 overflow-hidden">
+                <CardContent className="p-0">
                   {/* Product Image */}
-                  <div className="relative h-48 bg-gradient-to-br from-muted/20 to-muted/10 overflow-hidden">
+                  <div className="relative h-48 bg-muted/50 overflow-hidden">
                     <Image
                       src={product.imageUrl}
                       alt={product.name}
                       fill
-                      className="object-contain group-hover:scale-110 transition-transform duration-500"
+                      className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                     />
                     
-                    {/* Discount Badge */}
-                    {product.originalPrice && (
-                      <motion.div 
-                        className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        SAVE {Math.round((1 - product.price / product.originalPrice) * 100)}%
-                      </motion.div>
-                    )}
-                    
-                    {/* Prescription Badge */}
-                    {product.prescriptionRequired && (
-                      <motion.div 
-                        className="absolute top-3 right-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-lg"
-                        whileHover={{ scale: 1.05 }}
-                      >
-                        <div className="w-3 h-3 rounded-full overflow-hidden">
-                          <div className="w-full h-full bg-gradient-to-r from-white to-orange-300 rounded-full" />
+                    {/* Status Indicators */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-2">
+                      {product.originalPrice && (
+                        <div className="bg-destructive text-white text-xs font-semibold px-2.5 py-1 rounded-md">
+                          -{Math.round((1 - product.price / product.originalPrice) * 100)}%
                         </div>
-                        Prescription
-                      </motion.div>
-                    )}
+                      )}
+                      {product.prescriptionRequired && (
+                        <div className="bg-accent text-accent-foreground text-xs font-medium px-2.5 py-1 rounded-md flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Rx
+                        </div>
+                      )}
+                    </div>
                     
-                    {/* Wishlist Button */}
-                    <motion.div 
-                      className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Heart className="h-4 w-4 text-red-500" />
-                    </motion.div>
+                    {/* Wishlist */}
+                    <button className="absolute top-3 right-3 p-2 bg-card/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-105">
+                      <Heart className="h-4 w-4 text-muted-foreground hover:text-destructive transition-colors" />
+                    </button>
                   </div>
 
-                  <div className="p-6">
-                    {/* Category */}
-                    <div className="text-sm text-primary font-medium mb-2">{product.category}</div>
-                    
-                    {/* Product Name */}
-                    <h3 className="text-lg font-semibold text-card-foreground mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2">
-                      {product.name}
-                    </h3>
+                  <div className="p-5">
+                    {/* Category & Name */}
+                    <div className="mb-3">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        {product.category}
+                      </div>
+                      <h3 className="font-semibold text-card-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
+                    </div>
                     
                     {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                       {product.description}
                     </p>
 
                     {/* Rating */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center">
                         {renderStars(product.rating)}
                       </div>
-                      <span className="text-sm text-muted-foreground">({product.reviews})</span>
+                      <span className="text-xs text-muted-foreground">
+                        {product.rating} ({product.reviews})
+                      </span>
                     </div>
 
-                    {/* Price */}
+                    {/* Price & Stock */}
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-baseline gap-2">
                         {product.originalPrice && (
                           <span className="text-sm text-muted-foreground line-through">
                             ${product.originalPrice.toFixed(2)}
                           </span>
                         )}
-                        <span className="text-xl font-bold text-primary">
+                        <span className="text-xl font-bold text-card-foreground">
                           ${product.price.toFixed(2)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         {product.inStock ? (
-                          <span className="flex items-center gap-1 text-green-600 text-sm font-medium">
-                            <CheckCircle className="h-4 w-4" />
-                            In Stock
-                          </span>
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-xs font-medium text-green-700">In Stock</span>
+                          </>
                         ) : (
-                          <span className="flex items-center gap-1 text-red-600 text-sm font-medium">
-                            <XCircle className="h-4 w-4" />
-                            Out of Stock
-                          </span>
+                          <>
+                            <XCircle className="h-4 w-4 text-destructive" />
+                            <span className="text-xs font-medium text-destructive">Out of Stock</span>
+                          </>
                         )}
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      <Button 
-                        className="flex-1 text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground" 
-                        disabled={!product.inStock}
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        {product.prescriptionRequired ? "Get Prescription" : "Add to Cart"}
-                      </Button>
-                      {product.prescriptionRequired && (
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="border-primary/20 text-primary hover:bg-primary/5"
-                          title="Prescription Required"
-                        >
-                          <AlertCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    {/* Actions */}
+                    <Button 
+                      className="w-full h-9 text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground" 
+                      disabled={!product.inStock}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {product.prescriptionRequired ? "Consult Doctor" : "Add to Cart"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
 
         {/* View All Button */}
         <motion.div 
-          className="text-center mt-12"
-          initial={{ opacity: 0, y: 30 }}
+          className="text-center mt-10"
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
         >
           <Button 
-            size="lg" 
             variant="outline"
-            className="px-8 py-3 text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5"
+            size="lg"
+            className="px-6 h-11 font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
           >
-            <span className="flex items-center gap-2">
-              View All Products
-              <ArrowRight className="h-4 w-4" />
-            </span>
+            View All Products
+            <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </motion.div>
       </div>

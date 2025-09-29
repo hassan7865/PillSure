@@ -31,7 +31,7 @@ const AuthPage: React.FC = () => {
 
   return (
     <AuthGuard requireAuth={false}>
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-background">
         {isLogin ? (
           <LoginForm
             onLogin={handleLogin}

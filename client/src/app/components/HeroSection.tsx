@@ -81,7 +81,7 @@ const HeroSection: React.FC = () => {
 
               {/* Main Headline */}
               <motion.h1 
-                className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight mb-8"
+                className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
@@ -95,7 +95,7 @@ const HeroSection: React.FC = () => {
 
               {/* Subtitle */}
               <motion.p 
-                className="text-xl text-muted-foreground mb-12 leading-relaxed max-w-2xl"
+                className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
@@ -114,11 +114,11 @@ const HeroSection: React.FC = () => {
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                           <Button 
                             size="lg" 
-                            className="px-8 py-4 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl"
+                            className="px-6 py-3 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl"
                           >
                             <span className="flex items-center gap-2">
                               Shop Medicines
-                              <ArrowRight className="h-5 w-5" />
+                              <ArrowRight className="h-4 w-4" />
                             </span>
                           </Button>
                         </motion.div>
@@ -127,10 +127,10 @@ const HeroSection: React.FC = () => {
                           <Button 
                             size="lg" 
                             variant="outline" 
-                            className="px-8 py-4 text-lg font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5 backdrop-blur-sm"
+                            className="px-6 py-3 text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5 backdrop-blur-sm"
                           >
                             <span className="flex items-center gap-2">
-                              <Play className="h-5 w-5" />
+                              <Play className="h-4 w-4" />
                               Find Doctors
                             </span>
                           </Button>
@@ -231,17 +231,17 @@ const HeroSection: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
                   </motion.div>
 
-                  <h3 className="text-2xl font-bold text-foreground mb-4">Premium Medicines</h3>
-                  <p className="text-muted-foreground mb-8">
+                  <h3 className="text-xl font-bold text-foreground mb-3">Premium Medicines</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
                     High-quality pharmaceuticals delivered to your doorstep
                   </p>
 
                   {/* Feature Pills */}
                   <div className="grid grid-cols-3 gap-4">
                     {[
-                      { name: "Vitamins", color: "green-500" },
-                      { name: "Pain Relief", color: "red-500" },
-                      { name: "Supplements", color: "blue-500" }
+                      { name: "Vitamins", color: "from-white to-green-500" },
+                      { name: "Pain Relief", color: "from-white to-red-500" },
+                      { name: "Supplements", color: "from-white to-blue-500" }
                     ].map((pill, index) => (
                       <motion.div
                         key={index}
@@ -250,7 +250,7 @@ const HeroSection: React.FC = () => {
                         transition={{ type: "spring", stiffness: 300 }}
                       >
                         <div className="w-8 h-4 rounded-full mx-auto mb-2 overflow-hidden">
-                          <div className={`w-full h-full bg-gradient-to-r from-white to-${pill.color} rounded-full`} />
+                          <div className={`w-full h-full bg-gradient-to-r ${pill.color} rounded-full`} />
                         </div>
                         <span className="text-xs text-foreground font-medium">{pill.name}</span>
                       </motion.div>

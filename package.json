@@ -1,0 +1,43 @@
+{
+  "name": "pillsure-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PillSure - Healthcare management platform monorepo",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "setup": "node setup.js",
+    "dev": "concurrently \"npm run docker:up\" \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "docker:up": "cd server && docker-compose up -d",
+    "docker:down": "cd server && docker-compose down",
+    "docker:logs": "cd server && docker-compose logs -f",
+    "docker:restart": "cd server && docker-compose restart",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
+    "start:client": "cd client && npm run start",
+    "start:server": "cd server && npm run start",
+    "install:all": "npm install && npm run install:client && npm run install:server",
+    "install:client": "cd client && npm install",
+    "install:server": "cd server && npm install",
+    "clean": "npm run clean:client && npm run clean:server",
+    "clean:client": "cd client && if exist node_modules rmdir /s /q node_modules && if exist .next rmdir /s /q .next",
+    "clean:server": "cd server && if exist node_modules rmdir /s /q node_modules && if exist dist rmdir /s /q dist",
+    "db:generate": "cd server && npm run db:generate",
+    "db:migrate": "cd server && npm run db:migrate",
+    "db:studio": "cd server && npm run db:studio",
+    "init:roles": "cd server && npm run init:roles"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
