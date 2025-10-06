@@ -1,15 +1,15 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../config/database';
 import { users, roles } from '../schema';
-import { LoginRequest, RegisterRequest, GoogleLoginRequest, AuthResponse, JwtPayload, UserRole } from '../core/types';
+import { LoginRequest, RegisterRequest, GoogleLoginRequest, UserRole } from '../core/types';
 import { generateToken } from '../middleware/jwt.handler';
-import { createError } from '../middleware/error.handler';
+import { createError, InternalServerError } from '../middleware/error.handler';
+// Services should return raw data, not formatted responses
 import bcrypt from 'bcryptjs';
 
 export class AuthService {
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
-    try {
-      // Check if user already exists
+  async register(userData: RegisterRequest) {
+    // Check if user already exists
       const existingUser = await db
         .select()
         .from(users)
@@ -60,8 +60,6 @@ export class AuthService {
       });
 
       return {
-        success: true,
-        message: "User registered successfully",
         token,
         user: {
           id: savedUser.id,
@@ -72,14 +70,10 @@ export class AuthService {
           isGoogle: savedUser.isGoogle
         }
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
-  async login(loginData: LoginRequest): Promise<AuthResponse> {
-    try {
-      // Find user by email with role details
+  async login(loginData: LoginRequest) {
+    // Find user by email with role details
       const userWithRole = await db
         .select({
           id: users.id,
@@ -123,8 +117,6 @@ export class AuthService {
       });
 
       return {
-        success: true,
-        message: "Login successful",
         token,
         user: {
           id: user.id,
@@ -135,14 +127,10 @@ export class AuthService {
           isGoogle: user.isGoogle
         }
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
-  async googleLogin(loginData: GoogleLoginRequest): Promise<AuthResponse> {
-    try {
-      // Find user by email with role details
+  async googleLogin(loginData: GoogleLoginRequest) {
+    // Find user by email with role details
       const userWithRole = await db
         .select({
           id: users.id,
@@ -182,8 +170,6 @@ export class AuthService {
       });
 
       return {
-        success: true,
-        message: "Google login successful",
         token,
         user: {
           id: user.id,
@@ -194,9 +180,6 @@ export class AuthService {
           isGoogle: user.isGoogle
         }
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
   async getUserById(userId: string): Promise<any | null> {

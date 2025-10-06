@@ -3,10 +3,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { authApi } from '@/lib/api';
-import { User, AuthContextType } from '@/lib/types';
 import { useCustomToast } from '@/hooks/use-custom-toast';
 import { getErrorMessage } from '@/lib/error-utils';
+import { AuthContextType } from '@/app/auth/_components/_types';
+import { User } from '@/lib/types';
+import { authApi } from '@/app/auth/_components/_api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -22,28 +23,30 @@ export const useAuth = () => {
 const getOnboardingPath = (role: string | undefined): string | null => {
   switch (role?.toLowerCase()) {
     case 'patient':
-      return '/patient-onboarding';
+      return '/onboarding/patient';
     case 'doctor':
-      return '/doctor-onboarding';
+      return '/onboarding/doctor';
     case 'hospital':
-      return '/hospital-onboarding';
+      return '/onboarding/hospital';
     default:
       return null;
   }
 };
 
-// Helper function to get post-onboarding redirect path based on role
 const getPostOnboardingPath = (role: string | undefined): string => {
   switch (role?.toLowerCase()) {
     case 'patient':
       return '/';
     case 'doctor':
+      return '/dashboard';
     case 'hospital':
       return '/dashboard';
     default:
       return '/';
   }
 };
+
+
 
 const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -83,12 +86,17 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
       // Show welcome back toast
       showWelcomeBack(response.user.firstName);
       
-      // Always redirect to onboarding first, regardless of completion status
-      const role = response.user.role?.toLowerCase();
-      const onboardingPath = getOnboardingPath(role);
-      if (onboardingPath) {
-        router.push(onboardingPath);
+      if(!response.user.isOnboardingComplete) {
+        const role = response.user.role?.toLowerCase();
+
+        const onboardingPath = getOnboardingPath(role);
+        if (onboardingPath) {
+          router.push(onboardingPath);
+        }
+      } else {
+        router.push(getPostOnboardingPath(response.user.role));
       }
+   
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
@@ -159,10 +167,15 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
       showWelcomeBack(response.user.firstName);
       
       // Always redirect to onboarding first, regardless of completion status
-      const role = response.user.role?.toLowerCase();
-      const onboardingPath = getOnboardingPath(role);
-      if (onboardingPath) {
-        router.push(onboardingPath);
+      if(!response.user.isOnboardingComplete) {
+        const role = response.user.role?.toLowerCase();
+
+        const onboardingPath = getOnboardingPath(role);
+        if (onboardingPath) {
+          router.push(onboardingPath);
+        }
+      } else {
+        router.push(getPostOnboardingPath(response.user.role));
       }
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);

@@ -135,7 +135,7 @@ const FeaturedProductsSection: React.FC = () => {
         </motion.div>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {featuredProducts.map((product, index) => (
             <motion.div
               key={product.id}
@@ -146,7 +146,7 @@ const FeaturedProductsSection: React.FC = () => {
               <Card className="group h-full bg-card border-border hover:border-primary/30 hover:shadow-purple transition-all duration-300 overflow-hidden">
                 <CardContent className="p-0">
                   {/* Product Image */}
-                  <div className="relative h-48 bg-muted/50 overflow-hidden">
+                  <div className="relative h-40 sm:h-48 bg-muted/50 overflow-hidden">
                     <Image
                       src={product.imageUrl}
                       alt={product.name}
@@ -175,24 +175,24 @@ const FeaturedProductsSection: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="p-5">
+                  <div className="p-4 sm:p-5">
                     {/* Category & Name */}
-                    <div className="mb-3">
+                    <div className="mb-2 sm:mb-3">
                       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                         {product.category}
                       </div>
-                      <h3 className="font-semibold text-card-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                      <h3 className="font-semibold text-card-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors text-sm sm:text-base">
                         {product.name}
                       </h3>
                     </div>
                     
                     {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">
                       {product.description}
                     </p>
 
                     {/* Rating */}
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <div className="flex items-center">
                         {renderStars(product.rating)}
                       </div>
@@ -202,26 +202,26 @@ const FeaturedProductsSection: React.FC = () => {
                     </div>
 
                     {/* Price & Stock */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-baseline gap-2">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="flex items-baseline gap-1 sm:gap-2">
                         {product.originalPrice && (
-                          <span className="text-sm text-muted-foreground line-through">
+                          <span className="text-xs sm:text-sm text-muted-foreground line-through">
                             ${product.originalPrice.toFixed(2)}
                           </span>
                         )}
-                        <span className="text-xl font-bold text-card-foreground">
+                        <span className="text-lg sm:text-xl font-bold text-card-foreground">
                           ${product.price.toFixed(2)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 sm:gap-1.5">
                         {product.inStock ? (
                           <>
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                             <span className="text-xs font-medium text-green-700">In Stock</span>
                           </>
                         ) : (
                           <>
-                            <XCircle className="h-4 w-4 text-destructive" />
+                            <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
                             <span className="text-xs font-medium text-destructive">Out of Stock</span>
                           </>
                         )}
@@ -230,10 +230,10 @@ const FeaturedProductsSection: React.FC = () => {
 
                     {/* Actions */}
                     <Button 
-                      className="w-full h-9 text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground" 
+                      className="w-full h-8 sm:h-9 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground" 
                       disabled={!product.inStock}
                     >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       {product.prescriptionRequired ? "Consult Doctor" : "Add to Cart"}
                     </Button>
                   </div>
@@ -253,10 +253,10 @@ const FeaturedProductsSection: React.FC = () => {
           <Button 
             variant="outline"
             size="lg"
-            className="px-6 h-11 font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary"
+            className="px-4 sm:px-6 h-10 sm:h-11 font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary text-sm sm:text-base"
           >
             View All Products
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
           </Button>
         </motion.div>
       </div>

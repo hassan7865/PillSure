@@ -62,7 +62,7 @@ const HeroSection: React.FC = () => {
         style={{ y }}
       >
         <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left Content */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -81,21 +81,21 @@ const HeroSection: React.FC = () => {
 
               {/* Main Headline */}
               <motion.h1 
-                className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-6"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4 sm:mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
               >
-                <span className="block text-foreground mb-2">Your Health,</span>
+                <span className="block text-foreground mb-1 sm:mb-2">Your Health,</span>
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-primary">
                   Our Priority
                 </span>
-                <span className="block text-foreground mt-2">PillSure</span>
+                <span className="block text-foreground mt-1 sm:mt-2">PillSure</span>
               </motion.h1>
 
               {/* Subtitle */}
               <motion.p 
-                className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl"
+                className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-10 leading-relaxed max-w-2xl"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
@@ -106,7 +106,7 @@ const HeroSection: React.FC = () => {
 
               {/* CTA Buttons */}
               <motion.div 
-                className="flex flex-col sm:flex-row gap-6 mb-16"
+                className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-12 sm:mb-16"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.8 }}
@@ -114,9 +114,9 @@ const HeroSection: React.FC = () => {
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                           <Button 
                             size="lg" 
-                            className="px-6 py-3 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl"
+                            className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl"
                           >
-                            <span className="flex items-center gap-2">
+                            <span className="flex items-center justify-center gap-2">
                               Shop Medicines
                               <ArrowRight className="h-4 w-4" />
                             </span>
@@ -127,9 +127,9 @@ const HeroSection: React.FC = () => {
                           <Button 
                             size="lg" 
                             variant="outline" 
-                            className="px-6 py-3 text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5 backdrop-blur-sm"
+                            className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5 backdrop-blur-sm"
                           >
-                            <span className="flex items-center gap-2">
+                            <span className="flex items-center justify-center gap-2">
                               <Play className="h-4 w-4" />
                               Find Doctors
                             </span>
@@ -139,7 +139,7 @@ const HeroSection: React.FC = () => {
 
               {/* Trust Badges */}
               <motion.div 
-                className="flex flex-wrap gap-4"
+                className="flex flex-wrap gap-3 sm:gap-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 1 }}
@@ -153,12 +153,12 @@ const HeroSection: React.FC = () => {
                   return (
                     <motion.div 
                       key={index}
-                      className="flex items-center gap-2 bg-primary/5 backdrop-blur-sm rounded-full px-4 py-2 border border-primary/10"
+                      className="flex items-center gap-2 bg-primary/5 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 border border-primary/10"
                       whileHover={{ scale: 1.05 }}
                       transition={{ type: "spring", stiffness: 300 }}
                     >
-                      <IconComponent className="h-4 w-4 text-primary" />
-                      <span className="text-sm text-foreground">{badge.text}</span>
+                      <IconComponent className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                      <span className="text-xs sm:text-sm text-foreground">{badge.text}</span>
                     </motion.div>
                   );
                 })}
@@ -167,20 +167,20 @@ const HeroSection: React.FC = () => {
 
             {/* Right Content - Animated Pill Showcase */}
             <motion.div
-              className="relative"
+              className="relative mt-8 lg:mt-0"
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
               {/* Main Pill Container */}
               <motion.div
-                className="relative bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-xl rounded-3xl p-8 border border-primary/20 shadow-2xl"
+                className="relative bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-primary/20 shadow-2xl"
                 whileHover={{ scale: 1.02, rotateY: 5 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 {/* Floating Pills */}
                 <motion.div
-                  className="absolute -top-4 -right-4 w-16 h-8 rounded-full overflow-hidden"
+                  className="absolute -top-2 sm:-top-4 -right-2 sm:-right-4 w-12 sm:w-16 h-6 sm:h-8 rounded-full overflow-hidden"
                   animate={{ 
                     y: [0, -20, 0],
                     rotate: [0, 10, 0]
@@ -194,7 +194,7 @@ const HeroSection: React.FC = () => {
                   <div className="w-full h-full bg-gradient-to-r from-white to-primary/60 rounded-full" />
                 </motion.div>
                 <motion.div
-                  className="absolute -bottom-4 -left-4 w-12 h-6 rounded-full overflow-hidden"
+                  className="absolute -bottom-2 sm:-bottom-4 -left-2 sm:-left-4 w-8 sm:w-12 h-4 sm:h-6 rounded-full overflow-hidden"
                   animate={{ 
                     y: [0, 15, 0],
                     rotate: [0, -15, 0]
@@ -212,7 +212,7 @@ const HeroSection: React.FC = () => {
                 {/* Main Pill Display */}
                 <div className="text-center">
                   <motion.div
-                    className="w-32 h-16 rounded-full mx-auto mb-8 relative overflow-hidden"
+                    className="w-24 sm:w-32 h-12 sm:h-16 rounded-full mx-auto mb-6 sm:mb-8 relative overflow-hidden"
                     animate={{ 
                       scale: [1, 1.05, 1],
                       boxShadow: [
@@ -231,13 +231,13 @@ const HeroSection: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
                   </motion.div>
 
-                  <h3 className="text-xl font-bold text-foreground mb-3">Premium Medicines</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-3">Premium Medicines</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                     High-quality pharmaceuticals delivered to your doorstep
                   </p>
 
                   {/* Feature Pills */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4">
                     {[
                       { name: "Vitamins", color: "from-white to-green-500" },
                       { name: "Pain Relief", color: "from-white to-red-500" },
@@ -245,11 +245,11 @@ const HeroSection: React.FC = () => {
                     ].map((pill, index) => (
                       <motion.div
                         key={index}
-                        className="bg-muted/20 rounded-full p-3 text-center"
+                        className="bg-muted/20 rounded-full p-2 sm:p-3 text-center"
                         whileHover={{ scale: 1.1 }}
                         transition={{ type: "spring", stiffness: 300 }}
                       >
-                        <div className="w-8 h-4 rounded-full mx-auto mb-2 overflow-hidden">
+                        <div className="w-6 sm:w-8 h-3 sm:h-4 rounded-full mx-auto mb-1 sm:mb-2 overflow-hidden">
                           <div className={`w-full h-full bg-gradient-to-r ${pill.color} rounded-full`} />
                         </div>
                         <span className="text-xs text-foreground font-medium">{pill.name}</span>
@@ -261,23 +261,23 @@ const HeroSection: React.FC = () => {
 
               {/* Floating Elements */}
               <motion.div
-                className="absolute -top-4 -right-4 bg-primary/10 backdrop-blur-xl rounded-2xl p-4 border border-primary/20"
+                className="absolute -top-2 sm:-top-4 -right-2 sm:-right-4 bg-primary/10 backdrop-blur-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-primary/20"
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-foreground">In Stock</span>
                 </div>
               </motion.div>
 
               <motion.div
-                className="absolute -bottom-4 -left-4 bg-primary/10 backdrop-blur-xl rounded-2xl p-4 border border-primary/20"
+                className="absolute -bottom-2 sm:-bottom-4 -left-2 sm:-left-4 bg-primary/10 backdrop-blur-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-primary/20"
                 animate={{ y: [0, 10, 0] }}
                 transition={{ duration: 2, repeat: Infinity, delay: 1 }}
               >
-                <div className="flex items-center gap-2">
-                  <Pill className="h-4 w-4 text-primary" />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Pill className="h-3 sm:h-4 w-3 sm:w-4 text-primary" />
                   <span className="text-xs text-foreground">10K+ Products</span>
                 </div>
               </motion.div>

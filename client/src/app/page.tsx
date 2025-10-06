@@ -6,17 +6,16 @@ import TopSellingSection from "./components/TopSellingSection";
 import TestimonialsSection from "./components/TestimonialsSection";
 import Footer from "./components/Footer";
 import MedicineCategoriesSection from "./components/MedicineCategoriesSection";
+import PublicLayout from "@/layout/PublicLayout";
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
-      <Navbar />
+    <PublicLayout>
       <HeroSection />
       <FeaturedProductsSection />
       <MedicineCategoriesSection />
       <TopSellingSection />
       <TestimonialsSection />
-      <Footer />
-    </div>
+    </PublicLayout>
   );
 }

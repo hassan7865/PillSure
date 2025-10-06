@@ -1,25 +1,18 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import LoginForm from "./components/Login";
-import SignUp from "./components/SignUp";
+import LoginForm from "./_components/Login";
+import SignUp from "./_components/SignUp";
 import AuthGuard from "@/components/auth-guard";
+import Loader from "@/components/ui/loader";
 
-const AuthPage: React.FC = () => {
+const AuthPageContent: React.FC = () => {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || 'patient';
   const mode = searchParams.get('mode') || 'login';
   
   // Show signup form if mode=signup, otherwise show login form
   const [isLogin, setIsLogin] = useState(mode !== 'signup');
-
-  const handleLogin = (email: string, password: string) => {
-    console.log("Login:", email, password);
-  };
-
-  const handleSignUp = (email: string, password: string) => {
-    console.log("SignUp:", email, password);
-  };
 
   const handleSwitchToSignUp = () => {
     setIsLogin(false);
@@ -34,7 +27,6 @@ const AuthPage: React.FC = () => {
       <div className="min-h-screen bg-background">
         {isLogin ? (
           <LoginForm
-            onLogin={handleLogin}
             onSwitchToSignUp={handleSwitchToSignUp}
           />
         ) : (
@@ -45,6 +37,21 @@ const AuthPage: React.FC = () => {
         )}
       </div>
     </AuthGuard>
+  );
+};
+
+const AuthPage: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader 
+          title="Loading Authentication"
+          description="Setting up your login experience..."
+        />
+      </div>
+    }>
+      <AuthPageContent />
+    </Suspense>
   );
 };
 

@@ -2,68 +2,56 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { useForm, FieldErrors } from "react-hook-form";
 import { Separator } from "@/components/ui/separator";
-import { Pill, Mail, Lock } from "lucide-react";
-import { useSignup, useGoogleSignup } from "@/hooks/use-auth";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
+import { Pill, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useLogin, useGoogleLogin } from "@/app/auth/hooks/use-auth";
 import { getErrorMessage } from "@/lib/error-utils";
-import { SignUpFormValues, SignUpProps } from "@/lib/types";
+import { LoginFormProps } from "./_types";
 
-// Validation functions
+
 const validateEmail = (email: string): boolean => {
   return /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
 };
 
-const validatePassword = (password: string): boolean => {
-  return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password);
-};
 
-// Main App component for the signup form
 
-const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) => {
+
+
+const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
   const form = useForm({
     defaultValues: {
       email: "",
       password: "",
-      confirmPassword: "",
-      firstName: "",
-      lastName: "",
     },
   });
 
-  const signupMutation = useSignup();
-  const googleSignupMutation = useGoogleSignup();
+  const loginMutation = useLogin();
+  const googleLoginMutation = useGoogleLogin();
 
   const [success, setSuccess] = React.useState<string>("");
 
   // Note: Removed redirect logic to let AuthContext handle onboarding redirects
 
-  const onSubmit = async (values: SignUpFormValues) => {
+  const onSubmit = async (values: { email: string; password: string }) => {
     try {
-      await signupMutation.mutateAsync({ 
-        email: values.email, 
-        password: values.password,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        role: role
-      });
-      setSuccess("Signup successful!");
+      await loginMutation.mutateAsync({ email: values.email, password: values.password });
+      setSuccess("Login successful!");
       // AuthContext will handle the redirect to onboarding
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('Login error:', error);
     }
   };
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleLogin = async () => {
     try {
-      await googleSignupMutation.mutateAsync({ role });
+      await googleLoginMutation.mutateAsync();
       // AuthContext will handle the redirect to onboarding
     } catch (error) {
-      console.error('Google signup error:', error);
+      console.error('Google login error:', error);
     }
   };
 
@@ -103,10 +91,10 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                 </div>
 
                 <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-                  Join Pillsure
+                  Welcome Back
                 </h2>
                 <p className="text-lg text-white/90 leading-relaxed">
-                  Create your account to start managing your healthcare journey with confidence.
+                  Your trusted companion for medication management and healthcare wellness.
                 </p>
               </div>
             </div>
@@ -143,10 +131,10 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
               {/* Card Header */}
               <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-xl md:text-2xl font-bold text-card-foreground mb-2 text-left">
-                  Sign Up
+                  Sign In
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-sm text-left">
-                  Create your account to continue
+                  Enter your credentials to continue
                 </CardDescription>
               </CardHeader>
 
@@ -163,9 +151,9 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-card-foreground">
+                          <Label className="text-sm font-medium text-card-foreground">
                             Email
-                          </FormLabel>
+                          </Label>
                           <FormControl>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -181,66 +169,17 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        rules={{
-                          required: "First name is required",
-                        }}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-card-foreground">
-                              First Name
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="First name"
-                                {...field}
-                                className="w-full px-3 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage className="text-destructive text-xs" />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        rules={{
-                          required: "Last name is required",
-                        }}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-card-foreground">
-                              Last Name
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Last name"
-                                {...field}
-                                className="w-full px-3 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage className="text-destructive text-xs" />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
                     <FormField
                       control={form.control}
                       name="password"
                       rules={{
-                        required: "Password is required",
-                        validate: (value: string) => validatePassword(value) || "Password must be at least 8 characters and contain a letter and a number."
+                        required: "Password is required"
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium text-card-foreground">
+                          <Label className="text-sm font-medium text-card-foreground">
                             Password
-                          </FormLabel>
+                          </Label>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -257,60 +196,32 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="confirmPassword"
-                      rules={{
-                        required: "Confirm Password is required",
-                        validate: (value: string) => value === form.getValues("password") || "Passwords do not match."
-                      }}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-card-foreground">
-                            Confirm Password
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                type="password"
-                                placeholder="Confirm your password"
-                                {...field}
-                                className="w-full pl-10 pr-4 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage className="text-destructive text-xs" />
-                        </FormItem>
-                      )}
-                    />
-
                     <div className="pt-2">
-                      <Button
+                      <Button 
                         type="submit"
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-4 rounded-lg text-sm font-medium transition-colors"
-                        disabled={signupMutation.isPending}
+                        disabled={loginMutation.isPending}
                       >
-                        {signupMutation.isPending ? (
+                        {loginMutation.isPending ? (
                           <div className="flex items-center justify-center">
                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                            Creating account...
+                            Signing in...
                           </div>
                         ) : (
-                          "Create Account"
+                          "Sign In"
                         )}
                       </Button>
                     </div>
-
+                    
                     {success && (
                       <div className="text-sm text-green-600 bg-green-50 border border-green-200 p-3 rounded-lg">
                         {success}
                       </div>
                     )}
 
-                    {(signupMutation.error || googleSignupMutation.error) && (
+                    {(loginMutation.error || googleLoginMutation.error) && (
                       <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
-                        {getErrorMessage(signupMutation.error) || getErrorMessage(googleSignupMutation.error)}
+                        {getErrorMessage(loginMutation.error) || getErrorMessage(googleLoginMutation.error)}
                       </div>
                     )}
 
@@ -325,13 +236,13 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       type="button"
                       variant="outline"
                       className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-input rounded-lg hover:bg-accent text-foreground text-sm transition-colors"
-                      onClick={handleGoogleSignup}
-                      disabled={googleSignupMutation.isPending}
+                      onClick={handleGoogleLogin}
+                      disabled={googleLoginMutation.isPending}
                     >
-                      {googleSignupMutation.isPending ? (
+                      {googleLoginMutation.isPending ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent mr-2"></div>
-                          Creating account...
+                          Signing in...
                         </div>
                       ) : (
                         <>
@@ -352,14 +263,14 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
               {/* Card Footer */}
               <CardFooter className="px-6 py-4 bg-muted/50 rounded-b-xl">
                 <p className="text-sm text-muted-foreground text-center w-full">
-                  Already have an account?{" "}
+                  Don't have an account?{" "}
                   <Button
                     type="button"
                     variant="link"
-                    onClick={onSwitchToLogin}
+                    onClick={onSwitchToSignUp}
                     className="text-primary hover:text-primary/80 p-0 h-auto font-medium text-sm"
                   >
-                    Sign in
+                    Sign up
                   </Button>
                 </p>
               </CardFooter>
@@ -371,4 +282,4 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
   );
 };
 
-export default SignUp;
+export default LoginForm;
