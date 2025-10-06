@@ -29,13 +29,50 @@ export interface User {
 
 //  Doctor Types
 export type Doctor = {
-  id: number;
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  mobile: string;
+  specializationIds: number[];
+  specializations: Specialization[];
+  primarySpecialization: Specialization | null;
+  qualifications: string[];
+  experienceYears: number;
+  patientSatisfactionRate: string;
+  hospitalId: string | null;
+  hospital: Hospital | null;
+  address: string;
+  image: string;
+  feePkr: string;
+  consultationModes: string[];
+  createdAt: string;
+  updatedAt: string;
+  // Computed fields for UI
   name: string;
   specialization: string;
   experience: number;
   fee: number;
   rating: number;
-  image: string;
+};
+
+export type Specialization = {
+  id: number;
+  name: string;
+  description?: string;
+};
+
+export type Hospital = {
+  id: string;
+  name: string;
+  address: string;
+  contactNo: string;
+  email: string;
+  website?: string;
+  licenseNo: string;
+  adminName: string;
 };
 
 
