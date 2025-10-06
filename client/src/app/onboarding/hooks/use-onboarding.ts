@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { onboardingApi } from '@/lib/onboarding-api';
-import { PatientOnboardingRequest, DoctorOnboardingRequest, HospitalOnboardingRequest } from '@/lib/types';
-import { useCustomToast } from './use-custom-toast';
+import { onboardingApi } from '../_components/_api';
+import { PatientOnboardingRequest, DoctorOnboardingRequest, HospitalOnboardingRequest } from '../_components/_types';
+import { useCustomToast } from '@/hooks/use-custom-toast';
 import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/error-utils';
 

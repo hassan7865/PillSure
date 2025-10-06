@@ -110,7 +110,7 @@ const MedicineCategoriesSection: React.FC = () => {
         </motion.div>
 
         {/* Categories Grid - 3 columns, 2 rows */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           {categories.map((category, index) => {
             const IconComponent = category.icon;
             return (
@@ -121,23 +121,23 @@ const MedicineCategoriesSection: React.FC = () => {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="group cursor-pointer"
               >
-                <Card className={`h-64 ${category.bgColor} border border-border/50 overflow-hidden hover:shadow-purple hover:-translate-y-1 transition-all duration-300 relative`}>
-                  <CardContent className="p-6 h-full flex flex-col justify-between relative">
+                <Card className={`h-56 sm:h-64 ${category.bgColor} border border-border/50 overflow-hidden hover:shadow-purple hover:-translate-y-1 transition-all duration-300 relative`}>
+                  <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between relative">
                     {/* Content */}
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                      <div className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">
                         {category.subtitle}
                       </div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2 leading-tight">
+                      <h3 className="text-lg sm:text-2xl font-bold text-foreground mb-1 sm:mb-2 leading-tight">
                         {category.name.toUpperCase()}
                       </h3>
-                      <div className={`text-xs font-bold ${category.accentColor} tracking-wider mb-4`}>
+                      <div className={`text-xs font-bold ${category.accentColor} tracking-wider mb-3 sm:mb-4`}>
                         {category.description}
                       </div>
                     </div>
 
                     {/* Product Image - Large and prominent */}
-                    <div className="absolute -right-4 -bottom-4 w-32 h-32">
+                    <div className="absolute -right-2 sm:-right-4 -bottom-2 sm:-bottom-4 w-24 sm:w-32 h-24 sm:h-32">
                       <Image
                         src={category.imageUrl}
                         alt={category.name}
@@ -150,10 +150,10 @@ const MedicineCategoriesSection: React.FC = () => {
                     <div className="relative z-10">
                       <Button 
                         size="sm" 
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 h-9"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 sm:px-4 py-2 h-8 sm:h-9 text-xs sm:text-sm"
                       >
                         SHOP NOW
-                        <ArrowRight className="h-3 w-3 ml-2" />
+                        <ArrowRight className="h-3 w-3 ml-1 sm:ml-2" />
                       </Button>
                     </div>
                   </CardContent>
@@ -173,10 +173,10 @@ const MedicineCategoriesSection: React.FC = () => {
           <Button 
             variant="outline"
             size="lg"
-            className="px-8 border-primary/30 text-primary hover:bg-primary/5"
+            className="px-6 sm:px-8 border-primary/30 text-primary hover:bg-primary/5 text-sm sm:text-base"
           >
             View All Categories
-            <ArrowRight className="h-4 w-4 ml-2" />
+            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
           </Button>
         </motion.div>
       </div>

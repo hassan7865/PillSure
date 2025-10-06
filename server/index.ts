@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { AuthRoutes } from "./src/routes/auth.route";
 import { OnboardingRoutes } from "./src/routes/onboarding.route";
 import { DoctorRoute } from "./src/routes/doctor.route";
-import { AuthService } from "./src/services/authservice";
+import { AuthService } from "./src/services/auth.service";
 import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
 import { db } from "./src/config/database";
@@ -12,7 +12,7 @@ import { db } from "./src/config/database";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 // Middleware
 app.use(express.json());

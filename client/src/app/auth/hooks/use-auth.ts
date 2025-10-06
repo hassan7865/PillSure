@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi } from '@/lib/api';
 import { useAuth as useAuthContext } from '@/contexts/auth-context';
-import { LoginRequest, SignUpRequest, GoogleAuthRequest, GoogleLoginRequest } from '@/lib/types';
+import { LoginRequest, SignUpRequest } from '../_components/_types';
+import { authApi } from '../_components/_api';
 
 export const useLogin = () => {
   const { login } = useAuthContext();

@@ -176,7 +176,7 @@ const TopSellingSection: React.FC = () => {
 
         {/* Top 3 Products - Featured */}
         <motion.div 
-          className="grid md:grid-cols-3 gap-8 mb-16"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
@@ -192,7 +192,7 @@ const TopSellingSection: React.FC = () => {
               <Card className="group hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden">
                 <CardContent className="p-0">
                   {/* Product Image */}
-                  <div className="relative h-48 bg-muted/30 overflow-hidden">
+                  <div className="relative h-40 sm:h-48 bg-muted/30 overflow-hidden">
                     <Image
                       src={product.imageUrl}
                       alt={product.name}
@@ -215,51 +215,51 @@ const TopSellingSection: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     {/* Category */}
-                    <div className="text-sm text-muted-foreground mb-2">{product.category}</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">{product.category}</div>
                     
                     {/* Product Name */}
-                    <h3 className="text-lg font-semibold text-card-foreground mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2">
+                    <h3 className="text-base sm:text-lg font-semibold text-card-foreground mb-1 sm:mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2">
                       {product.name}
                     </h3>
                     
                     {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 line-clamp-2">
                       {product.description}
                     </p>
 
                     {/* Rating */}
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <div className="flex items-center gap-1">
                         {renderStars(product.rating)}
                       </div>
-                      <span className="text-sm text-muted-foreground">({product.reviews})</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">({product.reviews})</span>
                     </div>
 
                     {/* Price */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         {product.originalPrice && (
-                          <span className="text-sm text-muted-foreground line-through">
+                          <span className="text-xs sm:text-sm text-muted-foreground line-through">
                             ${product.originalPrice.toFixed(2)}
                           </span>
                         )}
-                        <span className="text-xl font-bold text-card-foreground">
+                        <span className="text-lg sm:text-xl font-bold text-card-foreground">
                           ${product.price.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm text-green-600 font-medium">In Stock</span>
+                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+                        <span className="text-xs sm:text-sm text-green-600 font-medium">In Stock</span>
                       </div>
                     </div>
 
                     {/* Action Button */}
                     <Button 
-                      className="w-full text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                      className="w-full text-xs sm:text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       {product.prescriptionRequired ? "Get Prescription" : "Add to Cart"}
                     </Button>
                   </div>
@@ -271,7 +271,7 @@ const TopSellingSection: React.FC = () => {
 
         {/* Remaining Products Grid */}
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
@@ -310,17 +310,17 @@ const TopSellingSection: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="p-4">
+                  <div className="p-3 sm:p-4">
                     {/* Category */}
                     <div className="text-xs text-muted-foreground mb-1">{product.category}</div>
                     
                     {/* Product Name */}
-                    <h3 className="text-base font-semibold text-card-foreground mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2">
+                    <h3 className="text-sm sm:text-base font-semibold text-card-foreground mb-1 sm:mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2">
                       {product.name}
                     </h3>
                     
                     {/* Rating */}
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
                       <div className="flex items-center gap-1">
                         {renderStars(product.rating)}
                       </div>
@@ -328,14 +328,14 @@ const TopSellingSection: React.FC = () => {
                     </div>
 
                     {/* Price */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         {product.originalPrice && (
                           <span className="text-xs text-muted-foreground line-through">
                             ${product.originalPrice.toFixed(2)}
                           </span>
                         )}
-                        <span className="text-lg font-bold text-card-foreground">
+                        <span className="text-base sm:text-lg font-bold text-card-foreground">
                           ${product.price.toFixed(2)}
                         </span>
                       </div>
@@ -366,9 +366,9 @@ const TopSellingSection: React.FC = () => {
           <Button 
             size="lg" 
             variant="outline"
-            className="px-8 py-3 text-base font-semibold rounded-xl border-primary/30 text-primary hover:bg-primary/5"
+            className="px-6 sm:px-8 py-3 text-sm sm:text-base font-semibold rounded-xl border-primary/30 text-primary hover:bg-primary/5"
           >
-            <TrendingUp className="h-4 w-4 mr-2" />
+            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             View All Top Sellers
           </Button>
         </motion.div>

@@ -6,16 +6,15 @@ import { createError } from '../middleware/error.handler';
 import { 
   PatientOnboardingRequest, 
   DoctorOnboardingRequest, 
-  HospitalOnboardingRequest, 
-  OnboardingResponse 
+  HospitalOnboardingRequest
 } from '../core/types';
+// Services should return raw data, not formatted responses
 
 export class OnboardingService {
   constructor() {}
 
-  async completePatientOnboarding(userId: string, data: PatientOnboardingRequest): Promise<OnboardingResponse> {
-    try {
-      // Check if user exists and get role
+  async completePatientOnboarding(userId: string, data: PatientOnboardingRequest) {
+    // Check if user exists and get role
       const user = await db
         .select({ id: users.id, roleId: users.roleId })
         .from(users)
@@ -65,19 +64,13 @@ export class OnboardingService {
         .where(eq(users.id, userId));
 
       return {
-        success: true,
-        message: "Patient onboarding completed successfully",
         onboardingStep: 3,
         isOnboardingComplete: true,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
-  async completeDoctorOnboarding(userId: string, data: DoctorOnboardingRequest): Promise<OnboardingResponse> {
-    try {
-      // Check if user exists
+  async completeDoctorOnboarding(userId: string, data: DoctorOnboardingRequest) {
+    // Check if user exists
       const user = await db
         .select({ id: users.id })
         .from(users)
@@ -128,19 +121,13 @@ export class OnboardingService {
         .where(eq(users.id, userId));
 
       return {
-        success: true,
-        message: "Doctor onboarding completed successfully",
         onboardingStep: 3,
         isOnboardingComplete: true,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
-  async completeHospitalOnboarding(userId: string, data: HospitalOnboardingRequest): Promise<OnboardingResponse> {
-    try {
-      // Check if user exists
+  async completeHospitalOnboarding(userId: string, data: HospitalOnboardingRequest) {
+    // Check if user exists
       const user = await db
         .select({ id: users.id })
         .from(users)
@@ -188,19 +175,13 @@ export class OnboardingService {
         .where(eq(users.id, userId));
 
       return {
-        success: true,
-        message: "Hospital onboarding completed successfully",
         onboardingStep: 3,
         isOnboardingComplete: true,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
-  async updateOnboardingStep(userId: string, step: number): Promise<OnboardingResponse> {
-    try {
-      await db
+  async updateOnboardingStep(userId: string, step: number) {
+    await db
         .update(users)
         .set({
           onboardingStep: step,
@@ -209,18 +190,12 @@ export class OnboardingService {
         .where(eq(users.id, userId));
 
       return {
-        success: true,
-        message: `Onboarding step updated to ${step}`,
         onboardingStep: step,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 
-  async getOnboardingStatus(userId: string): Promise<{ onboardingStep: number; isOnboardingComplete: boolean }> {
-    try {
-      const user = await db
+  async getOnboardingStatus(userId: string) {
+    const user = await db
         .select({ 
           onboardingStep: users.onboardingStep, 
           isOnboardingComplete: users.isOnboardingComplete 
@@ -237,8 +212,5 @@ export class OnboardingService {
         onboardingStep: user[0].onboardingStep,
         isOnboardingComplete: user[0].isOnboardingComplete,
       };
-    } catch (error) {
-      throw error;
-    }
   }
 }

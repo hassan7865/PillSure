@@ -2,61 +2,66 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { useForm, FieldErrors } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 import { Separator } from "@/components/ui/separator";
-import { Pill, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { useLogin, useGoogleLogin } from "@/hooks/use-auth";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
+import { Pill, Mail, Lock } from "lucide-react";
+import { useSignup, useGoogleSignup } from "@/app/auth/hooks/use-auth";
 import { getErrorMessage } from "@/lib/error-utils";
-import { LoginFormProps } from "@/lib/types";
+import { SignUpFormValues, SignUpProps } from "./_types";
 
+// Validation functions
 const validateEmail = (email: string): boolean => {
   return /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email);
 };
 
-const validatePassword = (password: string) => {
+const validatePassword = (password: string): boolean => {
   return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password);
 };
 
-// Main App component for the login form
+// Main App component for the signup form
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
+const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) => {
   const form = useForm({
     defaultValues: {
       email: "",
       password: "",
+      confirmPassword: "",
+      firstName: "",
+      lastName: "",
     },
   });
 
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-  const loginMutation = useLogin();
-  const googleLoginMutation = useGoogleLogin();
+  const signupMutation = useSignup();
+  const googleSignupMutation = useGoogleSignup();
 
   const [success, setSuccess] = React.useState<string>("");
 
   // Note: Removed redirect logic to let AuthContext handle onboarding redirects
 
-  const onSubmit = async (values: { email: string; password: string }) => {
+  const onSubmit = async (values: SignUpFormValues) => {
     try {
-      await loginMutation.mutateAsync({ email: values.email, password: values.password });
-      setSuccess("Login successful!");
+      await signupMutation.mutateAsync({ 
+        email: values.email, 
+        password: values.password,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        role: role
+      });
+      setSuccess("Signup successful!");
       // AuthContext will handle the redirect to onboarding
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Signup error:', error);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignup = async () => {
     try {
-      await googleLoginMutation.mutateAsync();
+      await googleSignupMutation.mutateAsync({ role });
       // AuthContext will handle the redirect to onboarding
     } catch (error) {
-      console.error('Google login error:', error);
+      console.error('Google signup error:', error);
     }
   };
 
@@ -96,10 +101,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
                 </div>
 
                 <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-                  Welcome Back
+                  Join Pillsure
                 </h2>
                 <p className="text-lg text-white/90 leading-relaxed">
-                  Your trusted companion for medication management and healthcare wellness.
+                  Create your account to start managing your healthcare journey with confidence.
                 </p>
               </div>
             </div>
@@ -136,10 +141,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
               {/* Card Header */}
               <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-xl md:text-2xl font-bold text-card-foreground mb-2 text-left">
-                  Sign In
+                  Sign Up
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-sm text-left">
-                  Enter your credentials to continue
+                  Create your account to continue
                 </CardDescription>
               </CardHeader>
 
@@ -156,9 +161,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <Label className="text-sm font-medium text-card-foreground">
+                          <FormLabel className="text-sm font-medium text-card-foreground">
                             Email
-                          </Label>
+                          </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -174,18 +179,66 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
                       )}
                     />
 
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="firstName"
+                        rules={{
+                          required: "First name is required",
+                        }}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-card-foreground">
+                              First Name
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="First name"
+                                {...field}
+                                className="w-full px-3 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
+                              />
+                            </FormControl>
+                            <FormMessage className="text-destructive text-xs" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        rules={{
+                          required: "Last name is required",
+                        }}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-card-foreground">
+                              Last Name
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Last name"
+                                {...field}
+                                className="w-full px-3 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
+                              />
+                            </FormControl>
+                            <FormMessage className="text-destructive text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <FormField
                       control={form.control}
                       name="password"
                       rules={{
                         required: "Password is required",
-                        validate: (value) => validatePassword(value) || "Password must be at least 8 characters and contain a letter and a number."
+                        validate: (value: string) => validatePassword(value) || "Password must be at least 8 characters and contain a letter and a number."
                       }}
                       render={({ field }) => (
                         <FormItem>
-                          <Label className="text-sm font-medium text-card-foreground">
+                          <FormLabel className="text-sm font-medium text-card-foreground">
                             Password
-                          </Label>
+                          </FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -202,32 +255,60 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
                       )}
                     />
 
+                    <FormField
+                      control={form.control}
+                      name="confirmPassword"
+                      rules={{
+                        required: "Confirm Password is required",
+                        validate: (value: string) => value === form.getValues("password") || "Passwords do not match."
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium text-card-foreground">
+                            Confirm Password
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                type="password"
+                                placeholder="Confirm your password"
+                                {...field}
+                                className="w-full pl-10 pr-4 py-3 border border-input rounded-lg text-sm focus:border-ring focus:ring-2 focus:ring-ring/10 transition-colors"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-destructive text-xs" />
+                        </FormItem>
+                      )}
+                    />
+
                     <div className="pt-2">
-                      <Button 
+                      <Button
                         type="submit"
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-4 rounded-lg text-sm font-medium transition-colors"
-                        disabled={loginMutation.isPending}
+                        disabled={signupMutation.isPending}
                       >
-                        {loginMutation.isPending ? (
+                        {signupMutation.isPending ? (
                           <div className="flex items-center justify-center">
                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                            Signing in...
+                            Creating account...
                           </div>
                         ) : (
-                          "Sign In"
+                          "Create Account"
                         )}
                       </Button>
                     </div>
-                    
+
                     {success && (
                       <div className="text-sm text-green-600 bg-green-50 border border-green-200 p-3 rounded-lg">
                         {success}
                       </div>
                     )}
 
-                    {(loginMutation.error || googleLoginMutation.error) && (
+                    {(signupMutation.error || googleSignupMutation.error) && (
                       <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
-                        {getErrorMessage(loginMutation.error) || getErrorMessage(googleLoginMutation.error)}
+                        {getErrorMessage(signupMutation.error) || getErrorMessage(googleSignupMutation.error)}
                       </div>
                     )}
 
@@ -242,13 +323,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
                       type="button"
                       variant="outline"
                       className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-input rounded-lg hover:bg-accent text-foreground text-sm transition-colors"
-                      onClick={handleGoogleLogin}
-                      disabled={googleLoginMutation.isPending}
+                      onClick={handleGoogleSignup}
+                      disabled={googleSignupMutation.isPending}
                     >
-                      {googleLoginMutation.isPending ? (
+                      {googleSignupMutation.isPending ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent mr-2"></div>
-                          Signing in...
+                          Creating account...
                         </div>
                       ) : (
                         <>
@@ -269,14 +350,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
               {/* Card Footer */}
               <CardFooter className="px-6 py-4 bg-muted/50 rounded-b-xl">
                 <p className="text-sm text-muted-foreground text-center w-full">
-                  Don't have an account?{" "}
+                  Already have an account?{" "}
                   <Button
                     type="button"
                     variant="link"
-                    onClick={onSwitchToSignUp}
+                    onClick={onSwitchToLogin}
                     className="text-primary hover:text-primary/80 p-0 h-auto font-medium text-sm"
                   >
-                    Sign up
+                    Sign in
                   </Button>
                 </p>
               </CardFooter>
@@ -288,4 +369,4 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToSignUp }) => {
   );
 };
 
-export default LoginForm;
+export default SignUp;
