@@ -23,8 +23,8 @@ const Loader: React.FC<LoaderProps> = ({
     >
       <div className="max-w-md mx-auto">
         <div className="relative mb-6">
-          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-brand-primary-light to-brand-primary-light rounded-full flex items-center justify-center">
-            {icon || <Loader2 className="w-12 h-12 text-brand-primary animate-spin" />}
+          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center border border-primary/20">
+            {icon || <Loader2 className="w-12 h-12 text-primary animate-spin" />}
           </div>
         </div>
         <h3 className="text-base font-semibold text-foreground mb-2">

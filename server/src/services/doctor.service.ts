@@ -2,6 +2,7 @@ import { db } from "../config/database";
 import { specializations } from "../schema/specialization";
 import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
+import { hospitals } from "../schema/hospitals";
 import { eq, and, or, ilike, sql, inArray } from "drizzle-orm";
 import { InternalServerError } from "../middleware/error.handler";
 // Services should return raw data, not formatted responses
@@ -11,15 +12,23 @@ export class DoctorService {
 
   async getAllDoctors(page: number, limit: number, specializationIds: string[], search: string) {
     const offset = (page - 1) * limit;
-      
+        
       // Build conditions array
       const conditions = [];
       
       // Add specialization filter if provided
       if (specializationIds && specializationIds.length > 0) {
-        conditions.push(
-          sql`JSON_EXTRACT(${doctors.specializationIds}, '$') && ${JSON.stringify(specializationIds)}`
-        );
+        // Convert string IDs to numbers for JSON contains check
+        const numericSpecializationIds = specializationIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+        console.log('Numeric specialization IDs:', numericSpecializationIds);
+        if (numericSpecializationIds.length > 0) {
+          // Use JSON contains operator to check if any of the specialization IDs exist in the JSON array
+          const jsonbCondition = numericSpecializationIds.map(id => 
+            sql`${doctors.specializationIds} @> ${JSON.stringify([id])}`
+          ).reduce((acc, condition) => acc ? sql`${acc} OR ${condition}` : condition);
+          
+          conditions.push(jsonbCondition);
+        }
       }
       
       // Add search filter if provided
@@ -37,7 +46,7 @@ export class DoctorService {
       // Add active doctors filter
       conditions.push(eq(doctors.isActive, true));
       
-      // Build the query
+      // Build the query with hospital information
       let query = db
         .select({
           id: doctors.id,
@@ -58,9 +67,18 @@ export class DoctorService {
           consultationModes: doctors.consultationModes,
           createdAt: doctors.createdAt,
           updatedAt: doctors.updatedAt,
+          // Hospital information
+          hospitalName: hospitals.hospitalName,
+          hospitalAddress: hospitals.hospitalAddress,
+          hospitalContactNo: hospitals.hospitalContactNo,
+          hospitalEmail: hospitals.hospitalEmail,
+          hospitalWebsite: hospitals.websiteHospital,
+          hospitalLicenseNo: hospitals.licenseNo,
+          hospitalAdminName: hospitals.adminName,
         })
         .from(doctors)
         .innerJoin(users, eq(doctors.userId, users.id))
+        .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
         .where(and(...conditions))
         .orderBy(doctors.patientSatisfactionRate, doctors.experienceYears);
       
@@ -69,6 +87,7 @@ export class DoctorService {
         .select({ count: sql<number>`count(*)` })
         .from(doctors)
         .innerJoin(users, eq(doctors.userId, users.id))
+        .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
         .where(and(...conditions));
       
       // Execute queries
@@ -77,11 +96,53 @@ export class DoctorService {
         countQuery
       ]);
       
+      // Get all specializations for mapping
+      const allSpecializations = await db.select({
+        id: specializations.id,
+        name: specializations.name,
+        description: specializations.description,
+      }).from(specializations);
+      
+      // Create specialization map for quick lookup
+      const specializationMap = new Map(
+        allSpecializations.map(spec => [spec.id, spec])
+      );
+      
+      // Transform doctors to include specialization and hospital details
+      const doctorsWithSpecializations = doctorsResult.map(doctor => {
+        const doctorSpecializations = (doctor.specializationIds as number[]).map((id: number) => 
+          specializationMap.get(id)
+        ).filter(Boolean);
+        
+        // Build hospital information if doctor is associated with a hospital
+        const hospitalInfo = doctor.hospitalId ? {
+          id: doctor.hospitalId,
+          name: doctor.hospitalName,
+          address: doctor.hospitalAddress,
+          contactNo: doctor.hospitalContactNo,
+          email: doctor.hospitalEmail,
+          website: doctor.hospitalWebsite,
+          licenseNo: doctor.hospitalLicenseNo,
+          adminName: doctor.hospitalAdminName,
+        } : null;
+        
+        return {
+          ...doctor,
+          specializations: doctorSpecializations,
+          // Keep the primary specialization for backward compatibility
+          primarySpecialization: doctorSpecializations[0] || null,
+          // Add hospital information
+          hospital: hospitalInfo,
+          // Ensure qualifications are properly formatted
+          qualifications: (doctor.qualifications as string[]) || [],
+        };
+      });
+      
       const totalCount = countResult[0]?.count || 0;
-      const totalPages = Math.ceil(totalCount / limit);
+     
       
       return {
-        doctors: doctorsResult,
+        doctors: doctorsWithSpecializations,
         pagination: {
           page,
           limit,

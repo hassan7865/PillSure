@@ -41,7 +41,12 @@ export default function MultiSelect({
         onClick={() => setOpen(!open)}
       >
         <span className="text-sm text-gray-700">
-          {selected.length > 0 ? selected.join(", ") : placeholder}
+          {selected.length > 0 
+            ? selected.map(id => {
+                const option = options.find(opt => opt.value === id);
+                return option ? option.label : id;
+              }).join(", ")
+            : placeholder}
         </span>
         <ChevronDown
           className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
