@@ -20,8 +20,8 @@ import { Button } from "@/components/ui/button";
 const categories = [
   {
     id: 1,
-    name: "Respiratory Care",
-    subtitle: "Asthma & Breathing",
+    name: "Asthma / COPD",
+    subtitle: "Respiratory Health",
     description: "INHALERS & NEBULIZERS",
     icon: Heart,
     imageUrl: "/p1.png",
@@ -31,9 +31,9 @@ const categories = [
   },
   {
     id: 2,
-    name: "Beauty & Skincare",
-    subtitle: "Face Care & Cosmetics",
-    description: "PREMIUM SKINCARE",
+    name: "Skin & Hair Care",
+    subtitle: "Acne, Eczema & Pigmentation",
+    description: "DERMATOLOGY & BEAUTY",
     icon: Eye,
     imageUrl: "/cos.png",
     productCount: "200+",
@@ -42,8 +42,8 @@ const categories = [
   },
   {
     id: 3,
-    name: "Mental Wellness",
-    subtitle: "Brain Health",
+    name: "Mental Health",
+    subtitle: "Depression, Anxiety & ADHD",
     description: "COGNITIVE SUPPORT",
     icon: Brain,
     imageUrl: "/p2.png",
@@ -53,9 +53,9 @@ const categories = [
   },
   {
     id: 4,
-    name: "Pediatric Care",
-    subtitle: "Kids Health",
-    description: "CHILDREN'S MEDICINE",
+    name: "Child Health",
+    subtitle: "Fever, Cough & Nappy Rash",
+    description: "PEDIATRIC CARE",
     icon: Baby,
     imageUrl: "/pills.png",
     productCount: "120+",
@@ -64,9 +64,9 @@ const categories = [
   },
   {
     id: 5,
-    name: "Immune Support",
-    subtitle: "Defense System",
-    description: "VITAMINS & BOOSTERS",
+    name: "Immune Health",
+    subtitle: "Immunity Boost & Protection",
+    description: "VITAMINS & IMMUNOGLOBULINS",
     icon: Shield,
     imageUrl: "/wf.png",
     productCount: "90+",
@@ -75,9 +75,9 @@ const categories = [
   },
   {
     id: 6,
-    name: "Orthopedic Care",
-    subtitle: "Bone & Joint",
-    description: "MOBILITY SOLUTIONS",
+    name: "Bone & Joint Care",
+    subtitle: "Arthritis, Gout & Mobility",
+    description: "ORTHOPEDIC SUPPORT",
     icon: Bone,
     imageUrl: "/p3.png",
     productCount: "110+",
@@ -85,6 +85,7 @@ const categories = [
     accentColor: "text-muted-foreground"
   }
 ];
+
 
 const MedicineCategoriesSection: React.FC = () => {
   return (
