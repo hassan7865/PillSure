@@ -14,86 +14,76 @@ import {
   Shield
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import medicineApi, { Medicine } from "@/lib/medicine-api";
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: "Vitamin C 500mg Sugarless",
-    category: "Vitamins",
-    price: 16.00,
-    originalPrice: 20.00,
-    imageUrl: "/wf.png",
-    rating: 4.5,
-    reviews: 120,
-    inStock: true,
-    prescriptionRequired: false,
-    description: "High potency Vitamin C supplement for immune support"
-  },
-  {
-    id: 2,
-    name: "Insulin Lispro Kwikpen",
-    category: "Diabetes Care",
-    price: 32.88,
-    imageUrl: "/wf2.png",
-    rating: 4.8,
-    reviews: 85,
-    inStock: true,
-    prescriptionRequired: true,
-    description: "Fast-acting insulin for diabetes management"
-  },
-  {
-    id: 3,
-    name: "Nutren Diabetes Vanilla",
-    category: "Protein",
-    price: 34.50,
-    imageUrl: "/Med.png",
-    rating: 4.2,
-    reviews: 60,
-    inStock: false,
-    prescriptionRequired: false,
-    description: "Nutritional supplement for diabetic patients"
-  },
-  {
-    id: 4,
-    name: "Henry Blooms One Night Collagen",
-    category: "Herbs",
-    price: 39.00,
-    originalPrice: 44.00,
-    imageUrl: "/cos.png",
-    rating: 4.7,
-    reviews: 150,
-    inStock: true,
-    prescriptionRequired: false,
-    description: "Premium collagen supplement for skin health"
-  },
-  {
-    id: 5,
-    name: "Spring Leaf Kids Fish Oil 750mg",
-    category: "Kids Health",
-    price: 24.95,
-    imageUrl: "/pills.png",
-    rating: 4.6,
-    reviews: 90,
-    inStock: true,
-    prescriptionRequired: false,
-    description: "Omega-3 supplement specially formulated for children"
-  },
-  {
-    id: 6,
-    name: "Nordic Naturals Arctic-D Cod Liver Oil",
-    category: "Supplements",
-    price: 37.45,
-    originalPrice: 42.95,
-    imageUrl: "/Bonas.webp",
-    rating: 4.9,
-    reviews: 200,
-    inStock: true,
-    prescriptionRequired: false,
-    description: "Premium cod liver oil with vitamin D"
-  }
-];
+type UIProduct = {
+  id: number;
+  name: string;
+  category?: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  rating: number;
+  reviews: number;
+  inStock: boolean;
+  prescriptionRequired: boolean;
+  description?: string;
+};
 
 const FeaturedProductsSection: React.FC = () => {
+  const [items, setItems] = useState<UIProduct[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const meds = await medicineApi.getFeatured({ limit: 6 });
+        if (!isMounted) return;
+        const mapped: UIProduct[] = meds.map((m: Medicine) => {
+          // Determine primary image
+          let imageUrl = "/pills.png"; // fallback from public assets
+          if (Array.isArray(m.images) && m.images.length > 0) {
+            const first = m.images[0];
+            imageUrl = typeof first === "string" ? first : (first?.url || imageUrl);
+          } else if (m.medicineUrl) {
+            imageUrl = m.medicineUrl;
+          }
+
+          // Compute price/discount
+          const priceNum = m.price ? parseFloat(m.price) : 0;
+          const discountPct = m.discount ? parseFloat(m.discount) : 0; // percent value e.g., 10.00
+          const originalPrice = discountPct > 0 ? priceNum / (1 - discountPct / 100) : undefined;
+
+          return {
+            id: m.id,
+            name: m.medicineName,
+            category: m.drugCategory || undefined,
+            price: priceNum,
+            originalPrice,
+            imageUrl,
+            rating: 4.6, // placeholder until ratings exist
+            reviews: 0, // placeholder until reviews exist
+            inStock: (m.stock ?? 0) > 0,
+            prescriptionRequired: Boolean(m.prescriptionRequired),
+            description: m.drugDescription || undefined,
+          };
+        });
+        setItems(mapped);
+      } catch (e: any) {
+        setError(e?.message || "Failed to load featured products");
+      } finally {
+        setLoading(false);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  const products = useMemo(() => items || [], [items]);
+
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -134,9 +124,21 @@ const FeaturedProductsSection: React.FC = () => {
           </p>
         </motion.div>
 
+        {/* Loading / Error States */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-72 bg-muted/40 animate-pulse rounded-xl" />
+            ))}
+          </div>
+        )}
+        {error && !loading && (
+          <div className="text-sm text-destructive mb-6">{error}</div>
+        )}
+
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {featuredProducts.map((product, index) => (
+          {products.map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
@@ -146,17 +148,18 @@ const FeaturedProductsSection: React.FC = () => {
               <Card className="group h-full bg-card border-border hover:border-primary/30 hover:shadow-purple transition-all duration-300 overflow-hidden">
                 <CardContent className="p-0">
                   {/* Product Image */}
-                  <div className="relative h-40 sm:h-48 bg-muted/50 overflow-hidden">
+                  <div className="relative h-40 sm:h-48 bg-white overflow-hidden">
                     <Image
                       src={product.imageUrl}
                       alt={product.name}
                       fill
+                      unoptimized
                       className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
                     />
                     
                     {/* Status Indicators */}
                     <div className="absolute top-3 left-3 flex flex-col gap-2">
-                      {product.originalPrice && (
+                      {product.originalPrice && product.originalPrice > product.price && (
                         <div className="bg-destructive text-white text-xs font-semibold px-2.5 py-1 rounded-md">
                           -{Math.round((1 - product.price / product.originalPrice) * 100)}%
                         </div>
@@ -179,7 +182,7 @@ const FeaturedProductsSection: React.FC = () => {
                     {/* Category & Name */}
                     <div className="mb-2 sm:mb-3">
                       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                        {product.category}
+                        {product.category || 'General'}
                       </div>
                       <h3 className="font-semibold text-card-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors text-sm sm:text-base">
                         {product.name}
@@ -188,7 +191,7 @@ const FeaturedProductsSection: React.FC = () => {
                     
                     {/* Description */}
                     <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">
-                      {product.description}
+                      {product.description || 'No description available'}
                     </p>
 
                     {/* Rating */}
@@ -204,7 +207,7 @@ const FeaturedProductsSection: React.FC = () => {
                     {/* Price & Stock */}
                     <div className="flex items-center justify-between mb-3 sm:mb-4">
                       <div className="flex items-baseline gap-1 sm:gap-2">
-                        {product.originalPrice && (
+                        {product.originalPrice && product.originalPrice > product.price && (
                           <span className="text-xs sm:text-sm text-muted-foreground line-through">
                             ${product.originalPrice.toFixed(2)}
                           </span>
