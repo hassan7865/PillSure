@@ -31,7 +31,10 @@ import { hospitals } from "./hospitals";
       address: text("address").notNull(),
       image: text("image"),
       feePkr: numeric("fee_pkr", { precision: 10, scale: 2 }),
-      consultationModes: jsonb("consultationModes").notNull(), // JSON array of consultation modes
+      consultationModes: jsonb("consultationModes"),
+      openingTime: varchar("opening_time", { length: 10 }), 
+      closingTime: varchar("closing_time", { length: 10 }), 
+      availableDays: jsonb("available_days"),
       isActive: boolean("isActive").notNull().default(true),
       createdAt: timestamp("createdAt").notNull().defaultNow(),
       updatedAt: timestamp("updatedAt").notNull().defaultNow(),

@@ -5,3 +5,4 @@ export * from './hospitals';
 export * from './specialization';
 export * from './medicine';
 export * from './patient';
+export * from './appointments';
