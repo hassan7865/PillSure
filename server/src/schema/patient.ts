@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, date, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, date, boolean, jsonb } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const patients = pgTable("patients", {
@@ -12,7 +12,7 @@ export const patients = pgTable("patients", {
   address: text("address").notNull(),
   bloodGroup: varchar("bloodGroup", { length: 10 }).notNull(),
   hasCovid: boolean("hasCovid").default(false).notNull(),
-  pastMedicalHistory: text("pastMedicalHistory"), // JSON string of medical conditions
+  pastMedicalHistory: jsonb("pastMedicalHistory"),
   surgicalHistory: text("surgicalHistory"),
   allergies: text("allergies"),
   isActive: boolean("isActive").notNull().default(true),

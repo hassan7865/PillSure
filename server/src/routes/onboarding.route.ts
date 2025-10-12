@@ -24,61 +24,82 @@ export class OnboardingRoutes {
 
   private initializeRoutes() {
     // All onboarding routes require authentication
-    this.router.post("/patient", verifyToken, this.completePatientOnboarding.bind(this));
-    this.router.post("/doctor", verifyToken, this.completeDoctorOnboarding.bind(this));
-    this.router.post("/hospital", verifyToken, this.completeHospitalOnboarding.bind(this));
+    // These endpoints handle both create and update automatically
+    this.router.post("/patient", verifyToken, this.savePatientOnboarding.bind(this));
+    this.router.post("/doctor", verifyToken, this.saveDoctorOnboarding.bind(this));
+    this.router.post("/hospital", verifyToken, this.saveHospitalOnboarding.bind(this));
     this.router.put("/step", verifyToken, this.updateOnboardingStep.bind(this));
     this.router.get("/status", verifyToken, this.getOnboardingStatus.bind(this));
+    
+    // Get saved onboarding data
+    this.router.get("/patient", verifyToken, this.getPatientOnboarding.bind(this));
+    this.router.get("/doctor", verifyToken, this.getDoctorOnboarding.bind(this));
+    this.router.get("/hospital", verifyToken, this.getHospitalOnboarding.bind(this));
   }
 
-  private async completePatientOnboarding(req: Request, res: Response, next: NextFunction) {
+  // Unified save endpoints - handle both create and update
+  private async savePatientOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.userId;
       const data: PatientOnboardingRequest = req.body;
 
-      // Validate required fields
-      if (!data.gender || !data.mobile || !data.dateOfBirth || !data.address || !data.bloodGroup) {
-        return next(BadRequestError("Missing required fields"));
-      }
-
-      const result = await this.onboardingService.completePatientOnboarding(userId, data);
-      res.status(200).json(createSuccessResponse(result, "Patient onboarding completed successfully"));
+      const result = await this.onboardingService.savePatientOnboarding(userId, data);
+      res.status(200).json(createSuccessResponse(result, "Patient data saved successfully"));
     } catch (error) {
       next(error);
     }
   }
 
-  private async completeDoctorOnboarding(req: Request, res: Response, next: NextFunction) {
+  private async saveDoctorOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.userId;
       const data: DoctorOnboardingRequest = req.body;
 
-      // Validate required fields
-      if (!data.gender || !data.mobile || !data.specializationIds || !data.qualifications || 
-          !data.experienceYears || !data.address || !data.consultationModes) {
-        return next(BadRequestError("Missing required fields"));
-      }
-
-      const result = await this.onboardingService.completeDoctorOnboarding(userId, data);
-      res.status(200).json(createSuccessResponse(result, "Doctor onboarding completed successfully"));
+      const result = await this.onboardingService.saveDoctorOnboarding(userId, data);
+      res.status(200).json(createSuccessResponse(result, "Doctor data saved successfully"));
     } catch (error) {
       next(error);
     }
   }
 
-  private async completeHospitalOnboarding(req: Request, res: Response, next: NextFunction) {
+  private async saveHospitalOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.userId;
       const data: HospitalOnboardingRequest = req.body;
 
-      // Validate required fields
-      if (!data.hospitalName || !data.hospitalAddress || !data.hospitalContactNo || 
-          !data.hospitalEmail || !data.licenseNo || !data.adminName) {
-        return next(BadRequestError("Missing required fields"));
-      }
+      const result = await this.onboardingService.saveHospitalOnboarding(userId, data);
+      res.status(200).json(createSuccessResponse(result, "Hospital data saved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      const result = await this.onboardingService.completeHospitalOnboarding(userId, data);
-      res.status(200).json(createSuccessResponse(result, "Hospital onboarding completed successfully"));
+  // Get saved onboarding data
+  private async getPatientOnboarding(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await this.onboardingService.getPatientData(userId);
+      res.status(200).json(createSuccessResponse(result, "Patient data retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async getDoctorOnboarding(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await this.onboardingService.getDoctorData(userId);
+      res.status(200).json(createSuccessResponse(result, "Doctor data retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async getHospitalOnboarding(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await this.onboardingService.getHospitalData(userId);
+      res.status(200).json(createSuccessResponse(result, "Hospital data retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -109,6 +130,7 @@ export class OnboardingRoutes {
       next(error);
     }
   }
+
 
   public getRouter(): Router {
     return this.router;

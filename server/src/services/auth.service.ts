@@ -101,12 +101,14 @@ export class AuthService {
         throw createError("Account is deactivated", 401);
       }
 
-      // For Google users, skip password validation
-      if (!user.isGoogle) {
-        // Validate password only for non-Google users
-        if (!user.password || !await bcrypt.compare(loginData.password, user.password)) {
-          throw createError("Invalid email or password", 401);
-        }
+      // Check if Google user is trying to login with password
+      if (user.isGoogle) {
+        throw createError("This account is registered with Google. Please use 'Continue with Google' to login.", 400);
+      }
+
+      // Validate password for non-Google users
+      if (!user.password || user.password !== loginData.password) {
+        throw createError("Invalid email or password", 401);
       }
 
       // Generate token

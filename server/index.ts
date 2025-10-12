@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { AuthRoutes } from "./src/routes/auth.route";
 import { OnboardingRoutes } from "./src/routes/onboarding.route";
 import { DoctorRoute } from "./src/routes/doctor.route";
+import { AppointmentRoute } from "./src/routes/appointment.route";
 import { AuthService } from "./src/services/auth.service";
 import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
@@ -44,11 +45,13 @@ const initializeApp = async () => {
     const authRoutes = new AuthRoutes(authService);
     const onboardingRoutes = new OnboardingRoutes(onboardingService);
     const doctorRoutes = new DoctorRoute();
+    const appointmentRoutes = new AppointmentRoute();
     
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
     app.use("/api/onboarding", onboardingRoutes.getRouter());
     app.use("/api/doctor", doctorRoutes.getRouter());
+    app.use("/api/appointments", appointmentRoutes.getRouter());
     
     // Health check endpoint
     app.get("/health", (req, res) => {

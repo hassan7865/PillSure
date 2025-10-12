@@ -71,13 +71,16 @@ export interface PatientOnboardingRequest {
 export interface DoctorOnboardingRequest {
   gender: 'male' | 'female' | 'other';
   mobile: string;
-  specializationIds: string[];
+  specializationIds: number[];
   qualifications: string[];
   experienceYears: number;
   address: string;
   image?: string;
   feePkr?: number;
   consultationModes: string[];
+  openingTime?: string;
+  closingTime?: string;
+  availableDays: string[];
 }
 
 export interface HospitalOnboardingRequest {
