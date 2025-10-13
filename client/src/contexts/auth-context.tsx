@@ -34,13 +34,27 @@ const getOnboardingPath = (role: string | undefined): string | null => {
 };
 
 const getPostOnboardingPath = (role: string | undefined): string => {
+  if (typeof window !== 'undefined') {
+    const returnUrl = sessionStorage.getItem('returnUrl');
+    if (returnUrl) {
+      sessionStorage.removeItem('returnUrl');
+      return returnUrl;
+    }
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlReturnPath = urlParams.get('returnUrl');
+    if (urlReturnPath) {
+      return urlReturnPath;
+    }
+  }
+  
   switch (role?.toLowerCase()) {
     case 'patient':
       return '/';
     case 'doctor':
-      return '/dashboard';
+      return '/dashboard/doctor';
     case 'hospital':
-      return '/dashboard';
+      return '/dashboard/hospital';
     default:
       return '/';
   }

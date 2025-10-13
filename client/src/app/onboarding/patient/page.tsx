@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { usePatientOnboarding } from "../hooks/use-onboarding";
+import { usePatientOnboarding, useGetPatientOnboarding } from "../hooks/use-onboarding";
 import { PatientOnboardingRequest, PatientFormValues } from "../_components/_types";
 import OnboardingPage from "../_components/OnboardingPage";
 import {
@@ -30,9 +31,24 @@ import {
 } from "lucide-react";
 
 export default function PatientOnboarding() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
   const [step, setStep] = useState(1);
   const [pastMedicalHistoryInput, setPastMedicalHistoryInput] = useState("");
   const patientOnboardingMutation = usePatientOnboarding();
+
+  // Fetch saved onboarding data
+  const { data: savedData, isLoading: loadingSavedData } = useGetPatientOnboarding();
+
+  // Sync step with URL
+  useEffect(() => {
+    const urlStep = parseInt(searchParams.get('step') || '1');
+    if (urlStep !== step) {
+      setStep(urlStep);
+    }
+  }, [searchParams]);
 
   const form = useForm<PatientFormValues>({
     defaultValues: {
@@ -48,6 +64,26 @@ export default function PatientOnboarding() {
     },
     mode: "onChange"
   });
+
+  // Prepopulate form with saved data
+  useEffect(() => {
+    if (savedData && !loadingSavedData && savedData !== null) {
+      const data: any = savedData;
+      const formData: any = {
+        gender: data.gender || "male",
+        mobile: data.mobile || "",
+        dateOfBirth: data.dateOfBirth || "",
+        address: data.address || "",
+        bloodGroup: data.bloodGroup || "",
+        hasCovid: data.hasCovid || false,
+        pastMedicalHistory: data.pastMedicalHistory || [],
+        surgicalHistory: data.surgicalHistory || "",
+        allergies: data.allergies || "",
+      };
+
+      form.reset(formData);
+    }
+  }, [savedData, loadingSavedData, form]);
 
   const onSubmit = (data: PatientFormValues) => {
     const onboardingData: PatientOnboardingRequest = {
@@ -74,11 +110,33 @@ export default function PatientOnboarding() {
     }
   };
 
+  // Update URL with current step
+  const updateStepInURL = (newStep: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('step', newStep.toString());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const nextStep = async () => {
     const fieldsToValidate = ['gender', 'mobile', 'dateOfBirth', 'address', 'bloodGroup'];
     const isValid = await form.trigger(fieldsToValidate as any);
-    if (isValid) {
-      setStep(2);
+    if (!isValid) {
+      return; // Stop if validation fails
+    }
+    
+    // Auto-save all current data (including step 2 if exists)
+    const currentData = form.getValues();
+    await patientOnboardingMutation.mutateAsync(currentData);
+    
+    setStep(2);
+    updateStepInURL(2);
+  };
+
+  const prevStep = () => {
+    if (step > 1) {
+      const newStep = step - 1;
+      setStep(newStep);
+      updateStepInURL(newStep);
     }
   };
 
@@ -436,7 +494,7 @@ export default function PatientOnboarding() {
           step={step}
           maxSteps={2}
           title="Patient Onboarding"
-          onBack={step > 1 ? () => setStep(step - 1) : undefined}
+          onBack={step > 1 ? prevStep : undefined}
           onNext={step < 2 ? nextStep : undefined}
           onSubmit={step === 2 ? form.handleSubmit(onSubmit) : undefined}
           isSubmitting={patientOnboardingMutation.isPending}

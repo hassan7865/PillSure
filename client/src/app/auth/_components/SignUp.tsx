@@ -53,10 +53,12 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
       // AuthContext will handle the redirect to onboarding
     } catch (error) {
       console.error('Signup error:', error);
+      // Error is handled by react-query and displayed via signupMutation.error
     }
   };
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleSignup = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     try {
       await googleSignupMutation.mutateAsync({ role });
       // AuthContext will handle the redirect to onboarding
@@ -151,7 +153,10 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
               {/* Card Content */}
               <CardContent className="p-6 pt-2">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    form.handleSubmit(onSubmit)(e);
+                  }} className="space-y-4">
                     <FormField
                       control={form.control}
                       name="email"
@@ -354,7 +359,10 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                   <Button
                     type="button"
                     variant="link"
-                    onClick={onSwitchToLogin}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSwitchToLogin();
+                    }}
                     className="text-primary hover:text-primary/80 p-0 h-auto font-medium text-sm"
                   >
                     Sign in

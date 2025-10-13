@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useDoctorOnboarding } from "../hooks/use-onboarding";
+import { useDoctorOnboarding, useGetDoctorOnboarding } from "../hooks/use-onboarding";
 import { DoctorFormValues, DoctorOnboardingRequest } from "../_components/_types";
 import { useSpecializations } from "@/hooks/use-doctor";
-import { Specialization } from "@/lib/doctor-api";
 import ReactSelect from "react-select";
 import OnboardingPage from "../_components/OnboardingPage";
 import {
@@ -30,30 +30,74 @@ import {
   Pill,
   CheckCircle
 } from "lucide-react";
+import { Specialization } from "@/lib/types";
 
 export default function DoctorOnboarding() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
   const [step, setStep] = useState(1);
   const [qualificationInput, setQualificationInput] = useState("");
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const doctorOnboardingMutation = useDoctorOnboarding();
 
+  // Fetch saved onboarding data
+  const { data: savedData, isLoading: loadingSavedData } = useGetDoctorOnboarding();
+
+  // Sync step with URL
+  useEffect(() => {
+    const urlStep = parseInt(searchParams.get('step') || '1');
+    if (urlStep !== step) {
+      setStep(urlStep);
+    }
+  }, [searchParams]);
+
   // Fetch specializations from API
   const { data: specializationsData, isLoading: specializationsLoading } = useSpecializations();
-  const availableSpecializations = (specializationsData as any)?.data || [];
+  const availableSpecializations = specializationsData || [];
 
   const form = useForm<DoctorFormValues>({
     defaultValues: {
       gender: "male",
       mobile: "",
-      specializationIds: [],
+      specializationIds: [] as number[],
       qualifications: [],
       experienceYears: 0,
       address: "",
       feePkr: undefined,
       consultationModes: [],
+      openingTime: undefined,
+      closingTime: undefined,
+      availableDays: [],
     },
     mode: "onChange",
   });
+
+  // Prepopulate form with saved data
+  useEffect(() => {
+    if (savedData && !loadingSavedData && savedData !== null) {
+      const data: any = savedData;
+      
+      const formData: DoctorFormValues = {
+        gender: data.gender || "male",
+        mobile: data.mobile || "",
+        address: data.address || "",
+        experienceYears: data.experienceYears || 0,
+        specializationIds: Array.isArray(data.specializationIds) ? data.specializationIds.map(Number) : [],
+        qualifications: Array.isArray(data.qualifications) ? data.qualifications : [],
+        consultationModes: Array.isArray(data.consultationModes) ? data.consultationModes : [],
+        availableDays: Array.isArray(data.availableDays) ? data.availableDays : [],
+        feePkr: data.feePkr ? Number(data.feePkr) : undefined,
+        openingTime: data.openingTime || undefined,
+        closingTime: data.closingTime || undefined,
+        image: undefined,
+      };
+
+      if (data.image) setImagePreviewUrl(data.image);
+      form.reset(formData);
+    }
+  }, [savedData, loadingSavedData, form]);
 
   const onSubmit = (data: DoctorFormValues) => {
     // Validate qualifications array
@@ -71,6 +115,9 @@ export default function DoctorOnboarding() {
       image: data.image ? URL.createObjectURL(data.image) : undefined,
       feePkr: data.feePkr,
       consultationModes: data.consultationModes,
+      openingTime: data.openingTime,
+      closingTime: data.closingTime,
+      availableDays: data.availableDays,
     };
 
     doctorOnboardingMutation.mutate(onboardingData);
@@ -96,19 +143,60 @@ export default function DoctorOnboarding() {
     }
   };
 
+  // Update URL with current step
+  const updateStepInURL = (newStep: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('step', newStep.toString());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const nextStep = async () => {
     if (step === 1) {
       const fieldsToValidate = ['gender', 'mobile'];
       const isValid = await form.trigger(fieldsToValidate as any);
-      if (isValid) {
-        setStep(2);
+      if (!isValid) {
+        return; // Stop if validation fails
       }
+      
+      // Auto-save step 1 data (include existing step 2 data to preserve it)
+      const currentData = form.getValues();
+      const saveData: any = {
+        gender: currentData.gender,
+        mobile: currentData.mobile,
+        address: currentData.address,
+        image: currentData.image ? URL.createObjectURL(currentData.image) : undefined,
+      };
+      
+      // Include step 2 fields only if they have values (preserves existing data)
+      if (currentData.specializationIds?.length > 0) saveData.specializationIds = currentData.specializationIds;
+      if (currentData.qualifications?.length > 0) saveData.qualifications = currentData.qualifications;
+      if (currentData.experienceYears) saveData.experienceYears = currentData.experienceYears;
+      if (currentData.feePkr) saveData.feePkr = currentData.feePkr;
+      if (currentData.consultationModes?.length > 0) saveData.consultationModes = currentData.consultationModes;
+      if (currentData.availableDays?.length > 0) saveData.availableDays = currentData.availableDays;
+      if (currentData.openingTime) saveData.openingTime = currentData.openingTime;
+      if (currentData.closingTime) saveData.closingTime = currentData.closingTime;
+      
+      await doctorOnboardingMutation.mutateAsync(saveData as DoctorOnboardingRequest);
+      
+      setStep(2);
+      updateStepInURL(2);
     } else if (step === 2) {
-      const fieldsToValidate = ['specializationIds', 'qualifications', 'experienceYears'];
+      const fieldsToValidate = ['specializationIds', 'qualifications', 'experienceYears', 'feePkr', 'consultationModes', 'availableDays'];
       const isValid = await form.trigger(fieldsToValidate as any);
-      if (isValid) {
-        setStep(3);
+      if (!isValid) {
+        return; // Stop if validation fails
       }
+      setStep(3);
+      updateStepInURL(3);
+    }
+  };
+
+  const prevStep = () => {
+    if (step > 1) {
+      const newStep = step - 1;
+      setStep(newStep);
+      updateStepInURL(newStep);
     }
   };
 
@@ -277,13 +365,15 @@ export default function DoctorOnboarding() {
                         <ReactSelect
                           isMulti
                           options={availableSpecializations.map((spec: Specialization) => ({
-                            value: spec.name,
+                            value: spec.id,
                             label: spec.name
                           }))}
-                          value={specializations.map((spec: string) => ({
-                            value: spec,
-                            label: spec
-                          }))}
+                          value={availableSpecializations
+                            .filter((spec: Specialization) => specializations.includes(spec.id))
+                            .map((spec: Specialization) => ({
+                              value: spec.id,
+                              label: spec.name
+                            }))}
                           onChange={(selectedOptions) => {
                             const values = selectedOptions ? selectedOptions.map(option => option.value) : [];
                             form.setValue("specializationIds", values, { shouldValidate: true });
@@ -478,6 +568,86 @@ export default function DoctorOnboarding() {
                     </FormItem>
                   )}
                 />
+                
+                <Separator />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="openingTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="flex items-center gap-1.5 text-sm font-medium">
+                          <Clock className="h-3.5 w-3.5 text-primary" />
+                          Opening Time
+                        </Label>
+                        <FormControl>
+                          <Input type="time" {...field} className="h-9" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="closingTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="flex items-center gap-1.5 text-sm font-medium">
+                          <Clock className="h-3.5 w-3.5 text-primary" />
+                          Closing Time
+                        </Label>
+                        <FormControl>
+                          <Input type="time" {...field} className="h-9" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <FormField
+                  control={form.control}
+                  name="availableDays"
+                  rules={{
+                    validate: (value) =>
+                      value && value.length > 0 ? true : "Select at least one available day"
+                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5 text-primary" />
+                          Available Days
+                        </Label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                            <div key={day} className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/30">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value.includes(day)}
+                                  onCheckedChange={(checked: boolean) => {
+                                    return checked
+                                      ? field.onChange([...field.value, day])
+                                      : field.onChange(
+                                        field.value.filter(
+                                          (value) => value !== day
+                                        )
+                                      );
+                                  }}
+                                />
+                              </FormControl>
+                              <Label className="text-sm font-medium cursor-pointer">{day}</Label>
+                            </div>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
           </div>
@@ -494,7 +664,7 @@ export default function DoctorOnboarding() {
           step={step}
           maxSteps={2}
           title="Doctor Onboarding"
-          onBack={step > 1 ? () => setStep(step - 1) : undefined}
+          onBack={step > 1 ? prevStep : undefined}
           onNext={step < 2 ? nextStep : undefined}
           onSubmit={step === 2 ? form.handleSubmit(onSubmit) : undefined}
           isSubmitting={doctorOnboardingMutation.isPending}
