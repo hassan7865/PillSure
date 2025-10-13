@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,8 +31,6 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
   canGoNext = true
 }) => {
   const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   
   // Get step labels based on onboarding type
   const getStepLabels = () => {
@@ -48,25 +46,14 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
 
   const stepLabels = getStepLabels();
 
-  // Update URL with current step using Next.js routing
-  const updateStepInURL = React.useCallback((newStep: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('step', newStep.toString());
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
-
-  // Enhanced button handlers with Next.js routing
+  // Button handlers
   const handleBack = React.useCallback(() => {
-    const newStep = step - 1;
-    updateStepInURL(newStep);
     onBack?.();
-  }, [step, updateStepInURL, onBack]);
+  }, [onBack]);
 
   const handleNext = React.useCallback(() => {
-    const newStep = step + 1;
-    updateStepInURL(newStep);
     onNext?.();
-  }, [step, updateStepInURL, onNext]);
+  }, [onNext]);
 
   return (
     <Suspense fallback={
@@ -78,7 +65,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
       </div>
     }>
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="w-full max-w-3xl mx-auto">
           {/* Progress Indicator */}
           <div className="mb-4">

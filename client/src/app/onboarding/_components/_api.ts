@@ -13,21 +13,37 @@ export interface ApiResponse<T = any> {
 
 // Onboarding API functions
 export const onboardingApi = {
-  // Patient onboarding
-  completePatientOnboarding: async (data: PatientOnboardingRequest): Promise<ApiResponse> => {
+  // Patient onboarding - handles both create and update
+  savePatientOnboarding: async (data: PatientOnboardingRequest): Promise<ApiResponse> => {
     const response = await api.post('/onboarding/patient', data);
     return response.data.data;
   },
 
-  // Doctor onboarding
-  completeDoctorOnboarding: async (data: DoctorOnboardingRequest): Promise<ApiResponse> => {
+  // Doctor onboarding - handles both create and update
+  saveDoctorOnboarding: async (data: DoctorOnboardingRequest): Promise<ApiResponse> => {
     const response = await api.post('/onboarding/doctor', data);
     return response.data.data;
   },
 
-  // Hospital onboarding
-  completeHospitalOnboarding: async (data: HospitalOnboardingRequest): Promise<ApiResponse> => {
+  // Hospital onboarding - handles both create and update
+  saveHospitalOnboarding: async (data: HospitalOnboardingRequest): Promise<ApiResponse> => {
     const response = await api.post('/onboarding/hospital', data);
+    return response.data.data;
+  },
+
+  // Get saved onboarding data
+  getPatientOnboarding: async (): Promise<ApiResponse> => {
+    const response = await api.get('/onboarding/patient');
+    return response.data.data;
+  },
+
+  getDoctorOnboarding: async (): Promise<ApiResponse> => {
+    const response = await api.get('/onboarding/doctor');
+    return response.data.data;
+  },
+
+  getHospitalOnboarding: async (): Promise<ApiResponse> => {
+    const response = await api.get('/onboarding/hospital');
     return response.data.data;
   },
 

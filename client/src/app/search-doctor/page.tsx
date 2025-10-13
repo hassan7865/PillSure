@@ -43,8 +43,12 @@ export default function FindDoctorPage() {
         // Reset doctors list for new search/filter
         setAllDoctors(doctorsData.doctors);
       } else {
-        // Append new doctors for "Load More"
-        setAllDoctors(prev => [...prev, ...doctorsData.doctors]);
+        // Append new doctors for "Load More" - avoid duplicates
+        setAllDoctors(prev => {
+          const existingIds = new Set(prev.map(d => d.id));
+          const newDoctors = doctorsData.doctors.filter(d => !existingIds.has(d.id));
+          return [...prev, ...newDoctors];
+        });
       }
     }
   }, [doctorsData, page]);
@@ -54,13 +58,6 @@ export default function FindDoctorPage() {
     setPage(1);
   }, [debouncedSearch, selectedSpecializations]);
 
-  // Reset doctors array when page changes to 1 (new search/filter)
-  useEffect(() => {
-    if (page === 1) {
-      setAllDoctors([]);
-    }
-  }, [page]);
-
   const doctors = allDoctors;
   const pagination = doctorsData?.pagination;
 
@@ -68,13 +65,11 @@ export default function FindDoctorPage() {
     setSearch("");
     setSelectedSpecializations([]);
     setPage(1);
-    setAllDoctors([]);
   };
 
   const handleSpecializationChange = (specializations: string[]) => {
     setSelectedSpecializations(specializations);
-    setPage(1); // Reset to first page when filters change
-    setAllDoctors([]);
+    setPage(1);
   };
 
   const handleLoadMore = () => {
@@ -158,16 +153,6 @@ export default function FindDoctorPage() {
             </div>
           </div>
 
-          {/* Responsive Loading State */}
-          {doctorsLoading && (
-            <div className="flex items-center justify-center py-12 md:py-16">
-              <Loader 
-                title="Finding Doctors"
-                description="Searching through our network of qualified healthcare professionals..."
-              />
-            </div>
-          )}
-
           {/* Responsive Error State */}
           {doctorsError && (
             <div className="flex items-center justify-center py-12 md:py-16">
@@ -184,14 +169,26 @@ export default function FindDoctorPage() {
             </div>
           )}
 
+          {/* Responsive Loading State */}
+          {!doctorsError && doctorsLoading && page === 1 && (
+            <div className="flex items-center justify-center py-12 md:py-16">
+              <Loader 
+                title="Finding Doctors"
+                description="Searching through our network of qualified healthcare professionals..."
+              />
+            </div>
+          )}
+
           {/* Responsive Doctor Cards Grid */}
-          {!doctorsLoading && !doctorsError && (
+          {!doctorsError && !doctorsLoading && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-                {doctors.map((doc) => (
-                  <DoctorCard key={doc.id} doc={doc} />
-                ))}
-              </div>
+              {doctors.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+                  {doctors.map((doc) => (
+                    <DoctorCard key={doc.id} doc={doc} />
+                  ))}
+                </div>
+              )}
 
               {/* Responsive No Results */}
               {doctors.length === 0 && (
@@ -231,6 +228,15 @@ export default function FindDoctorPage() {
                 </div>
               )}
             </>
+          )}
+
+          {/* Show doctors during "Load More" loading */}
+          {!doctorsError && doctorsLoading && page > 1 && doctors.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+              {doctors.map((doc) => (
+                <DoctorCard key={doc.id} doc={doc} />
+              ))}
+            </div>
           )}
         </div>
       </div>

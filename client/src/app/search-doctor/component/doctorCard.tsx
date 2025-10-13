@@ -4,8 +4,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, MapPin, Clock, Award, GraduationCap, Building2, Calendar, Zap } from "lucide-react";
 import { Doctor } from "@/lib/types";
+import LoginRequired from "@/components/login-required";
+import BookAppointmentModal from "@/app/appointments/components/BookAppointmentModal";
+import { useState } from "react";
 
 export default function DoctorCard({ doc }: { doc: Doctor }) {
+  const [showBookingModal, setShowBookingModal] = useState(false);
+
+  const handleBookAppointment = () => {
+    setShowBookingModal(true);
+  };
   return (
     <Card className="group h-full bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       <CardContent className="p-0 h-full flex flex-col">
@@ -114,11 +122,16 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
 
           {/* Responsive Action Button */}
           <div className="mt-4 md:mt-6">
-            <Button 
-              className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-lg md:rounded-xl py-2.5 md:py-3 text-xs md:text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-primary/25"
-            >
-              Book Appointment
-            </Button>
+            <LoginRequired onSuccess={handleBookAppointment}>
+              {(handleAction) => (
+                <Button 
+                  onClick={handleAction}
+                  className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-lg md:rounded-xl py-2.5 md:py-3 text-xs md:text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-primary/25"
+                >
+                  Book Appointment
+                </Button>
+              )}
+            </LoginRequired>
           </div>
 
           {/* Responsive Quick Info */}
@@ -134,6 +147,12 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
           </div>
         </div>
       </CardContent>
+
+      <BookAppointmentModal
+        open={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        doctor={doc}
+      />
     </Card>
   );
 }

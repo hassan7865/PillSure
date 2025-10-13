@@ -10,6 +10,14 @@ const AuthPageContent: React.FC = () => {
   const searchParams = useSearchParams();
   const role = searchParams.get('role') || 'patient';
   const mode = searchParams.get('mode') || 'login';
+  const returnUrl = searchParams.get('returnUrl');
+  
+  // Store returnUrl in sessionStorage on mount if present
+  React.useEffect(() => {
+    if (returnUrl) {
+      sessionStorage.setItem('returnUrl', returnUrl);
+    }
+  }, [returnUrl]);
   
   // Show signup form if mode=signup, otherwise show login form
   const [isLogin, setIsLogin] = useState(mode !== 'signup');

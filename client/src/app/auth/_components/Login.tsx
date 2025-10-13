@@ -34,7 +34,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
 
   const [success, setSuccess] = React.useState<string>("");
 
-  // Note: Removed redirect logic to let AuthContext handle onboarding redirects
 
   const onSubmit = async (values: { email: string; password: string }) => {
     try {
@@ -43,10 +42,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
       // AuthContext will handle the redirect to onboarding
     } catch (error) {
       console.error('Login error:', error);
+      // Error is handled by react-query and displayed via loginMutation.error
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     try {
       await googleLoginMutation.mutateAsync();
       // AuthContext will handle the redirect to onboarding
@@ -141,7 +142,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
               {/* Card Content */}
               <CardContent className="p-6 pt-2">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    form.handleSubmit(onSubmit)(e);
+                  }} className="space-y-4">
                     <FormField
                       control={form.control}
                       name="email"
@@ -267,7 +271,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
                   <Button
                     type="button"
                     variant="link"
-                    onClick={onSwitchToSignUp}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSwitchToSignUp();
+                    }}
                     className="text-primary hover:text-primary/80 p-0 h-auto font-medium text-sm"
                   >
                     Sign up
