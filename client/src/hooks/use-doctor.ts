@@ -34,4 +34,14 @@ export const useDoctors = (
   });
 };
 
+// Hook to get current doctor profile
+export const useCurrentDoctor = () => {
+  return useQuery({
+    queryKey: ['current-doctor'],
+    queryFn: () => doctorApi.getCurrentDoctor(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
 
