@@ -60,6 +60,15 @@ export const doctorApi = {
       pagination: rawData.pagination
     };
   },
+
+  // Get current doctor profile
+  getCurrentDoctor: async (): Promise<Doctor> => {
+    const response = await api.get<ApiResponse<Doctor>>('/doctor/me');
+    if (!response.data.data) {
+      throw new Error('Doctor profile not found');
+    }
+    return response.data.data;
+  },
 };
 
 export default doctorApi;
