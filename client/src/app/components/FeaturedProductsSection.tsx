@@ -15,7 +15,23 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import medicineApi, { Medicine } from "@/lib/medicine-api";
+import api from "@/lib/interceptor";
+import { ApiResponse } from "@/lib/types";
+
+type Medicine = {
+  id: number;
+  medicineName: string;
+  medicineUrl?: string | null;
+  price?: string | null;
+  discount?: string | null;
+  stock?: number | null;
+  images?: any | null;
+  prescriptionRequired?: boolean | null;
+  createdAt?: string | null;
+  drugDescription?: string | null;
+  drugCategory?: string | null;
+  drugVarient?: string | null;
+};
 
 type UIProduct = {
   id: number;
@@ -41,7 +57,12 @@ const FeaturedProductsSection: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        const meds = await medicineApi.getFeatured({ limit: 6 });
+        const search = new URLSearchParams();
+        search.set('limit', '6');
+        search.set('uniqueCategories', 'true');
+        const url = `/medicine/featured?${search.toString()}`;
+        const response = await api.get<ApiResponse<Medicine[]>>(url);
+        const meds = response.data.data || [];
         if (!isMounted) return;
         const mapped: UIProduct[] = meds.map((m: Medicine) => {
           // Determine primary image

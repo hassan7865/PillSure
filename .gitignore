@@ -5,6 +5,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Workspace-level lock files (use root package-lock.json in monorepo)
+client/package-lock.json
+server/package-lock.json
+
 # Next.js
 client/.next/
 client/out/

@@ -16,6 +16,7 @@ import { useDoctorOnboarding, useGetDoctorOnboarding } from "../hooks/use-onboar
 import { DoctorFormValues, DoctorOnboardingRequest } from "../_components/_types";
 import { useSpecializations } from "@/hooks/use-doctor";
 import ReactSelect from "react-select";
+import "../../../styles/react-select.css";
 import OnboardingPage from "../_components/OnboardingPage";
 import {
   User,
