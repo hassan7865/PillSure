@@ -16,6 +16,8 @@ export class AppointmentRoute {
     this.router.post('/', verifyToken, this.createAppointment);
     this.router.get('/patient', verifyToken, this.getPatientAppointments);
     this.router.get('/doctor/:doctorId', verifyToken, this.getDoctorAppointments);
+    this.router.get('/doctor/:doctorId/stats', verifyToken, this.getDoctorAppointmentStats);
+    this.router.get('/doctor/:doctorId/yearly-stats', verifyToken, this.getDoctorYearlyStats);
     this.router.get('/booked-slots/:doctorId/:date', this.getBookedSlots);
     this.router.get('/:id', verifyToken, this.getAppointmentById);
     this.router.put('/:id/status', verifyToken, this.updateAppointmentStatus);
@@ -58,6 +60,29 @@ export class AppointmentRoute {
 
       const result = await appointmentService.getAppointmentsByDoctor(doctorId, status);
       res.status(200).json(createSuccessResponse(result, "Appointments retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getDoctorAppointmentStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const doctorId = req.params.doctorId;
+
+      const result = await appointmentService.getAppointmentStats(doctorId);
+      res.status(200).json(createSuccessResponse(result, "Appointment statistics retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getDoctorYearlyStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const doctorId = req.params.doctorId;
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+
+      const result = await appointmentService.getYearlyAppointmentStats(doctorId, year);
+      res.status(200).json(createSuccessResponse(result, "Yearly appointment statistics retrieved successfully"));
     } catch (error) {
       next(error);
     }

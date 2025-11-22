@@ -4,7 +4,7 @@ import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
 import { eq, and, or, ilike, sql, inArray } from "drizzle-orm";
-import { InternalServerError } from "../middleware/error.handler";
+import { createError } from "../middleware/error.handler";
 // Services should return raw data, not formatted responses
 
 export class DoctorService {
@@ -163,6 +163,51 @@ export class DoctorService {
       .orderBy(specializations.name);
 
     return result;
+  }
+
+  async getDoctorByUserId(userId: string) {
+    const result = await db
+      .select({
+        id: doctors.id,
+        userId: doctors.userId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        gender: doctors.gender,
+        mobile: doctors.mobile,
+        specializationIds: doctors.specializationIds,
+        qualifications: doctors.qualifications,
+        experienceYears: doctors.experienceYears,
+        patientSatisfactionRate: doctors.patientSatisfactionRate,
+        hospitalId: doctors.hospitalId,
+        address: doctors.address,
+        image: doctors.image,
+        feePkr: doctors.feePkr,
+        consultationModes: doctors.consultationModes,
+        availableDays: doctors.availableDays,
+        openingTime: doctors.openingTime,
+        closingTime: doctors.closingTime,
+        createdAt: doctors.createdAt,
+        updatedAt: doctors.updatedAt,
+        hospitalName: hospitals.hospitalName,
+        hospitalAddress: hospitals.hospitalAddress,
+      })
+      .from(doctors)
+      .innerJoin(users, eq(doctors.userId, users.id))
+      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
+      .where(
+        and(
+          eq(doctors.userId, userId),
+          eq(doctors.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (result.length === 0) {
+      throw createError("Doctor profile not found", 404);
+    }
+
+    return result[0];
   }
 
 }

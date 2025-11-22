@@ -40,60 +40,47 @@ import {
   Files,
   LogOut,
   ImageIcon,
-  UserCircle
+  UserCircle,
+  CalendarClock
 } from 'lucide-react';
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 
 // Static data
 const company = {
   name: 'PillSure',
   logo: ImageIcon
 };
-
-const staticUser = {
-  name: 'John Doe',
-  email: 'john.doe@acme.com',
-  avatar: '/api/placeholder/32/32'
-};
-
-const navItems = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-    isActive: true
-  },
-  {
-    title: 'Analytics',
-    url: '/analytics',
-    icon: BarChart3,
-    items: [
-      { title: 'Overview', url: '/analytics/overview' },
-      { title: 'Reports', url: '/analytics/reports' },
-      { title: 'Insights', url: '/analytics/insights' }
-    ]
-  },
-  {
-    title: 'Users',
-    url: '/users',
-    icon: Users
-  },
-  {
-    title: 'Files',
-    url: '/files',
-    icon: Files,
-    items: [
-      { title: 'Documents', url: '/files/documents' },
-      { title: 'Images', url: '/files/images' },
-      { title: 'Videos', url: '/files/videos' }
-    ]
-  },
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings
-  }
-];
+import { useAuth } from '@/contexts/auth-context';
+import type { User as AuthUser } from '@/lib/types';
+function getNavItems(user: AuthUser | null) {
+  const items = [
+    {
+      title: 'Dashboard',
+      url: '/dashboard',
+      icon: LayoutDashboard,
+      isActive: true
+    },
+    ...(user?.role === 'doctor'
+      ? [{
+          title: 'Appointments',
+          url: '/dashboard/appointments',
+          icon: CalendarClock
+        }]
+      : []),
+    {
+      title: 'Users',
+      url: '/users',
+      icon: Users
+    },
+    {
+      title: 'Settings',
+      url: '/settings',
+      icon: Settings
+    }
+  ];
+  return items;
+}
 
 // Types
 interface User {
@@ -112,13 +99,13 @@ interface UserAvatarProfileProps {
 const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps) => {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+      <div className="h-8 w-8 rounded-full p-3 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
         {user.name.charAt(0)}
       </div>
       {showInfo && (
         <div className="flex flex-col">
           <span className="text-sm font-medium">{user.name}</span>
-          <span className="text-xs text-muted-foreground">{user.email}</span>
+          <span className="text-xs text-blue-1000">{user.email}</span>
         </div>
       )}
     </div>
@@ -127,29 +114,35 @@ const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps
 
 export default function AppSidebar() {
   const { state } = useSidebar();
+  const router = useRouter();
   const [activeItem, setActiveItem] = React.useState('/dashboard');
+  const { user, logout } = useAuth();
 
   const handleNavigation = (url: string) => {
     setActiveItem(url);
-    console.log('Navigate to:', url);
+    router.push(url);
   };
 
-  const handleProfileClick = () => {
-    console.log('Navigate to profile');
+
+  const handleSignOut = async () => {
+    await logout();
+    router.push('/auth');
   };
 
-  const handleBillingClick = () => {
-    console.log('Navigate to billing');
-  };
+  // Fallback user if not loaded
+  const displayUser = user
+    ? {
+        name: user.firstName + (user.lastName ? ' ' + user.lastName : ''),
+        email: user.email,
+        avatar: ''
+      }
+    : {
+        name: 'User',
+        email: '',
+        avatar: ''
+      };
 
-  const handleNotificationsClick = () => {
-    console.log('Navigate to notifications');
-  };
-
-  const handleSignOut = () => {
-    console.log('Sign out user');
-  };
-
+  const navItems = getNavItems(user);
   return (
     <Sidebar collapsible='icon'>
       <SidebarHeader>
@@ -169,42 +162,7 @@ export default function AppSidebar() {
           <SidebarMenu>
             {navItems.map((item) => {
               const Icon = item.icon;
-              return item?.items && item?.items?.length > 0 ? (
-                <Collapsible
-                  key={item.title}
-                  asChild
-                  defaultOpen={item.isActive}
-                  className='group/collapsible'
-                >
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                        tooltip={item.title}
-                        isActive={activeItem === item.url}
-                        onClick={() => handleNavigation(item.url)}
-                      >
-                        {Icon && <Icon />}
-                        <span>{item.title}</span>
-                        <ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {item.items?.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton
-                              isActive={activeItem === subItem.url}
-                              onClick={() => handleNavigation(subItem.url)}
-                            >
-                              <span>{subItem.title}</span>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              ) : (
+              return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     tooltip={item.title}
@@ -232,7 +190,7 @@ export default function AppSidebar() {
                   <UserAvatarProfile
                     className='h-8 w-8 rounded-lg'
                     showInfo
-                    user={staticUser}
+                    user={displayUser}
                   />
                   <ChevronRight className='ml-auto size-4' />
                 </SidebarMenuButton>
@@ -248,25 +206,13 @@ export default function AppSidebar() {
                     <UserAvatarProfile
                       className='h-8 w-8 rounded-lg'
                       showInfo
-                      user={staticUser}
+                      user={displayUser}
                     />
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={handleProfileClick}>
-                    <UserCircle className='mr-2 h-4 w-4' />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBillingClick}>
-                    <CreditCard className='mr-2 h-4 w-4' />
-                    Billing
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleNotificationsClick}>
-                    <Bell className='mr-2 h-4 w-4' />
-                    Notifications
-                  </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>

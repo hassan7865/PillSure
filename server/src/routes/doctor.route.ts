@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { doctorService } from '../services/doctor.service';
 import { BadRequestError } from '../middleware/error.handler';
 import { createSuccessResponse } from '../core/api-response';
+import { verifyToken } from '../middleware/jwt.handler';
 
 export class DoctorRoute {
   private router: Router;
@@ -16,6 +17,8 @@ export class DoctorRoute {
     this.router.get('/specializations', this.getSpecializations);
     // Get all doctors with search and filter (public endpoint)
     this.router.get('/search-doctors', this.getDoctors);
+    // Get current doctor profile (protected endpoint)
+    this.router.get('/me', verifyToken, this.getCurrentDoctor);
   }
 
   private getSpecializations = async (req: Request, res: Response, next: NextFunction) => {
@@ -55,6 +58,15 @@ export class DoctorRoute {
     }
   };
 
+  private getCurrentDoctor = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await doctorService.getDoctorByUserId(userId);
+      res.status(200).json(createSuccessResponse(result, "Doctor profile retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
 
   public getRouter(): Router {
     return this.router;
