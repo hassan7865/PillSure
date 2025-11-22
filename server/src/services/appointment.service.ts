@@ -231,6 +231,137 @@ export class AppointmentService {
 
     return bookedAppointments.map(apt => apt.appointmentTime);
   }
+
+  async getAppointmentStats(doctorId: string) {
+    const now = new Date();
+    const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+
+    // Get total appointments count for the current month
+    const monthlyCount = await db
+      .select({
+        count: sql<number>`COUNT(*)`
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.doctorId, doctorId),
+          eq(appointments.isActive, true),
+          sql`${appointments.appointmentDate} >= ${oneMonthAgo.toISOString().split('T')[0]}`,
+          sql`${appointments.appointmentDate} <= ${now.toISOString().split('T')[0]}`
+        )
+      );
+
+    // Get appointments count by status for the current month
+    const statusCounts = await db
+      .select({
+        status: appointments.status,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.doctorId, doctorId),
+          eq(appointments.isActive, true),
+          sql`${appointments.appointmentDate} >= ${oneMonthAgo.toISOString().split('T')[0]}`,
+          sql`${appointments.appointmentDate} <= ${now.toISOString().split('T')[0]}`
+        )
+      )
+      .groupBy(appointments.status);
+
+    return {
+      monthlyTotal: monthlyCount[0]?.count || 0,
+      statusBreakdown: statusCounts
+    };
+  }
+
+  async getYearlyAppointmentStats(doctorId: string, year?: number) {
+    const currentYear = year || new Date().getFullYear();
+    const yearStart = `${currentYear}-01-01`;
+    const yearEnd = `${currentYear}-12-31`;
+
+    // Get appointments count grouped by month
+    const monthlyData = await db
+      .select({
+        month: sql<number>`EXTRACT(MONTH FROM ${appointments.appointmentDate})`,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.doctorId, doctorId),
+          eq(appointments.isActive, true),
+          sql`${appointments.appointmentDate} >= ${yearStart}`,
+          sql`${appointments.appointmentDate} <= ${yearEnd}`
+        )
+      )
+      .groupBy(sql`EXTRACT(MONTH FROM ${appointments.appointmentDate})`)
+      .orderBy(sql`EXTRACT(MONTH FROM ${appointments.appointmentDate})`);
+
+    // Add status breakdown for the year
+    const statusCounts = await db
+      .select({
+        status: appointments.status,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.doctorId, doctorId),
+          eq(appointments.isActive, true),
+          sql`${appointments.appointmentDate} >= ${yearStart}`,
+          sql`${appointments.appointmentDate} <= ${yearEnd}`
+        )
+      )
+      .groupBy(appointments.status);
+
+    // Status breakdown per month
+    const monthlyStatusCounts = await db
+      .select({
+        month: sql<number>`EXTRACT(MONTH FROM ${appointments.appointmentDate})`,
+        status: appointments.status,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.doctorId, doctorId),
+          eq(appointments.isActive, true),
+          sql`${appointments.appointmentDate} >= ${yearStart}`,
+          sql`${appointments.appointmentDate} <= ${yearEnd}`
+        )
+      )
+      .groupBy(sql`EXTRACT(MONTH FROM ${appointments.appointmentDate})`, appointments.status);
+
+    // Create array with all 12 months, filling missing months with 0
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+
+    const monthly = monthNames.map((month, index) => {
+      const monthNumber = index + 1;
+      // Fix: ensure both sides are numbers
+      const monthData = monthlyData.find(data => Number(data.month) === monthNumber);
+      // Status breakdown for this month
+      const statusBreakdown = monthlyStatusCounts
+        .filter((s) => Number(s.month) === monthNumber)
+        .map((s) => ({ status: s.status, count: Number(s.count) }));
+      return {
+        month,
+        total: Number(monthData?.count) || 0,
+        statusBreakdown
+      };
+    });
+
+    return {
+      year: currentYear,
+      yearly: {
+        total: monthly.reduce((sum, m) => sum + m.total, 0),
+        statusBreakdown: statusCounts.map(s => ({ status: s.status, count: Number(s.count) }))
+      },
+      monthly
+    };
+  }
 }
 
 export const appointmentService = new AppointmentService();

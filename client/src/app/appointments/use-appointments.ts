@@ -107,3 +107,25 @@ export const useBookedSlots = (doctorId: string, date: string | undefined) => {
   });
 };
 
+export const useDoctorAppointmentStats = (doctorId: string) => {
+  return useQuery({
+    queryKey: ['doctor-appointment-stats', doctorId],
+    queryFn: () => appointmentApi.getDoctorAppointmentStats(doctorId),
+    retry: 1,
+    enabled: !!doctorId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+export const useDoctorYearlyStats = (doctorId: string, year?: number) => {
+  return useQuery({
+    queryKey: ['doctor-yearly-stats', doctorId, year],
+    queryFn: () => appointmentApi.getDoctorYearlyStats(doctorId, year),
+    retry: 1,
+    enabled: !!doctorId,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+  });
+};
+
