@@ -497,7 +497,7 @@ export default function PatientOnboarding() {
           onBack={step > 1 ? prevStep : undefined}
           onNext={step < 2 ? nextStep : undefined}
           onSubmit={step === 2 ? form.handleSubmit(onSubmit) : undefined}
-          isSubmitting={patientOnboardingMutation.isPending}
+          isSubmitting={patientOnboardingMutation.isLoading}
         >
           {getStepFields(step)}
         </OnboardingPage>

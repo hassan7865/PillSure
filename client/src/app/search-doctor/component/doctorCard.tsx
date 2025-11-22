@@ -7,15 +7,25 @@ import { Doctor } from "@/lib/types";
 import LoginRequired from "@/components/login-required";
 import BookAppointmentModal from "@/app/appointments/components/BookAppointmentModal";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DoctorCard({ doc }: { doc: Doctor }) {
+  const router = useRouter();
   const [showBookingModal, setShowBookingModal] = useState(false);
 
   const handleBookAppointment = () => {
     setShowBookingModal(true);
   };
+
+  const handleViewProfile = () => {
+    router.push(`/doctor/${doc.id}`);
+  };
+
   return (
-    <Card className="group h-full bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <Card 
+      className="group h-full bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+      onClick={handleViewProfile}
+    >
       <CardContent className="p-0 h-full flex flex-col">
         {/* Responsive Header */}
         <div className="relative bg-gradient-to-br from-primary/10 via-purple-500/5 to-blue-500/10 p-4 md:p-6">
@@ -121,8 +131,11 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
           </div>
 
           {/* Responsive Action Button */}
-          <div className="mt-4 md:mt-6">
-            <LoginRequired onSuccess={handleBookAppointment}>
+          <div className="mt-4 md:mt-6" onClick={(e) => e.stopPropagation()}>
+            <LoginRequired 
+              onSuccess={handleBookAppointment}
+              requirePatient={true}
+            >
               {(handleAction) => (
                 <Button 
                   onClick={handleAction}

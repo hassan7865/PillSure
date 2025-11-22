@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { createErrorResponse } from "../core/api-response";
-
+import { ApiError } from "../core/api-response";
 export interface AppError extends Error {
   statusCode?: number;
   isOperational?: boolean;
@@ -56,7 +55,7 @@ export const errorHandler = (
   const statusCode = error.statusCode || 500;
   const message = error.message || "Internal Server Error";
 
-  res.status(statusCode).json(createErrorResponse(
+  res.status(statusCode).json(ApiError(
     message,
     process.env.NODE_ENV === "development" ? err.stack : undefined
   ));

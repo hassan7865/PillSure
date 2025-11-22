@@ -6,3 +6,4 @@ export * from './specialization';
 export * from './medicine';
 export * from './patient';
 export * from './appointments';
+export * from './reviews';

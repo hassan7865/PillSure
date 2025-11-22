@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Calendar as CalendarIcon, Clock, Video, User as UserIcon, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Doctor } from "@/lib/types";
 import { useCreateAppointment, useBookedSlots } from "../use-appointments";
+import Loader from "@/components/ui/loader";
 
 interface BookAppointmentModalProps {
   open: boolean;
@@ -215,8 +216,11 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                                    <FormControl>
                                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                                        {isLoadingSlots ? (
-                                         <div className="col-span-3 sm:col-span-4 text-center py-3 sm:py-4 text-xs sm:text-sm text-muted-foreground">
-                                           Loading available slots...
+                                         <div className="col-span-3 sm:col-span-4 py-8">
+                                           <Loader
+                                             title="Loading Time Slots"
+                                             description="Fetching available appointment times..."
+                                           />
                                          </div>
                                        ) : (
                                          availableSlots.map((slot) => {
@@ -342,17 +346,17 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                   type="button"
                   variant="outline"
                   onClick={handleClose}
-                  disabled={createAppointmentMutation.isPending}
+                  disabled={createAppointmentMutation.isLoading}
                   className="flex-1 h-10 sm:h-11 text-xs sm:text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createAppointmentMutation.isPending}
+                  disabled={createAppointmentMutation.isLoading}
                   className="flex-1 h-10 sm:h-11 text-xs sm:text-sm bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
                 >
-                  {createAppointmentMutation.isPending ? (
+                  {createAppointmentMutation.isLoading ? (
                     <>
                       <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                       Booking...

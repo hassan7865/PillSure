@@ -7,9 +7,15 @@ interface LoginRequiredProps {
   children: (handleAction: () => void) => ReactNode;
   onSuccess?: () => void;
   fallback?: ReactNode;
+  requirePatient?: boolean; // If true, only patients can access
 }
 
-export default function LoginRequired({ children, onSuccess, fallback }: LoginRequiredProps) {
+export default function LoginRequired({ 
+  children, 
+  onSuccess, 
+  fallback,
+  requirePatient = false 
+}: LoginRequiredProps) {
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -18,10 +24,27 @@ export default function LoginRequired({ children, onSuccess, fallback }: LoginRe
     if (!user) {
       const returnUrl = `${pathname}${window.location.search}`;
       sessionStorage.setItem('returnUrl', returnUrl);
+      if (requirePatient) {
+        sessionStorage.setItem('requirePatient', 'true');
+      }
       router.push(`/auth?returnUrl=${encodeURIComponent(returnUrl)}`);
-    } else {
-      onSuccess?.();
+      return;
     }
+
+    // Check if patient role is required
+    if (requirePatient) {
+      const userRole = user.role?.toLowerCase() || '';
+      if (userRole !== 'patient') {
+        const returnUrl = `${pathname}${window.location.search}`;
+        sessionStorage.setItem('returnUrl', returnUrl);
+        sessionStorage.setItem('requirePatient', 'true');
+        router.push(`/auth?returnUrl=${encodeURIComponent(returnUrl)}`);
+        return;
+      }
+    }
+
+    // User is logged in and has required role
+    onSuccess?.();
   };
 
   if (!user && fallback) {

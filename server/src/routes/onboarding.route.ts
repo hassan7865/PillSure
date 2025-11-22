@@ -10,7 +10,7 @@ import {
   DoctorOnboardingRequest, 
   HospitalOnboardingRequest 
 } from "../core/types";
-import { createSuccessResponse } from "../core/api-response";
+import { ApiResponse } from "../core/api-response";
 
 export class OnboardingRoutes {
   private router: Router;
@@ -44,7 +44,7 @@ export class OnboardingRoutes {
       const data: PatientOnboardingRequest = req.body;
 
       const result = await this.onboardingService.savePatientOnboarding(userId, data);
-      res.status(200).json(createSuccessResponse(result, "Patient data saved successfully"));
+      res.status(200).json(ApiResponse(result, "Patient data saved successfully"));
     } catch (error) {
       next(error);
     }
@@ -56,7 +56,7 @@ export class OnboardingRoutes {
       const data: DoctorOnboardingRequest = req.body;
 
       const result = await this.onboardingService.saveDoctorOnboarding(userId, data);
-      res.status(200).json(createSuccessResponse(result, "Doctor data saved successfully"));
+      res.status(200).json(ApiResponse(result, "Doctor data saved successfully"));
     } catch (error) {
       next(error);
     }
@@ -68,7 +68,7 @@ export class OnboardingRoutes {
       const data: HospitalOnboardingRequest = req.body;
 
       const result = await this.onboardingService.saveHospitalOnboarding(userId, data);
-      res.status(200).json(createSuccessResponse(result, "Hospital data saved successfully"));
+      res.status(200).json(ApiResponse(result, "Hospital data saved successfully"));
     } catch (error) {
       next(error);
     }
@@ -79,7 +79,7 @@ export class OnboardingRoutes {
     try {
       const userId = (req as any).user.userId;
       const result = await this.onboardingService.getPatientData(userId);
-      res.status(200).json(createSuccessResponse(result, "Patient data retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Patient data retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -89,7 +89,7 @@ export class OnboardingRoutes {
     try {
       const userId = (req as any).user.userId;
       const result = await this.onboardingService.getDoctorData(userId);
-      res.status(200).json(createSuccessResponse(result, "Doctor data retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Doctor data retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -99,7 +99,7 @@ export class OnboardingRoutes {
     try {
       const userId = (req as any).user.userId;
       const result = await this.onboardingService.getHospitalData(userId);
-      res.status(200).json(createSuccessResponse(result, "Hospital data retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Hospital data retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -115,7 +115,7 @@ export class OnboardingRoutes {
       }
 
       const result = await this.onboardingService.updateOnboardingStep(userId, step);
-      res.status(200).json(createSuccessResponse(result, `Onboarding step updated to ${step}`));
+      res.status(200).json(ApiResponse(result, `Onboarding step updated to ${step}`));
     } catch (error) {
       next(error);
     }
@@ -125,7 +125,7 @@ export class OnboardingRoutes {
     try {
       const userId = (req as any).user.userId;
       const result = await this.onboardingService.getOnboardingStatus(userId);
-      res.status(200).json(createSuccessResponse(result, "Onboarding status retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Onboarding status retrieved successfully"));
     } catch (error) {
       next(error);
     }

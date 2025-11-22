@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { appointmentService } from '../services/appointment.service';
 import { verifyToken } from '../middleware/jwt.handler';
 import { BadRequestError } from '../middleware/error.handler';
-import { createSuccessResponse } from '../core/api-response';
+import { ApiResponse } from '../core/api-response';
 
 export class AppointmentRoute {
   private router: Router;
@@ -35,7 +35,7 @@ export class AppointmentRoute {
       }
 
       const result = await appointmentService.createAppointment(patientId, data);
-      res.status(201).json(createSuccessResponse(result, "Appointment created successfully"));
+      res.status(201).json(ApiResponse(result, "Appointment created successfully"));
     } catch (error) {
       next(error);
     }
@@ -47,7 +47,7 @@ export class AppointmentRoute {
       const status = req.query.status as string;
 
       const result = await appointmentService.getAppointmentsByPatient(patientId, status);
-      res.status(200).json(createSuccessResponse(result, "Appointments retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Appointments retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -59,7 +59,7 @@ export class AppointmentRoute {
       const status = req.query.status as string;
 
       const result = await appointmentService.getAppointmentsByDoctor(doctorId, status);
-      res.status(200).json(createSuccessResponse(result, "Appointments retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Appointments retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -70,7 +70,7 @@ export class AppointmentRoute {
       const doctorId = req.params.doctorId;
 
       const result = await appointmentService.getAppointmentStats(doctorId);
-      res.status(200).json(createSuccessResponse(result, "Appointment statistics retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Appointment statistics retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -82,7 +82,7 @@ export class AppointmentRoute {
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
 
       const result = await appointmentService.getYearlyAppointmentStats(doctorId, year);
-      res.status(200).json(createSuccessResponse(result, "Yearly appointment statistics retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Yearly appointment statistics retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -94,7 +94,7 @@ export class AppointmentRoute {
       const userId = (req as any).user.userId;
 
       const result = await appointmentService.getAppointmentById(appointmentId, userId);
-      res.status(200).json(createSuccessResponse(result, "Appointment retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Appointment retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -116,7 +116,7 @@ export class AppointmentRoute {
       }
 
       const result = await appointmentService.updateAppointmentStatus(appointmentId, userId, status, reason);
-      res.status(200).json(createSuccessResponse(result, "Appointment status updated successfully"));
+      res.status(200).json(ApiResponse(result, "Appointment status updated successfully"));
     } catch (error) {
       next(error);
     }
@@ -129,7 +129,7 @@ export class AppointmentRoute {
       const data = req.body;
 
       const result = await appointmentService.updateAppointmentNotes(appointmentId, doctorId, data);
-      res.status(200).json(createSuccessResponse(result, "Appointment notes updated successfully"));
+      res.status(200).json(ApiResponse(result, "Appointment notes updated successfully"));
     } catch (error) {
       next(error);
     }
@@ -141,7 +141,7 @@ export class AppointmentRoute {
       const userId = (req as any).user.userId;
 
       const result = await appointmentService.deleteAppointment(appointmentId, userId);
-      res.status(200).json(createSuccessResponse(result, "Appointment deleted successfully"));
+      res.status(200).json(ApiResponse(result, "Appointment deleted successfully"));
     } catch (error) {
       next(error);
     }
@@ -156,7 +156,7 @@ export class AppointmentRoute {
       }
 
       const result = await appointmentService.getBookedSlots(doctorId, date);
-      res.status(200).json(createSuccessResponse(result, "Booked slots retrieved successfully"));
+      res.status(200).json(ApiResponse(result, "Booked slots retrieved successfully"));
     } catch (error) {
       next(error);
     }

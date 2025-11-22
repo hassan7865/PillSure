@@ -9,7 +9,7 @@ import {
   UnauthorizedError 
 } from "../middleware/error.handler";
 import { LoginRequest, RegisterRequest, GoogleLoginRequest, UserRole } from "../core/types";
-import { createSuccessResponse } from "../core/api-response";
+import { ApiResponse } from "../core/api-response";
 
 export class AuthRoutes {
   private router: Router;
@@ -63,7 +63,7 @@ export class AuthRoutes {
       }
 
       const result = await this.authService.register(userData);
-      res.status(201).json(createSuccessResponse(result, "User registered successfully"));
+      res.status(201).json(ApiResponse(result, "User registered successfully"));
     } catch (error) {
       next(error);
     }
@@ -79,7 +79,7 @@ export class AuthRoutes {
       }
 
       const result = await this.authService.login(loginData);
-      res.status(200).json(createSuccessResponse(result, "Login successful"));
+      res.status(200).json(ApiResponse(result, "Login successful"));
     } catch (error) {
       next(error);
     }
@@ -101,7 +101,7 @@ export class AuthRoutes {
       }
 
       const result = await this.authService.googleLogin(loginData);
-      res.status(200).json(createSuccessResponse(result, "Google login successful"));
+      res.status(200).json(ApiResponse(result, "Google login successful"));
     } catch (error) {
       next(error);
     }
@@ -116,7 +116,7 @@ export class AuthRoutes {
         return next(NotFoundError("User not found"));
       }
 
-      res.status(200).json(createSuccessResponse(
+      res.status(200).json(ApiResponse(
         {
           id: user.id,
           email: user.email,
@@ -146,7 +146,7 @@ export class AuthRoutes {
 
       const updatedUser = await this.authService.updateUserProfile(userId, updateData);
 
-      res.status(200).json(createSuccessResponse(
+      res.status(200).json(ApiResponse(
         {
           id: updatedUser.id,
           email: updatedUser.email,
@@ -163,7 +163,7 @@ export class AuthRoutes {
 
   private async getAllUsers(req: Request, res: Response, next: NextFunction) {
     try {
-      res.status(200).json(createSuccessResponse(
+      res.status(200).json(ApiResponse(
         { users: [] },
         "Users retrieved successfully"
       ));
@@ -174,7 +174,7 @@ export class AuthRoutes {
 
   private async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      res.status(200).json(createSuccessResponse(
+      res.status(200).json(ApiResponse(
         null,
         "Logout successful"
       ));
@@ -191,7 +191,7 @@ export class AuthRoutes {
 
       const newToken = generateToken({ userId, email, role });
 
-      res.status(200).json(createSuccessResponse(
+      res.status(200).json(ApiResponse(
         { token: newToken },
         "Token refreshed successfully"
       ));

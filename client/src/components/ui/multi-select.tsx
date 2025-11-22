@@ -33,11 +33,16 @@ export default function MultiSelect({
     }
   };
 
+  // Extract height class from className if present
+  const heightClass = className.match(/\bh-\d+/)?.[0] || '';
+  const remainingClasses = className.replace(/\bh-\d+/g, '').trim();
+  const containerClasses = remainingClasses ? `relative ${remainingClasses}` : 'relative';
+
   return (
-    <div className={`relative ${className}`}>
+    <div className={containerClasses}>
       {/* Input box */}
       <div
-        className="border rounded-md px-3 py-2 flex items-center justify-between bg-white cursor-pointer"
+        className={`border rounded-md px-3 flex items-center justify-between bg-white cursor-pointer ${heightClass || 'py-2'}`}
         onClick={() => setOpen(!open)}
       >
         <span className="text-sm text-gray-700">

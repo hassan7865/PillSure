@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDoctorOnboarding, useGetDoctorOnboarding } from "../hooks/use-onboarding";
 import { DoctorFormValues, DoctorOnboardingRequest } from "../_components/_types";
-import { useSpecializations } from "@/hooks/use-doctor";
+import { doctorApi } from "@/app/search-doctor/_api";
+import { Specialization } from "@/lib/types";
 import ReactSelect from "react-select";
 import "../../../styles/react-select.css";
 import OnboardingPage from "../_components/OnboardingPage";
@@ -31,7 +32,6 @@ import {
   Pill,
   CheckCircle
 } from "lucide-react";
-import { Specialization } from "@/lib/types";
 
 export default function DoctorOnboarding() {
   const router = useRouter();
@@ -55,7 +55,35 @@ export default function DoctorOnboarding() {
   }, [searchParams]);
 
   // Fetch specializations from API
-  const { data: specializationsData, isLoading: specializationsLoading } = useSpecializations();
+  const [specializationsData, setSpecializationsData] = useState<Specialization[]>([]);
+  const [specializationsLoading, setSpecializationsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchSpecializations = async () => {
+      try {
+        setSpecializationsLoading(true);
+        const result = await doctorApi.getSpecializations();
+        if (isMounted) {
+          setSpecializationsData(result);
+        }
+      } catch (err) {
+        console.error('Failed to fetch specializations:', err);
+      } finally {
+        if (isMounted) {
+          setSpecializationsLoading(false);
+        }
+      }
+    };
+
+    fetchSpecializations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const availableSpecializations = specializationsData || [];
 
   const form = useForm<DoctorFormValues>({
@@ -668,7 +696,7 @@ export default function DoctorOnboarding() {
           onBack={step > 1 ? prevStep : undefined}
           onNext={step < 2 ? nextStep : undefined}
           onSubmit={step === 2 ? form.handleSubmit(onSubmit) : undefined}
-          isSubmitting={doctorOnboardingMutation.isPending}
+          isSubmitting={doctorOnboardingMutation.isLoading}
         >
           {getStepFields(step)}
         </OnboardingPage>

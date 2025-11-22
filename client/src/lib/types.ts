@@ -48,6 +48,9 @@ export type Doctor = {
   image: string;
   feePkr: string;
   consultationModes: string[];
+  availableDays?: string[] | null;
+  openingTime?: string | null;
+  closingTime?: string | null;
   createdAt: string;
   updatedAt: string;
   // Computed fields for UI

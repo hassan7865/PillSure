@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,32 +15,79 @@ import { AreaGraph } from "./area-graph";
 import { BarGraph } from "./bar-graph";
 import { PieGraph } from "./pie-graph";
 import { RecentSales } from "./recent-sales";
-import { IconTrendingUp, IconTrendingDown } from "@tabler/icons-react";
+import { IconTrendingUp } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
-import AppointmentStatsCard from "./appointment-stats-card";
+import { adminApi } from "@/app/dashboard/admin/_components/_api";
+import { AdminStats } from "@/app/dashboard/admin/_components/_types";
+import Loader from "@/components/ui/loader";
+import { Users, Pill, Stethoscope, Building2, CalendarClock } from "lucide-react";
 import AppointmentBarChart from "./appointment-bar-chart";
-import AppointmentYearlyTotalCard from "./appointment-yearly-total-card";
 
 export default function OverViewPage() {
-  return (
-    <div className="flex flex-1 flex-col space-y-2">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight">
-          Hi, Welcome back 👋
-        </h2>
-        <div className="hidden items-center space-x-2 md:flex">
-          <Button>Download</Button>
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const result = await adminApi.getStats();
+        if (isMounted) {
+          setStats(result);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error('Failed to fetch admin stats'));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col space-y-2">
+        <div className="flex items-center justify-center h-full">
+          <Loader
+            title="Loading Dashboard"
+            description="Fetching admin statistics..."
+          />
         </div>
       </div>
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics" disabled>
-            Analytics
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-4 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex flex-1 flex-col space-y-2">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <p className="text-lg font-medium text-foreground mb-2">Failed to load statistics</p>
+            <p className="text-sm text-muted-foreground">{error?.message || "Unknown error"}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col space-y-2">
+     
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6">
+            {/* Total Revenue - Keep as is since not implemented yet */}
             <Card className="@container/card">
               <CardHeader>
                 <CardDescription>Total Revenue</CardDescription>
@@ -60,50 +110,138 @@ export default function OverViewPage() {
                 </div>
               </CardFooter>
             </Card>
-            <AppointmentStatsCard />
-            <AppointmentYearlyTotalCard />
+
+            {/* Total Users */}
             <Card className="@container/card">
               <CardHeader>
-                <CardDescription>Active Accounts</CardDescription>
+                <CardDescription className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Total Users
+                </CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  45,678
+                  {stats.users.total.toLocaleString()}
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
                     <IconTrendingUp />
-                    +12.5%
+                    {stats.users.active} active
                   </Badge>
                 </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start gap-1.5 text-sm">
                 <div className="line-clamp-1 flex gap-2 font-medium">
-                  Strong user retention <IconTrendingUp className="size-4" />
+                  {stats.users.active} active users <IconTrendingUp className="size-4" />
                 </div>
                 <div className="text-muted-foreground">
-                  Engagement exceed targets
+                  {stats.users.total - stats.users.active} inactive
                 </div>
               </CardFooter>
             </Card>
+
+            {/* Total Medicines */}
             <Card className="@container/card">
               <CardHeader>
-                <CardDescription>Growth Rate</CardDescription>
+                <CardDescription className="flex items-center gap-2">
+                  <Pill className="h-4 w-4" />
+                  Total Medicines
+                </CardDescription>
                 <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  4.5%
+                  {stats.medicines.total.toLocaleString()}
                 </CardTitle>
                 <CardAction>
                   <Badge variant="outline">
                     <IconTrendingUp />
-                    +4.5%
+                    {stats.medicines.inStock} in stock
                   </Badge>
                 </CardAction>
               </CardHeader>
               <CardFooter className="flex-col items-start gap-1.5 text-sm">
                 <div className="line-clamp-1 flex gap-2 font-medium">
-                  Steady performance increase{" "}
-                  <IconTrendingUp className="size-4" />
+                  {stats.medicines.inStock} medicines available <IconTrendingUp className="size-4" />
                 </div>
                 <div className="text-muted-foreground">
-                  Meets growth projections
+                  {stats.medicines.total - stats.medicines.inStock} out of stock
+                </div>
+              </CardFooter>
+            </Card>
+
+            {/* Total Doctors */}
+            <Card className="@container/card">
+              <CardHeader>
+                <CardDescription className="flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4" />
+                  Total Doctors
+                </CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                  {stats.doctors.total.toLocaleString()}
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <IconTrendingUp />
+                    {stats.doctors.active} active
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {stats.doctors.active} active doctors <IconTrendingUp className="size-4" />
+                </div>
+                <div className="text-muted-foreground">
+                  {stats.doctors.total - stats.doctors.active} inactive
+                </div>
+              </CardFooter>
+            </Card>
+
+            {/* Total Hospitals */}
+            <Card className="@container/card">
+              <CardHeader>
+                <CardDescription className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Total Hospitals
+                </CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                  {stats.hospitals.total.toLocaleString()}
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <IconTrendingUp />
+                    {stats.hospitals.active} active
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {stats.hospitals.active} active hospitals <IconTrendingUp className="size-4" />
+                </div>
+                <div className="text-muted-foreground">
+                  {stats.hospitals.total - stats.hospitals.active} inactive
+                </div>
+              </CardFooter>
+            </Card>
+
+            {/* Total Appointments */}
+            <Card className="@container/card">
+              <CardHeader>
+                <CardDescription className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" />
+                  Total Appointments
+                </CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                  {stats.appointments.total.toLocaleString()}
+                </CardTitle>
+                <CardAction>
+                  <Badge variant="outline">
+                    <IconTrendingUp />
+                    {stats.appointments.byStatus?.pending || 0} pending
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {stats.appointments.byStatus?.completed || 0} completed <IconTrendingUp className="size-4" />
+                </div>
+                <div className="text-muted-foreground">
+                  {stats.appointments.byStatus?.pending || 0} pending, {stats.appointments.byStatus?.cancelled || 0} cancelled
                 </div>
               </CardFooter>
             </Card>
@@ -120,8 +258,6 @@ export default function OverViewPage() {
               <PieGraph />
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

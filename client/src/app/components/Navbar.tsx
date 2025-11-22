@@ -108,7 +108,7 @@ const Navbar: React.FC = () => {
             <Button 
               variant="ghost" 
               className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
-              onClick={() => router.push('/doctors')}
+              onClick={() => router.push('/search-doctor')}
             >
               Find Doctors
             </Button>

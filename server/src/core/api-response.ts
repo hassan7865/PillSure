@@ -1,38 +1,18 @@
-// =============================================================================
-// STANDARDIZED API RESPONSE TYPES
-// =============================================================================
-
-/**
- * Standard API Response Structure
- * Simple and consistent format for all endpoints
- */
-export interface ApiResponse<T = any> {
-  data?: T;
-  status: 'success' | 'error';
-  error?: string;
-  message?: string;
+import { ApiResponse as ApiResponseType } from './types';
+export function ApiResponse<T = any>(data?: T | null, message?: string): ApiResponseType<T> {
+  return {
+    ...(data !== null && data !== undefined && { data }),
+    status: 'success',
+    ...(message && { message }),
+  };
 }
 
-/**
- * Success Response Helper
- */
-export const createSuccessResponse = <T>(
-  data: T,
-  message?: string
-): ApiResponse<T> => ({
-  data,
-  status: 'success',
-  message
-});
 
-/**
- * Error Response Helper
- */
-export const createErrorResponse = (
-  error: string,
-  message?: string
-): ApiResponse => ({
-  status: 'error',
-  error,
-  message
-});
+export function ApiError(error: string, message?: string): ApiResponseType {
+  return {
+    status: 'error',
+    error,
+    ...(message && { message }),
+  };
+}
+

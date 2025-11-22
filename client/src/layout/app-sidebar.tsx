@@ -39,17 +39,19 @@ import {
   BarChart3,
   Files,
   LogOut,
-  ImageIcon,
+  Pill,
   UserCircle,
-  CalendarClock
+  CalendarClock,
+  Stethoscope,
+  Building2
 } from 'lucide-react';
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 // Static data
 const company = {
   name: 'PillSure',
-  logo: ImageIcon
+  logo: Pill
 };
 import { useAuth } from '@/contexts/auth-context';
 import type { User as AuthUser } from '@/lib/types';
@@ -68,6 +70,21 @@ function getNavItems(user: AuthUser | null) {
           icon: CalendarClock
         }]
       : []),
+    {
+      title: 'Doctors',
+      url: '/dashboard/admin/doctors',
+      icon: Stethoscope
+    },
+    {
+      title: 'Hospitals',
+      url: '/dashboard/admin/hospitals',
+      icon: Building2
+    },
+    {
+      title: 'Medicines',
+      url: '/dashboard/admin/medicines',
+      icon: Pill
+    },
     {
       title: 'Users',
       url: '/users',
@@ -99,13 +116,13 @@ interface UserAvatarProfileProps {
 const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps) => {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="h-8 w-8 rounded-full p-3 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-        {user.name.charAt(0)}
+      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-sm font-medium shadow-lg">
+        {user.name.charAt(0).toUpperCase()}
       </div>
       {showInfo && (
         <div className="flex flex-col">
           <span className="text-sm font-medium">{user.name}</span>
-          <span className="text-xs text-blue-1000">{user.email}</span>
+          <span className="text-xs text-muted-foreground">{user.email}</span>
         </div>
       )}
     </div>
@@ -115,11 +132,10 @@ const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps
 export default function AppSidebar() {
   const { state } = useSidebar();
   const router = useRouter();
-  const [activeItem, setActiveItem] = React.useState('/dashboard');
+  const pathname = usePathname();
   const { user, logout } = useAuth();
 
   const handleNavigation = (url: string) => {
-    setActiveItem(url);
     router.push(url);
   };
 
@@ -146,11 +162,15 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible='icon'>
       <SidebarHeader>
-        <div className="flex items-center gap-2 p-2">
-          <ImageIcon className="h-6 w-6" />
+        <div className="flex items-center gap-2 sm:gap-3 p-2 cursor-pointer" onClick={() => router.push('/dashboard')}>
+          <div className="relative w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+            <Pill className="h-4 w-4 text-white" />
+          </div>
           {state !== 'collapsed' && (
             <div className="flex flex-col">
-              <span className="text-sm font-medium">{company.name}</span>
+              <span className="text-sm font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                {company.name}
+              </span>
               <span className="text-xs text-muted-foreground">Dashboard</span>
             </div>
           )}
@@ -162,11 +182,12 @@ export default function AppSidebar() {
           <SidebarMenu>
             {navItems.map((item) => {
               const Icon = item.icon;
+              const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname?.startsWith(item.url));
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    isActive={activeItem === item.url}
+                    isActive={isActive}
                     onClick={() => handleNavigation(item.url)}
                   >
                     <Icon />
@@ -196,7 +217,7 @@ export default function AppSidebar() {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
+                className='w-[var(--radix-dropdown-menu-trigger-width)] min-w-56 rounded-lg'
                 side='bottom'
                 align='end'
                 sideOffset={4}

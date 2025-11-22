@@ -3,16 +3,51 @@
 interface AppointmentStatsCardProps {
   doctorId?: string;
 }
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IconTrendingUp, IconTrendingDown, IconCalendar } from "@tabler/icons-react";
 import { useDoctorYearlyStats } from '@/app/appointments/use-appointments';
-import { useCurrentDoctor } from '@/hooks/use-doctor';
+import { doctorApi } from '@/app/search-doctor/_api';
+import { Doctor } from '@/lib/types';
 
 
 const AppointmentStatsCard: React.FC<AppointmentStatsCardProps> = ({ doctorId }) => {
-  const { data: currentDoctor, isLoading: doctorLoading } = useCurrentDoctor();
+  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
+  const [doctorLoading, setDoctorLoading] = useState(true);
+
+  // Fetch current doctor if no doctorId provided
+  useEffect(() => {
+    if (doctorId) {
+      setDoctorLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    
+    const fetchCurrentDoctor = async () => {
+      try {
+        setDoctorLoading(true);
+        const result = await doctorApi.getCurrentDoctor();
+        if (isMounted) {
+          setCurrentDoctor(result);
+        }
+      } catch (err) {
+        console.error('Failed to fetch current doctor:', err);
+      } finally {
+        if (isMounted) {
+          setDoctorLoading(false);
+        }
+      }
+    };
+
+    fetchCurrentDoctor();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [doctorId]);
+
   const currentDoctorId = doctorId || currentDoctor?.id;
   const currentYear = new Date().getFullYear();
   const { data: yearlyStats, isLoading: statsLoading, error } = useDoctorYearlyStats(currentDoctorId || '', currentYear);
@@ -102,4 +137,3 @@ const AppointmentStatsCard: React.FC<AppointmentStatsCardProps> = ({ doctorId })
 
 export default AppointmentStatsCard;
 
-// Removed duplicate export statement

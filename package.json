@@ -8,7 +8,6 @@
     "server"
   ],
   "scripts": {
-    "setup": "node setup.js",
     "dev": "npm run --workspace=server dev & npm run --workspace=client dev",
     "dev:client": "npm run --workspace=client dev",
     "dev:server": "npm run --workspace=server dev",
@@ -18,12 +17,14 @@
     "start": "npm run --workspace=server start & npm run --workspace=client start",
     "start:client": "npm run --workspace=client start",
     "start:server": "npm run --workspace=server start",
-    "install:all": "npm install",
     "clean": "npm run clean:client && npm run clean:server",
     "clean:client": "cd client && rm -rf node_modules .next",
     "clean:server": "cd server && rm -rf node_modules dist",
     "db:generate": "npm run --workspace=server db:generate",
-    "db:migrate": "npm run --workspace=server db:migrate",
+    "db:upgrade": "npm run --workspace=server db:upgrade",
+    "db:current": "npm run --workspace=server db:current",
+    "db:history": "npm run --workspace=server db:history",
+    "db:pending": "npm run --workspace=server db:pending",
     "db:studio": "npm run --workspace=server db:studio",
     "init:roles": "npm run --workspace=server init:roles"
   },

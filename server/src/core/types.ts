@@ -99,3 +99,12 @@ export interface OnboardingResponse {
   onboardingStep?: number;
   isOnboardingComplete?: boolean;
 }
+
+
+
+export interface ApiResponse<T = any> {
+  data?: T;
+  status: 'success' | 'error';
+  error?: string;
+  message?: string;
+}
