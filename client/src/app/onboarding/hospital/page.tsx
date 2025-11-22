@@ -340,7 +340,7 @@ export default function HospitalOnboarding() {
           onBack={step > 1 ? prevStep : undefined}
           onNext={step < 2 ? nextStep : undefined}
           onSubmit={step === 2 ? handleSubmit(onSubmit) : undefined}
-          isSubmitting={hospitalOnboardingMutation.isPending}
+          isSubmitting={hospitalOnboardingMutation.isLoading}
         >
           {getStepFields(step)}
         </OnboardingPage>

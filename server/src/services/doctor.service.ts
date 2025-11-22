@@ -210,6 +210,83 @@ export class DoctorService {
     return result[0];
   }
 
+  async getDoctorById(doctorId: string) {
+    const result = await db
+      .select({
+        id: doctors.id,
+        userId: doctors.userId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        gender: doctors.gender,
+        mobile: doctors.mobile,
+        specializationIds: doctors.specializationIds,
+        qualifications: doctors.qualifications,
+        experienceYears: doctors.experienceYears,
+        patientSatisfactionRate: doctors.patientSatisfactionRate,
+        hospitalId: doctors.hospitalId,
+        address: doctors.address,
+        image: doctors.image,
+        feePkr: doctors.feePkr,
+        consultationModes: doctors.consultationModes,
+        availableDays: doctors.availableDays,
+        openingTime: doctors.openingTime,
+        closingTime: doctors.closingTime,
+        createdAt: doctors.createdAt,
+        updatedAt: doctors.updatedAt,
+        hospitalName: hospitals.hospitalName,
+        hospitalAddress: hospitals.hospitalAddress,
+      })
+      .from(doctors)
+      .innerJoin(users, eq(doctors.userId, users.id))
+      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
+      .where(
+        and(
+          eq(doctors.id, doctorId),
+          eq(doctors.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (result.length === 0) {
+      throw createError("Doctor profile not found", 404);
+    }
+
+    const doctor = result[0];
+
+    // Fetch specializations for this doctor
+    if (doctor.specializationIds && Array.isArray(doctor.specializationIds) && doctor.specializationIds.length > 0) {
+      const specializationIdsArray = doctor.specializationIds.map((id: any) => Number(id)).filter((id: number) => !isNaN(id));
+      
+      if (specializationIdsArray.length > 0) {
+        const specializationsResult = await db
+          .select()
+          .from(specializations)
+          .where(
+            inArray(
+              specializations.id,
+              specializationIdsArray
+            )
+          );
+
+        const doctorSpecializations = specializationsResult || [];
+        const primarySpecialization = doctorSpecializations.find((s: any) => s.id === specializationIdsArray[0]) || null;
+
+        return {
+          ...doctor,
+          specializations: doctorSpecializations,
+          primarySpecialization,
+        };
+      }
+    }
+
+    return {
+      ...doctor,
+      specializations: [],
+      primarySpecialization: null,
+    };
+  }
+
 }
 
 export const doctorService = new DoctorService();

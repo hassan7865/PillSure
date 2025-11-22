@@ -126,8 +126,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
         </div>
 
         {/* Form Section */}
-        <div className="flex-1 md:w-1/2 flex items-center justify-center p-4 md:p-8">
-          <div className="w-full max-w-sm">
+        <div className="flex-1 md:w-3/5 flex items-center justify-center p-4 md:p-8">
+          <div className="w-full max-w-lg">
             <Card className="bg-card border border-border rounded-xl shadow-lg md:shadow-2xl">
               {/* Card Header */}
               <CardHeader className="p-6 pb-4">
@@ -204,9 +204,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
                       <Button 
                         type="submit"
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-4 rounded-lg text-sm font-medium transition-colors"
-                        disabled={loginMutation.isPending}
+                        disabled={loginMutation.isLoading}
                       >
-                        {loginMutation.isPending ? (
+                        {loginMutation.isLoading ? (
                           <div className="flex items-center justify-center">
                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                             Signing in...
@@ -239,11 +239,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-input rounded-lg hover:bg-accent text-foreground text-sm transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-input rounded-lg text-foreground text-sm transition-colors"
                       onClick={handleGoogleLogin}
-                      disabled={googleLoginMutation.isPending}
+                      disabled={googleLoginMutation.isLoading}
                     >
-                      {googleLoginMutation.isPending ? (
+                      {googleLoginMutation.isLoading ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent mr-2"></div>
                           Signing in...
@@ -265,7 +265,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
               </CardContent>
 
               {/* Card Footer */}
-              <CardFooter className="px-6 py-4 bg-muted/50 rounded-b-xl">
+              <CardFooter className="px-6 py-4 rounded-b-xl">
                 <p className="text-sm text-muted-foreground text-center w-full">
                   Don't have an account?{" "}
                   <Button

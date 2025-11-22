@@ -5,7 +5,9 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { IconCalendar, IconTrendingUp } from "@tabler/icons-react";
 import { useDoctorYearlyStats } from '@/app/appointments/use-appointments';
-import { useCurrentDoctor } from '@/hooks/use-doctor';
+import { doctorApi } from '@/app/search-doctor/_api';
+import { Doctor } from '@/lib/types';
+import { useState, useEffect } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -24,7 +26,40 @@ export const AppointmentBarChart: React.FC<AppointmentBarChartProps> = ({
   doctorId, 
   year = new Date().getFullYear() 
 }) => {
-  const { data: currentDoctor, isLoading: doctorLoading } = useCurrentDoctor();
+  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
+  const [doctorLoading, setDoctorLoading] = useState(true);
+
+  // Fetch current doctor if no doctorId provided
+  useEffect(() => {
+    if (doctorId) {
+      setDoctorLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    
+    const fetchCurrentDoctor = async () => {
+      try {
+        setDoctorLoading(true);
+        const result = await doctorApi.getCurrentDoctor();
+        if (isMounted) {
+          setCurrentDoctor(result);
+        }
+      } catch (err) {
+        console.error('Failed to fetch current doctor:', err);
+      } finally {
+        if (isMounted) {
+          setDoctorLoading(false);
+        }
+      }
+    };
+
+    fetchCurrentDoctor();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [doctorId]);
   
   // Use doctorId from props or try to get from current doctor
   const currentDoctorId = doctorId || currentDoctor?.id;

@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/interceptor";
 import { ApiResponse } from "@/lib/types";
+import Loader from "@/components/ui/loader";
 
 type Medicine = {
   id: number;
@@ -147,10 +148,11 @@ const FeaturedProductsSection: React.FC = () => {
 
         {/* Loading / Error States */}
         {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-72 bg-muted/40 animate-pulse rounded-xl" />
-            ))}
+          <div className="flex items-center justify-center py-12">
+            <Loader
+              title="Loading Featured Products"
+              description="Fetching our premium healthcare solutions..."
+            />
           </div>
         )}
         {error && !loading && (

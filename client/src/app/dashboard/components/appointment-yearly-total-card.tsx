@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useDoctorYearlyStats } from '@/app/appointments/use-appointments';
-import { useCurrentDoctor } from '@/hooks/use-doctor';
+import { doctorApi } from '@/app/search-doctor/_api';
+import { Doctor } from '@/lib/types';
 import { Badge } from "@/components/ui/badge";
 import { CardAction } from "@/components/ui/card";
 import { IconTrendingUp, IconTrendingDown, IconCalendar } from "@tabler/icons-react";
@@ -14,7 +15,41 @@ interface AppointmentYearlyTotalCardProps {
 }
 
 const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({ doctorId, year = new Date().getFullYear() }) => {
-  const { data: currentDoctor, isLoading: doctorLoading } = useCurrentDoctor();
+  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
+  const [doctorLoading, setDoctorLoading] = useState(true);
+
+  // Fetch current doctor if no doctorId provided
+  useEffect(() => {
+    if (doctorId) {
+      setDoctorLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    
+    const fetchCurrentDoctor = async () => {
+      try {
+        setDoctorLoading(true);
+        const result = await doctorApi.getCurrentDoctor();
+        if (isMounted) {
+          setCurrentDoctor(result);
+        }
+      } catch (err) {
+        console.error('Failed to fetch current doctor:', err);
+      } finally {
+        if (isMounted) {
+          setDoctorLoading(false);
+        }
+      }
+    };
+
+    fetchCurrentDoctor();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [doctorId]);
+
   const currentDoctorId = doctorId || currentDoctor?.id;
   const { data: yearlyStats, isLoading: statsLoading, error } = useDoctorYearlyStats(currentDoctorId || '', year);
   const isLoading = doctorLoading || statsLoading;

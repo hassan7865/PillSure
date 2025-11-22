@@ -5,6 +5,7 @@ import { OnboardingRoutes } from "./src/routes/onboarding.route";
 import { DoctorRoute } from "./src/routes/doctor.route";
 import { MedicineRoute } from "./src/routes/medicine.route";
 import { AppointmentRoute } from "./src/routes/appointment.route";
+import { AdminRoute } from "./src/routes/admin.route";
 import { AuthService } from "./src/services/auth.service";
 import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
@@ -48,6 +49,7 @@ const initializeApp = async () => {
   const doctorRoutes = new DoctorRoute();
   const medicineRoutes = new MedicineRoute();
     const appointmentRoutes = new AppointmentRoute();
+    const adminRoutes = new AdminRoute();
     
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
@@ -55,6 +57,7 @@ const initializeApp = async () => {
   app.use("/api/doctor", doctorRoutes.getRouter());
   app.use("/api/medicine", medicineRoutes.getRouter());
     app.use("/api/appointments", appointmentRoutes.getRouter());
+    app.use("/api/admin", adminRoutes.getRouter());
     
     // Health check endpoint
     app.get("/health", (req, res) => {

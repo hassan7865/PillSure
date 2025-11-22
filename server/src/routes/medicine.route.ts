@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { medicineService } from "../services/medicine.service";
 import { BadRequestError } from "../middleware/error.handler";
-import { createSuccessResponse } from "../core/api-response";
+import { ApiResponse } from "../core/api-response";
 
 export class MedicineRoute {
   private router: Router;
@@ -34,7 +34,7 @@ export class MedicineRoute {
       const uniqueCategories = uniqueCategoriesParam.toLowerCase() !== 'false';
 
       const data = await medicineService.getFeaturedMedicines({ limit, category, uniqueCategories });
-      res.status(200).json(createSuccessResponse(data, "Featured medicines retrieved successfully"));
+      res.status(200).json(ApiResponse(data, "Featured medicines retrieved successfully"));
     } catch (error) {
       next(error);
     }

@@ -7,7 +7,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:upgrade": "ts-node src/migrations/cli.ts upgrade",
+    "db:current": "ts-node src/migrations/cli.ts current",
+    "db:history": "ts-node src/migrations/cli.ts history",
+    "db:pending": "ts-node src/migrations/cli.ts pending",
     "db:studio": "drizzle-kit studio",
     "init:roles": "ts-node src/scripts/init-roles.ts"
   },

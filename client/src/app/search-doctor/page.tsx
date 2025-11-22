@@ -7,9 +7,10 @@ import { Search, RotateCcw, Filter, MapPin, Users } from "lucide-react";
 import DoctorCard from "./component/doctorCard";
 import MultiSelect from "@/components/ui/multi-select";
 import PublicLayout from "@/layout/PublicLayout";
-import { useSpecializations, useDoctors } from "@/hooks/use-doctor";
-import { Doctor } from "@/lib/types";
+import { Doctor, Specialization } from "@/lib/types";
 import Loader from "@/components/ui/loader";
+import EmptyState from "@/components/ui/empty-state";
+import { doctorApi } from "./_api";
 
 export default function FindDoctorPage() {
   const [search, setSearch] = useState("");
@@ -17,6 +18,11 @@ export default function FindDoctorPage() {
   const [page, setPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([]);
+  const [specializations, setSpecializations] = useState<Specialization[]>([]);
+  const [specializationsLoading, setSpecializationsLoading] = useState(true);
+  const [doctorsData, setDoctorsData] = useState<{ doctors: Doctor[]; pagination: any } | null>(null);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
+  const [doctorsError, setDoctorsError] = useState<Error | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -27,20 +33,73 @@ export default function FindDoctorPage() {
   }, [search]);
 
   // Fetch specializations
-  const { data: specializations = [], isLoading: specializationsLoading } = useSpecializations();
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchSpecializations = async () => {
+      try {
+        setSpecializationsLoading(true);
+        const result = await doctorApi.getSpecializations();
+        if (isMounted) {
+          setSpecializations(result);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Failed to fetch specializations:', err);
+        }
+      } finally {
+        if (isMounted) {
+          setSpecializationsLoading(false);
+        }
+      }
+    };
+
+    fetchSpecializations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Fetch doctors with search and filters
-  const { 
-    data: doctorsData, 
-    isLoading: doctorsLoading, 
-    error: doctorsError 
-  } = useDoctors(page, 12, selectedSpecializations, debouncedSearch);
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchDoctors = async () => {
+      try {
+        setDoctorsLoading(true);
+        setDoctorsError(null);
+       
+        if (page === 1 && (debouncedSearch || selectedSpecializations.length > 0)) {
+       
+        }
+        const result = await doctorApi.getDoctors(page, 12, selectedSpecializations, debouncedSearch);
+        if (isMounted) {
+          setDoctorsData(result);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setDoctorsError(err instanceof Error ? err : new Error('Failed to fetch doctors'));
+        }
+      } finally {
+        if (isMounted) {
+          setDoctorsLoading(false);
+        }
+      }
+    };
+
+    fetchDoctors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [page, selectedSpecializations, debouncedSearch]);
 
   // Update allDoctors when new data arrives
   useEffect(() => {
-    if (doctorsData?.doctors) {
+    if (doctorsData?.doctors !== undefined) {
       if (page === 1) {
-        // Reset doctors list for new search/filter
+      
         setAllDoctors(doctorsData.doctors);
       } else {
         // Append new doctors for "Load More" - avoid duplicates
@@ -53,9 +112,14 @@ export default function FindDoctorPage() {
     }
   }, [doctorsData, page]);
 
-  // Reset page when search or filters change
+  // Reset page and clear doctors when search or filters change
   useEffect(() => {
     setPage(1);
+    // Clear doctors only when filters actually change (not on initial mount)
+    // This prevents showing old data during new search
+    if (debouncedSearch || selectedSpecializations.length > 0) {
+      // Don't clear immediately, let the loading state handle it
+    }
   }, [debouncedSearch, selectedSpecializations]);
 
   const doctors = allDoctors;
@@ -99,7 +163,7 @@ export default function FindDoctorPage() {
                   placeholder="Search doctors..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 h-10 md:h-11 bg-white border-border/50 text-sm md:text-base"
+                  className="pl-10 h-11 bg-white border-border/50 text-sm md:text-base"
                 />
               </div>
               <div className="w-full sm:w-64 md:w-72">
@@ -111,16 +175,16 @@ export default function FindDoctorPage() {
                   selected={selectedSpecializations}
                   onSelect={handleSpecializationChange}
                   placeholder={specializationsLoading ? "Loading..." : "Specializations"}
-                  className="w-full"
+                  className="w-full h-11"
                 />
               </div>
               <Button
                 onClick={clearFilters}
                 variant="outline"
                 size="sm"
-                className="h-10 md:h-11 px-3 md:px-4 w-full sm:w-auto"
+                className="h-11 px-4 w-full sm:w-auto shrink-0"
               >
-                <RotateCcw className="w-4 h-4 mr-1 md:mr-2" />
+                <RotateCcw className="w-4 h-4 mr-2" />
                 <span className="text-sm">Clear</span>
               </Button>
             </div>
@@ -190,22 +254,18 @@ export default function FindDoctorPage() {
                 </div>
               )}
 
-              {/* Responsive No Results */}
-              {doctors.length === 0 && (
-                <div className="flex items-center justify-center py-12 md:py-16">
-                  <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl md:rounded-2xl p-6 md:p-8 shadow-lg border border-white/20 max-w-sm md:max-w-md mx-4">
-                    <div className="w-12 h-12 md:w-16 md:h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                      <Search className="w-6 h-6 md:w-8 md:h-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-base md:text-lg font-semibold text-foreground mb-2">No Doctors Found</h3>
-                    <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">
-                      We couldn't find any doctors matching your criteria. Try adjusting your search or filters.
-                    </p>
-                    <Button onClick={clearFilters} variant="outline" className="text-sm md:text-base px-4 md:px-6">
-                      Clear Filters
-                    </Button>
-                  </div>
-                </div>
+              {/* Responsive No Results - Only show if we're not loading, have fetched data, and have no doctors */}
+              {doctors.length === 0 && doctorsData !== null && !doctorsLoading && (
+                <EmptyState
+                  type="search"
+                  title="No Doctors Found"
+                  description="We couldn't find any doctors matching your criteria. Try adjusting your search or filters."
+                  action={{
+                    label: "Clear Filters",
+                    onClick: clearFilters,
+                    variant: "outline",
+                  }}
+                />
               )}
 
               {/* Load More Pagination */}
