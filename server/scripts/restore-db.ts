@@ -28,16 +28,7 @@ async function restoreDatabase(backupFile?: string) {
     // Check if backup file exists
     if (!fs.existsSync(backupPath)) {
       console.error(`Backup file not found: ${backupPath}`);
-      console.log(`\nAvailable backups:`);
-      const backups = fs.readdirSync(BACKUP_DIR)
-        .filter(file => file.endsWith('.sql'))
-        .filter(file => file !== 'latest_backup.sql');
-      
-      if (backups.length === 0) {
-        console.log('   No backups found. Create one first with: npm run db:backup');
-      } else {
-        backups.forEach(backup => console.log(`   - ${backup}`));
-      }
+      console.log(`\nCreate a backup first with: npm run db:backup`);
       process.exit(1);
     }
 

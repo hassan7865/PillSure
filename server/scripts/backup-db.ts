@@ -18,11 +18,7 @@ if (!fs.existsSync(BACKUP_DIR)) {
 
 async function backupDatabase() {
   try {
-    // Generate timestamp for backup filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' + 
-                     new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
-    const backupFileName = `pillsure_backup_${timestamp}.sql`;
-    const backupPath = path.join(BACKUP_DIR, backupFileName);
+    const backupPath = path.join(BACKUP_DIR, 'latest_backup.sql');
 
     console.log('Creating database backup...');
     console.log(`Container: ${CONTAINER_NAME}`);
@@ -36,13 +32,8 @@ async function backupDatabase() {
       shell: '/bin/bash'
     });
 
-    // Also create a latest backup symlink/copy for easy restore
-    const latestBackupPath = path.join(BACKUP_DIR, 'latest_backup.sql');
-    fs.copyFileSync(backupPath, latestBackupPath);
-
     console.log(`Backup created successfully!`);
     console.log(`Location: ${backupPath}`);
-    console.log(`Latest backup: ${latestBackupPath}`);
     console.log(`\nTo restore, run: npm run db:restore`);
   } catch (error: any) {
     console.error('Error creating backup:', error.message);
