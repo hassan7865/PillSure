@@ -95,3 +95,7 @@ dist
 tmp/
 temp/
 
+# Database backups
+server/backups/*.sql
+!server/backups/.gitkeep
+
