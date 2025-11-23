@@ -19,6 +19,18 @@ export const usePatientOnboarding = () => {
       const response = await onboardingApi.savePatientOnboarding(data);
       if (response?.isOnboardingComplete) {
         showSuccess('Patient profile created successfully!', 'Welcome to PillSure!');
+        
+        // Check for return URL first
+        if (typeof window !== 'undefined') {
+          const returnUrl = sessionStorage.getItem('returnUrl');
+          if (returnUrl) {
+            sessionStorage.removeItem('returnUrl');
+            sessionStorage.removeItem('requirePatient'); // Clear patient requirement flag
+            router.push(returnUrl);
+            return response;
+          }
+        }
+        
         router.push('/');
       }
       return response;
@@ -49,6 +61,17 @@ export const useDoctorOnboarding = () => {
       const response = await onboardingApi.saveDoctorOnboarding(data);
       if (response?.isOnboardingComplete) {
         showSuccess('Doctor profile created successfully!', 'Welcome to PillSure!');
+        
+        // Check for return URL first
+        if (typeof window !== 'undefined') {
+          const returnUrl = sessionStorage.getItem('returnUrl');
+          if (returnUrl) {
+            sessionStorage.removeItem('returnUrl');
+            router.push(returnUrl);
+            return response;
+          }
+        }
+        
         router.push('/dashboard');
       }
       return response;
@@ -79,6 +102,17 @@ export const useHospitalOnboarding = () => {
       const response = await onboardingApi.saveHospitalOnboarding(data);
       if (response?.isOnboardingComplete) {
         showSuccess('Hospital profile created successfully!', 'Welcome to PillSure!');
+        
+        // Check for return URL first
+        if (typeof window !== 'undefined') {
+          const returnUrl = sessionStorage.getItem('returnUrl');
+          if (returnUrl) {
+            sessionStorage.removeItem('returnUrl');
+            router.push(returnUrl);
+            return response;
+          }
+        }
+        
         router.push('/dashboard');
       }
       return response;
