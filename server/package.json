@@ -12,6 +12,9 @@
     "db:history": "ts-node src/migrations/cli.ts history",
     "db:pending": "ts-node src/migrations/cli.ts pending",
     "db:studio": "drizzle-kit studio",
+    "db:backup": "ts-node scripts/backup-db.ts",
+    "db:restore": "ts-node scripts/restore-db.ts",
+    "db:restore:file": "ts-node scripts/restore-db.ts",
     "init:roles": "ts-node src/scripts/init-roles.ts"
   },
   "author": "",
