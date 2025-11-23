@@ -7,7 +7,7 @@ interface LoginRequiredProps {
   children: (handleAction: () => void) => ReactNode;
   onSuccess?: () => void;
   fallback?: ReactNode;
-  requirePatient?: boolean; // If true, only patients can access
+  requirePatient?: boolean;
 }
 
 export default function LoginRequired({ 
