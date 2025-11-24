@@ -2,7 +2,6 @@ import { Router, Request, Response, NextFunction } from "express";
 import { medicineService } from "../services/medicine.service";
 import { BadRequestError } from "../middleware/error.handler";
 import { ApiResponse } from "../core/api-response";
-import { upload, handleMulterError } from "../config/multer.config";
 
 export class MedicineRoute {
   private router: Router;
@@ -18,14 +17,6 @@ export class MedicineRoute {
 
     // GET /api/medicine/:id - Get medicine by ID
     this.router.get("/:id", this.getMedicineById);
-
-    // PATCH /api/medicine/:id/images - Update medicine images (max 4)
-    this.router.patch(
-      "/:id/images",
-      upload.array("images", 4),
-      handleMulterError,
-      this.updateMedicineImages
-    );
   }
 
   private getFeatured = async (req: Request, res: Response, next: NextFunction) => {
@@ -75,51 +66,8 @@ export class MedicineRoute {
         return next(BadRequestError("Invalid medicine ID"));
       }
 
-      // Get uploaded files
-      const files = req.files as Express.Multer.File[];
-
-      // Get existing image URLs from request body (sent as JSON array)
-      let existingImageUrls: string[] = [];
-      if (req.body.existingImages) {
-        try {
-          existingImageUrls = typeof req.body.existingImages === 'string' 
-            ? JSON.parse(req.body.existingImages) 
-            : req.body.existingImages;
-
-          if (!Array.isArray(existingImageUrls)) {
-            return next(BadRequestError("existingImages must be an array"));
-          }
-        } catch (error) {
-          return next(BadRequestError("Invalid existingImages format"));
-        }
-      }
-
-      // Validate total count
-      const totalImages = existingImageUrls.length + (files?.length || 0);
-      if (totalImages > 4) {
-        return next(
-          BadRequestError(
-            `Maximum 4 images allowed. You have ${existingImageUrls.length} existing images and trying to upload ${files?.length || 0} new images.`
-          )
-        );
-      }
-
-      if (totalImages === 0) {
-        return next(BadRequestError("At least one image is required"));
-      }
-
-      const updatedMedicine = await medicineService.updateMedicineImages(
-        medicineId,
-        files || [],
-        existingImageUrls
-      );
-
-      res.status(200).json(
-        ApiResponse(
-          updatedMedicine,
-          "Medicine images updated successfully"
-        )
-      );
+      const medicine = await medicineService.getMedicineById(medicineId);
+      res.status(200).json(ApiResponse(medicine, "Medicine retrieved successfully"));
     } catch (error) {
       next(error);
     }

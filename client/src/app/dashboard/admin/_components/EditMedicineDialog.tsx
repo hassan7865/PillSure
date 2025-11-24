@@ -218,58 +218,26 @@ export default function EditMedicineDialog({
         }
       });
 
-      // Upload images to S3 and update medicine
-      let updatedMedicine: Medicine;
-      if (newFiles.length > 0 || existingUrls.length !== (medicine.images as any[])?.length) {
-        // Images changed - use S3 upload endpoint
-        updatedMedicine = await adminApi.updateMedicineImages(
-          medicine.id,
-          newFiles,
-          existingUrls
-        );
-      } else {
-        // No image changes - use regular update endpoint
-        const updateData: UpdateMedicineRequest = {
-          medicineName: data.medicineName || undefined,
-          medicineUrl: data.medicineUrl || null,
-          price: data.price || null,
-          discount: data.discount || null,
-          stock: data.stock || null,
-          prescriptionRequired: data.prescriptionRequired,
-          drugDescription: data.drugDescription || null,
-          drugCategory: data.drugCategory || null,
-          drugVarient: data.drugVarient || null,
-        };
+      // Prepare update data
+      const updateData: UpdateMedicineRequest = {
+        medicineName: data.medicineName || undefined,
+        medicineUrl: data.medicineUrl || null,
+        price: data.price || null,
+        discount: data.discount || null,
+        stock: data.stock || null,
+        prescriptionRequired: data.prescriptionRequired,
+        drugDescription: data.drugDescription || null,
+        drugCategory: data.drugCategory || null,
+        drugVarient: data.drugVarient || null,
+      };
 
-        updatedMedicine = await adminApi.updateMedicine(medicine.id, updateData);
-      }
-
-      // If images were uploaded, update other fields separately if needed
-      if (newFiles.length > 0 && (
-        data.medicineName !== medicine.medicineName ||
-        data.price !== medicine.price ||
-        data.stock !== medicine.stock ||
-        data.discount !== medicine.discount ||
-        data.drugCategory !== medicine.drugCategory ||
-        data.drugVarient !== medicine.drugVarient ||
-        data.drugDescription !== medicine.drugDescription ||
-        data.prescriptionRequired !== medicine.prescriptionRequired
-      )) {
-        // Update other fields after image upload
-        const updateData: UpdateMedicineRequest = {
-          medicineName: data.medicineName || undefined,
-          medicineUrl: data.medicineUrl || null,
-          price: data.price || null,
-          discount: data.discount || null,
-          stock: data.stock || null,
-          prescriptionRequired: data.prescriptionRequired,
-          drugDescription: data.drugDescription || null,
-          drugCategory: data.drugCategory || null,
-          drugVarient: data.drugVarient || null,
-        };
-
-        await adminApi.updateMedicine(medicine.id, updateData);
-      }
+      // Use unified update API with images
+      const updatedMedicine = await adminApi.updateMedicine(
+        medicine.id,
+        updateData,
+        newFiles.length > 0 ? newFiles : undefined,
+        existingUrls.length > 0 ? existingUrls : undefined
+      );
 
       showSuccess("Medicine updated successfully", "The medicine has been updated.");
       handleClose();
