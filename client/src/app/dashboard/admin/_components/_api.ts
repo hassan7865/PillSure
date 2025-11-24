@@ -42,6 +42,34 @@ export const adminApi = {
     const response = await api.put<ApiResponse<Medicine>>(`/admin/medicines/${medicineId}`, data);
     return response.data.data!;
   },
+
+  updateMedicineImages: async (
+    medicineId: number,
+    newImages: File[],
+    existingImages: string[]
+  ): Promise<Medicine> => {
+    const formData = new FormData();
+
+    // Append new image files
+    newImages.forEach((file) => {
+      formData.append('images', file);
+    });
+
+    // Append existing image URLs as JSON string
+    formData.append('existingImages', JSON.stringify(existingImages));
+
+    const response = await api.patch<ApiResponse<Medicine>>(
+      `/medicine/${medicineId}/images`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    return response.data.data!;
+  },
 };
 
 export default adminApi;

@@ -107,10 +107,34 @@ export default function EditMedicineDialog({
     if (!files || files.length === 0) return;
 
     const currentImages = form.getValues("images") || [];
+    
+    // Validate: maximum 4 images allowed
+    const totalImages = currentImages.length + files.length;
+    if (totalImages > 4) {
+      showError(
+        "Too many images",
+        `Maximum 4 images allowed. You have ${currentImages.length} existing images and are trying to add ${files.length} more.`
+      );
+      event.target.value = '';
+      return;
+    }
+
     const newImages: ImageItem[] = [];
 
-    // Process each selected file
+    // Validate and process each selected file
     Array.from(files).forEach((file) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        showError("Invalid file type", `${file.name} is not an image file`);
+        return;
+      }
+
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        showError("File too large", `${file.name} exceeds 5MB limit`);
+        return;
+      }
+
       const url = URL.createObjectURL(file);
       newImages.push({
         url,
@@ -120,7 +144,9 @@ export default function EditMedicineDialog({
     });
 
     // Combine existing and new images
-    form.setValue("images", [...currentImages, ...newImages]);
+    if (newImages.length > 0) {
+      form.setValue("images", [...currentImages, ...newImages]);
+    }
     
     // Reset input
     event.target.value = '';
@@ -168,41 +194,83 @@ export default function EditMedicineDialog({
     if (!medicine) return;
 
     try {
-      // Handle images array - convert new files to base64, keep existing URLs
-      const processedImages: string[] = [];
-      
-      if (data.images && Array.isArray(data.images) && data.images.length > 0) {
-        for (const img of data.images) {
-          if (img.file) {
-            // Convert new file to base64
-            const base64 = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(img.file!);
-            });
-            processedImages.push(base64);
-          } else if (img.url && !img.url.startsWith('blob:')) {
-            // Keep existing URL (not a blob URL)
-            processedImages.push(img.url);
-          }
-        }
+      // Validate: at least 1 image, max 4 images
+      const images = data.images || [];
+      if (images.length === 0) {
+        showError("No images", "At least one image is required");
+        return;
       }
 
-      const updateData: UpdateMedicineRequest = {
-        medicineName: data.medicineName || undefined,
-        medicineUrl: data.medicineUrl || null,
-        price: data.price || null,
-        discount: data.discount || null,
-        stock: data.stock || null,
-        images: processedImages.length > 0 ? processedImages : null,
-        prescriptionRequired: data.prescriptionRequired,
-        drugDescription: data.drugDescription || null,
-        drugCategory: data.drugCategory || null,
-        drugVarient: data.drugVarient || null,
-      };
+      if (images.length > 4) {
+        showError("Too many images", "Maximum 4 images allowed");
+        return;
+      }
 
-      await adminApi.updateMedicine(medicine.id, updateData);
+      // Separate new files and existing URLs
+      const newFiles: File[] = [];
+      const existingUrls: string[] = [];
+
+      images.forEach((img) => {
+        if (img.file && img.isNew) {
+          newFiles.push(img.file);
+        } else if (img.url && !img.url.startsWith('blob:')) {
+          existingUrls.push(img.url);
+        }
+      });
+
+      // Upload images to S3 and update medicine
+      let updatedMedicine: Medicine;
+      if (newFiles.length > 0 || existingUrls.length !== (medicine.images as any[])?.length) {
+        // Images changed - use S3 upload endpoint
+        updatedMedicine = await adminApi.updateMedicineImages(
+          medicine.id,
+          newFiles,
+          existingUrls
+        );
+      } else {
+        // No image changes - use regular update endpoint
+        const updateData: UpdateMedicineRequest = {
+          medicineName: data.medicineName || undefined,
+          medicineUrl: data.medicineUrl || null,
+          price: data.price || null,
+          discount: data.discount || null,
+          stock: data.stock || null,
+          prescriptionRequired: data.prescriptionRequired,
+          drugDescription: data.drugDescription || null,
+          drugCategory: data.drugCategory || null,
+          drugVarient: data.drugVarient || null,
+        };
+
+        updatedMedicine = await adminApi.updateMedicine(medicine.id, updateData);
+      }
+
+      // If images were uploaded, update other fields separately if needed
+      if (newFiles.length > 0 && (
+        data.medicineName !== medicine.medicineName ||
+        data.price !== medicine.price ||
+        data.stock !== medicine.stock ||
+        data.discount !== medicine.discount ||
+        data.drugCategory !== medicine.drugCategory ||
+        data.drugVarient !== medicine.drugVarient ||
+        data.drugDescription !== medicine.drugDescription ||
+        data.prescriptionRequired !== medicine.prescriptionRequired
+      )) {
+        // Update other fields after image upload
+        const updateData: UpdateMedicineRequest = {
+          medicineName: data.medicineName || undefined,
+          medicineUrl: data.medicineUrl || null,
+          price: data.price || null,
+          discount: data.discount || null,
+          stock: data.stock || null,
+          prescriptionRequired: data.prescriptionRequired,
+          drugDescription: data.drugDescription || null,
+          drugCategory: data.drugCategory || null,
+          drugVarient: data.drugVarient || null,
+        };
+
+        await adminApi.updateMedicine(medicine.id, updateData);
+      }
+
       showSuccess("Medicine updated successfully", "The medicine has been updated.");
       handleClose();
       onUpdate(); // Refresh the medicines list
@@ -369,19 +437,33 @@ export default function EditMedicineDialog({
                   name="images"
                   render={() => {
                     const images = form.watch("images") || [];
+                    const remainingSlots = 4 - images.length;
                     return (
                       <FormItem>
-                        <Label htmlFor="medicineImages" className="text-sm font-medium">Medicine Images</Label>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="medicineImages" className="text-sm font-medium">Medicine Images</Label>
+                          <span className="text-xs text-muted-foreground">
+                            {images.length} / 4 images
+                          </span>
+                        </div>
                         <FormControl>
                           <div className="space-y-3">
-                            <Input
-                              id="medicineImages"
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              onChange={handleImageChange}
-                              className="w-full cursor-pointer"
-                            />
+                            {remainingSlots > 0 && (
+                              <div>
+                                <Input
+                                  id="medicineImages"
+                                  type="file"
+                                  accept="image/*"
+                                  multiple
+                                  onChange={handleImageChange}
+                                  className="w-full cursor-pointer"
+                                  disabled={images.length >= 4}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  You can add {remainingSlots} more image{remainingSlots !== 1 ? 's' : ''} (Max 5MB each)
+                                </p>
+                              </div>
+                            )}
                             {images.length > 0 ? (
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                 {images.map((img, index) => (
@@ -413,9 +495,14 @@ export default function EditMedicineDialog({
                                 <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                                   <Camera className="h-8 w-8 sm:h-10 sm:w-10" />
                                   <p className="text-xs sm:text-sm text-center px-4">No images selected</p>
-                                  <p className="text-xs text-muted-foreground/70">Select multiple images</p>
+                                  <p className="text-xs text-muted-foreground/70">Add up to 4 images (Max 5MB each)</p>
                                 </div>
                               </div>
+                            )}
+                            {images.length >= 4 && (
+                              <p className="text-xs text-amber-600 dark:text-amber-500">
+                                Maximum limit reached. Remove an image to add a new one.
+                              </p>
                             )}
                           </div>
                         </FormControl>
