@@ -3,6 +3,7 @@ import { AdminService } from "../services/admin.service";
 import { verifyToken } from "../middleware/jwt.handler";
 import { ApiResponse } from "../core/api-response";
 import { BadRequestError } from "../middleware/error.handler";
+import { upload, handleMulterError } from "../config/multer.config";
 
 export class AdminRoute {
   private router: Router;
@@ -44,10 +45,12 @@ export class AdminRoute {
       this.getMedicines.bind(this)
     );
 
-    // Admin medicine update endpoint
+    // Admin medicine update endpoint (with optional image uploads)
     this.router.put(
       "/medicines/:id",
       verifyToken,
+      upload.array("images", 4),
+      handleMulterError,
       this.updateMedicine.bind(this)
     );
   }
@@ -131,7 +134,41 @@ export class AdminRoute {
         return next(BadRequestError("Invalid medicine ID"));
       }
 
-      const result = await this.adminService.updateMedicine(medicineId, req.body);
+      // Get uploaded files
+      const files = req.files as Express.Multer.File[];
+
+      // Get existing image URLs from request body
+      let existingImageUrls: string[] = [];
+      if (req.body.existingImages) {
+        try {
+          existingImageUrls = typeof req.body.existingImages === 'string' 
+            ? JSON.parse(req.body.existingImages) 
+            : req.body.existingImages;
+
+          if (!Array.isArray(existingImageUrls)) {
+            return next(BadRequestError("existingImages must be an array"));
+          }
+        } catch (error) {
+          return next(BadRequestError("Invalid existingImages format"));
+        }
+      }
+
+      // Validate total images count
+      const totalImages = existingImageUrls.length + (files?.length || 0);
+      if (totalImages > 4) {
+        return next(
+          BadRequestError(
+            `Maximum 4 images allowed. You have ${existingImageUrls.length} existing images and trying to upload ${files?.length || 0} new images.`
+          )
+        );
+      }
+
+      const result = await this.adminService.updateMedicine(
+        medicineId, 
+        req.body,
+        files || [],
+        existingImageUrls
+      );
       res.status(200).json(ApiResponse(result, "Medicine updated successfully"));
     } catch (error: any) {
       if (error.message === "Medicine not found") {
