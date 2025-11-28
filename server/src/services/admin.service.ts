@@ -6,6 +6,7 @@ import { hospitals } from "../schema/hospitals";
 import { appointments } from "../schema/appointments";
 import { roles } from "../schema/roles";
 import { eq, sql, count, and, or, ilike, desc } from "drizzle-orm";
+import { s3Service } from "./s3.service";
 
 export class AdminService {
   async getStats() {
@@ -341,7 +342,14 @@ export class AdminService {
     }
   }
 
-  async updateMedicine(medicineId: number, data: any) {
+  async updateMedicine(
+    medicineId: number, 
+    data: any,
+    newImages: Express.Multer.File[] = [],
+    existingImageUrls: string[] = []
+  ) {
+    let uploadedImages: string[] = [];
+    
     try {
       // Check if medicine exists
       const existing = await db
@@ -354,25 +362,99 @@ export class AdminService {
         throw new Error("Medicine not found");
       }
 
-      // Build update data
+      // Build update data with validation
       const updateData: any = {};
 
-      if (data.medicineName !== undefined) updateData.medicineName = data.medicineName;
-      if (data.medicineUrl !== undefined) updateData.medicineUrl = data.medicineUrl;
-      if (data.price !== undefined) updateData.price = data.price?.toString() || null;
-      if (data.discount !== undefined) updateData.discount = data.discount?.toString() || null;
-      if (data.stock !== undefined) updateData.stock = data.stock !== null ? parseInt(String(data.stock)) : null;
-      if (data.images !== undefined) updateData.images = data.images;
+      if (data.medicineName !== undefined) {
+        const name = String(data.medicineName).trim();
+        if (name) updateData.medicineName = name;
+      }
+      if (data.medicineUrl !== undefined) {
+        const url = String(data.medicineUrl).trim();
+        updateData.medicineUrl = url || null;
+      }
+      if (data.price !== undefined) {
+        const priceNum = parseFloat(String(data.price));
+        if (!isNaN(priceNum) && priceNum >= 0) {
+          updateData.price = priceNum.toFixed(2);
+        } else {
+          updateData.price = null;
+        }
+      }
+      if (data.discount !== undefined) {
+        const discountNum = parseFloat(String(data.discount));
+        if (!isNaN(discountNum) && discountNum >= 0 && discountNum <= 100) {
+          updateData.discount = discountNum.toFixed(2);
+        } else {
+          updateData.discount = null;
+        }
+      }
+      if (data.stock !== undefined) {
+        const stockNum = parseInt(String(data.stock), 10);
+        if (!isNaN(stockNum) && stockNum >= 0) {
+          updateData.stock = stockNum;
+        } else {
+          updateData.stock = null;
+        }
+      }
       if (data.prescriptionRequired !== undefined) updateData.prescriptionRequired = Boolean(data.prescriptionRequired);
       if (data.drugDescription !== undefined) updateData.drugDescription = data.drugDescription || null;
       if (data.drugCategory !== undefined) updateData.drugCategory = data.drugCategory || null;
       if (data.drugVarient !== undefined) updateData.drugVarient = data.drugVarient || null;
 
-      // Update medicine
-      await db
-        .update(medicines)
-        .set(updateData)
-        .where(eq(medicines.id, medicineId));
+      // Handle image updates if files are provided or existingImages is sent
+      if (newImages.length > 0 || existingImageUrls.length > 0 || data.existingImages !== undefined) {
+        const currentImages = (existing[0].images as string[]) || [];
+
+        // Validate total images (existing + new) <= 4
+        const totalImages = existingImageUrls.length + newImages.length;
+        if (totalImages > 4) {
+          throw new Error(`Maximum 4 images allowed. You are trying to have ${totalImages} images.`);
+        }
+
+        // Upload new images to S3
+        if (newImages.length > 0) {
+          const uploadResults = await s3Service.uploadMultipleFiles(newImages, {
+            folder: "medicines",
+          });
+          uploadedImages = uploadResults.map((result) => result.url);
+        }
+
+        // Determine which images to delete
+        const imagesToDelete = currentImages.filter(
+          (imageUrl) => !existingImageUrls.includes(imageUrl)
+        );
+
+        // Combine existing and new images
+        const finalImages = [...existingImageUrls, ...uploadedImages];
+        updateData.images = sql`${JSON.stringify(finalImages)}::jsonb`;
+
+        // Update medicine in database first
+        await db
+          .update(medicines)
+          .set(updateData)
+          .where(eq(medicines.id, medicineId));
+
+        // Delete old images from S3 AFTER successful DB update (best-effort)
+        if (imagesToDelete.length > 0) {
+          const keysToDelete = imagesToDelete
+            .map((url) => s3Service.extractKeyFromUrl(url))
+            .filter((key): key is string => key !== null);
+
+          if (keysToDelete.length > 0) {
+            await s3Service.deleteMultipleFiles(keysToDelete).catch((err) => {
+              console.error("Warning: Failed to delete old images from S3:", err);
+              // Don't throw - DB update succeeded, S3 cleanup is best-effort
+            });
+          }
+        }
+      } else {
+        // No image updates, just update other fields
+        await db
+          .update(medicines)
+          .set(updateData)
+          .where(eq(medicines.id, medicineId));
+      }
 
       // Fetch and return updated medicine
       const updated = await db
@@ -384,6 +466,20 @@ export class AdminService {
       return updated[0];
     } catch (error) {
       console.error("Error updating medicine:", error);
+      
+      // Rollback: delete newly uploaded images if DB update fails
+      if (uploadedImages.length > 0) {
+        const keysToCleanup = uploadedImages
+          .map((url) => s3Service.extractKeyFromUrl(url))
+          .filter((key): key is string => key !== null);
+        
+        if (keysToCleanup.length > 0) {
+          await s3Service.deleteMultipleFiles(keysToCleanup).catch((cleanupErr) => {
+            console.error("Error cleaning up uploaded images after failure:", cleanupErr);
+          });
+        }
+      }
+      
       throw error;
     }
   }
