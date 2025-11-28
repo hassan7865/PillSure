@@ -14,6 +14,9 @@ export class MedicineRoute {
   private initializeRoutes() {
     // GET /api/medicine/featured?limit=6&category=Vitamins&uniqueCategories=true
     this.router.get("/featured", this.getFeatured);
+
+    // GET /api/medicine/:id - Get medicine by ID
+    this.router.get("/:id", this.getMedicineById);
   }
 
   private getFeatured = async (req: Request, res: Response, next: NextFunction) => {
@@ -35,6 +38,36 @@ export class MedicineRoute {
 
       const data = await medicineService.getFeaturedMedicines({ limit, category, uniqueCategories });
       res.status(200).json(ApiResponse(data, "Featured medicines retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getMedicineById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const medicineId = parseInt(req.params.id, 10);
+
+      if (isNaN(medicineId)) {
+        return next(BadRequestError("Invalid medicine ID"));
+      }
+
+      const medicine = await medicineService.getMedicineById(medicineId);
+      res.status(200).json(ApiResponse(medicine, "Medicine retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private updateMedicineImages = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const medicineId = parseInt(req.params.id, 10);
+
+      if (isNaN(medicineId)) {
+        return next(BadRequestError("Invalid medicine ID"));
+      }
+
+      const medicine = await medicineService.getMedicineById(medicineId);
+      res.status(200).json(ApiResponse(medicine, "Medicine retrieved successfully"));
     } catch (error) {
       next(error);
     }
