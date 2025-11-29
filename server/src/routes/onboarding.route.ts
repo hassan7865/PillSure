@@ -41,34 +41,91 @@ export class OnboardingRoutes {
   private async savePatientOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.userId;
-      const data: PatientOnboardingRequest = req.body;
+        const userRole = (req as any).user.role;
+      
+      // Check if onboarding is already complete
+      const status = await this.onboardingService.getOnboardingStatus(userId);
+      if (status.isOnboardingComplete) {
+        const redirectPath = this.getRedirectPath(userRole);
+        return res.status(200).json(ApiResponse(
+          { shouldRedirect: true, redirectTo: redirectPath, role: userRole },
+          "Onboarding is already complete.",
+        ));
+      }
 
+      const data: PatientOnboardingRequest = req.body;
       const result = await this.onboardingService.savePatientOnboarding(userId, data);
-      res.status(200).json(ApiResponse(result, "Patient data saved successfully"));
+      const redirectPath = result.isOnboardingComplete ? this.getRedirectPath(userRole) : undefined;
+      res.status(200).json(ApiResponse(
+        {
+          ...result,
+          role: userRole,
+          ...(result.isOnboardingComplete ? { shouldRedirect: true, redirectTo: redirectPath } : {})
+        },
+        result.isOnboardingComplete ? "Onboarding completed successfully." : "Patient data saved successfully."
+      ));
     } catch (error) {
       next(error);
     }
   }
 
   private async saveDoctorOnboarding(req: Request, res: Response, next: NextFunction) {
+      const userRole = (req as any).user.role;
     try {
       const userId = (req as any).user.userId;
-      const data: DoctorOnboardingRequest = req.body;
+      
+      // Check if onboarding is already complete
+      const status = await this.onboardingService.getOnboardingStatus(userId);
+      if (status.isOnboardingComplete) {
+        const redirectPath = this.getRedirectPath(userRole);
+        return res.status(200).json(ApiResponse(
+          { shouldRedirect: true, redirectTo: redirectPath, role: userRole },
+          "Onboarding is already complete.",
+        ));
+      }
 
+      const data: DoctorOnboardingRequest = req.body;
       const result = await this.onboardingService.saveDoctorOnboarding(userId, data);
-      res.status(200).json(ApiResponse(result, "Doctor data saved successfully"));
+      const redirectPath = result.isOnboardingComplete ? this.getRedirectPath(userRole) : undefined;
+      res.status(200).json(ApiResponse(
+        {
+          ...result,
+          role: userRole,
+          ...(result.isOnboardingComplete ? { shouldRedirect: true, redirectTo: redirectPath } : {})
+        },
+        result.isOnboardingComplete ? "Onboarding completed successfully." : "Doctor data saved successfully."
+      ));
     } catch (error) {
       next(error);
     }
   }
 
   private async saveHospitalOnboarding(req: Request, res: Response, next: NextFunction) {
+      const userRole = (req as any).user.role;
     try {
       const userId = (req as any).user.userId;
-      const data: HospitalOnboardingRequest = req.body;
+      
+      // Check if onboarding is already complete
+      const status = await this.onboardingService.getOnboardingStatus(userId);
+      if (status.isOnboardingComplete) {
+        const redirectPath = this.getRedirectPath(userRole);
+        return res.status(200).json(ApiResponse(
+          { shouldRedirect: true, redirectTo: redirectPath, role: userRole },
+          "Onboarding is already complete.",
+        ));
+      }
 
+      const data: HospitalOnboardingRequest = req.body;
       const result = await this.onboardingService.saveHospitalOnboarding(userId, data);
-      res.status(200).json(ApiResponse(result, "Hospital data saved successfully"));
+      const redirectPath = result.isOnboardingComplete ? this.getRedirectPath(userRole) : undefined;
+      res.status(200).json(ApiResponse(
+        {
+          ...result,
+          role: userRole,
+          ...(result.isOnboardingComplete ? { shouldRedirect: true, redirectTo: redirectPath } : {})
+        },
+        result.isOnboardingComplete ? "Onboarding completed successfully." : "Hospital data saved successfully."
+      ));
     } catch (error) {
       next(error);
     }
@@ -106,6 +163,7 @@ export class OnboardingRoutes {
   }
 
   private async updateOnboardingStep(req: Request, res: Response, next: NextFunction) {
+      const userRole = (req as any).user.role;
     try {
       const userId = (req as any).user.userId;
       const { step } = req.body;
@@ -114,8 +172,18 @@ export class OnboardingRoutes {
         return next(ValidationError("Invalid step number. Must be between 0 and 3"));
       }
 
+      // Check if onboarding is already complete
+      const status = await this.onboardingService.getOnboardingStatus(userId);
+      if (status.isOnboardingComplete) {
+        const redirectPath = this.getRedirectPath(userRole);
+        return res.status(200).json(ApiResponse(
+          { shouldRedirect: true, redirectTo: redirectPath, role: userRole },
+          "Onboarding is already complete."
+        ));
+      }
+
       const result = await this.onboardingService.updateOnboardingStep(userId, step);
-      res.status(200).json(ApiResponse(result, `Onboarding step updated to ${step}`));
+      res.status(200).json(ApiResponse(result, `Onboarding step updated to ${step}.`));
     } catch (error) {
       next(error);
     }
@@ -124,10 +192,34 @@ export class OnboardingRoutes {
   private async getOnboardingStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = (req as any).user.userId;
+      const userRole = (req as any).user.role;
       const result = await this.onboardingService.getOnboardingStatus(userId);
-      res.status(200).json(ApiResponse(result, "Onboarding status retrieved successfully"));
+      const redirectPath = result.isOnboardingComplete ? this.getRedirectPath(userRole) : undefined;
+      res.status(200).json(ApiResponse(
+        {
+          ...result,
+          role: userRole,
+          ...(result.isOnboardingComplete ? { shouldRedirect: true, redirectTo: redirectPath } : {})
+        },
+        "Onboarding status retrieved successfully."
+      ));
     } catch (error) {
       next(error);
+    }
+  }
+
+
+  private getRedirectPath(role: string): string {
+    const r = (role || '').toLowerCase();
+    switch (r) {
+      case 'doctor':
+        return '/dashboard/doctor';
+      case 'admin':
+        return '/dashboard/admin';
+      case 'hospital':
+        return '/dashboard/hospital';
+      default:
+        return '/dashboard';
     }
   }
 
