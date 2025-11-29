@@ -83,7 +83,9 @@ export class AuthService {
           lastName: users.lastName,
           isGoogle: users.isGoogle,
           isActive: users.isActive,
-          roleName: roles.name
+          roleName: roles.name,
+          onboardingStep: users.onboardingStep,
+          isOnboardingComplete: users.isOnboardingComplete
         })
         .from(users)
         .innerJoin(roles, eq(users.roleId, roles.id))
@@ -126,7 +128,9 @@ export class AuthService {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.roleName as UserRole,
-          isGoogle: user.isGoogle
+          isGoogle: user.isGoogle,
+          onboardingStep: user.onboardingStep,
+          isOnboardingComplete: user.isOnboardingComplete
         }
       };
   }
@@ -141,7 +145,9 @@ export class AuthService {
           lastName: users.lastName,
           isGoogle: users.isGoogle,
           isActive: users.isActive,
-          roleName: roles.name
+          roleName: roles.name,
+          onboardingStep: users.onboardingStep,
+          isOnboardingComplete: users.isOnboardingComplete
         })
         .from(users)
         .innerJoin(roles, eq(users.roleId, roles.id))
@@ -179,7 +185,9 @@ export class AuthService {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.roleName as UserRole,
-          isGoogle: user.isGoogle
+          isGoogle: user.isGoogle,
+          onboardingStep: user.onboardingStep,
+          isOnboardingComplete: user.isOnboardingComplete
         }
       };
   }
