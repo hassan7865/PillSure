@@ -116,13 +116,13 @@ interface UserAvatarProfileProps {
 const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps) => {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-sm font-medium shadow-lg">
+      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-sm font-medium shadow-lg shrink-0">
         {user.name.charAt(0).toUpperCase()}
       </div>
       {showInfo && (
         <div className="flex flex-col">
           <span className="text-sm font-medium">{user.name}</span>
-          <span className="text-xs text-muted-foreground">{user.email}</span>
+          <span className="text-[10px] text-current opacity-70">{user.email}</span>
         </div>
       )}
     </div>

@@ -5,6 +5,36 @@ import { useCustomToast } from '@/hooks/use-custom-toast';
 import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/error-utils';
 
+
+const handleRedirectResponse = (
+  response: any,
+  router: ReturnType<typeof useRouter>,
+  showSuccess: (title: string, description?: string) => void,
+  fallbackPath: string,
+  successTitle: string
+) => {
+  if (response?.shouldRedirect && response?.redirectTo) {
+    showSuccess(successTitle, 'Redirecting to your dashboard');
+    router.push(response.redirectTo);
+    return true;
+  }
+  if (response?.isOnboardingComplete) {
+    showSuccess(successTitle, 'Welcome to PillSure!');
+    if (typeof window !== 'undefined') {
+      const returnUrl = sessionStorage.getItem('returnUrl');
+      if (returnUrl) {
+        sessionStorage.removeItem('returnUrl');
+        sessionStorage.removeItem('requirePatient');
+        router.push(returnUrl);
+        return true;
+      }
+    }
+    router.push(fallbackPath);
+    return true;
+  }
+  return false;
+};
+
 // Patient onboarding hook - handles both save and final submission
 export const usePatientOnboarding = () => {
   const { showSuccess, showError } = useCustomToast();
@@ -12,27 +42,18 @@ export const usePatientOnboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const handleRedirect = useCallback(
+    (response: any, fallbackPath: string, successTitle: string) =>
+      handleRedirectResponse(response, router, showSuccess, fallbackPath, successTitle),
+    [router, showSuccess]
+  );
+
   const mutate = useCallback(async (data: PatientOnboardingRequest) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await onboardingApi.savePatientOnboarding(data);
-      if (response?.isOnboardingComplete) {
-        showSuccess('Patient profile created successfully!', 'Welcome to PillSure!');
-        
-        // Check for return URL first
-        if (typeof window !== 'undefined') {
-          const returnUrl = sessionStorage.getItem('returnUrl');
-          if (returnUrl) {
-            sessionStorage.removeItem('returnUrl');
-            sessionStorage.removeItem('requirePatient'); // Clear patient requirement flag
-            router.push(returnUrl);
-            return response;
-          }
-        }
-        
-        router.push('/');
-      }
+      handleRedirect(response, '/', 'Patient onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -59,21 +80,7 @@ export const useDoctorOnboarding = () => {
     setError(null);
     try {
       const response = await onboardingApi.saveDoctorOnboarding(data);
-      if (response?.isOnboardingComplete) {
-        showSuccess('Doctor profile created successfully!', 'Welcome to PillSure!');
-        
-        // Check for return URL first
-        if (typeof window !== 'undefined') {
-          const returnUrl = sessionStorage.getItem('returnUrl');
-          if (returnUrl) {
-            sessionStorage.removeItem('returnUrl');
-            router.push(returnUrl);
-            return response;
-          }
-        }
-        
-        router.push('/dashboard');
-      }
+      handleRedirectResponse(response, router, showSuccess, '/dashboard', 'Doctor onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -100,21 +107,7 @@ export const useHospitalOnboarding = () => {
     setError(null);
     try {
       const response = await onboardingApi.saveHospitalOnboarding(data);
-      if (response?.isOnboardingComplete) {
-        showSuccess('Hospital profile created successfully!', 'Welcome to PillSure!');
-        
-        // Check for return URL first
-        if (typeof window !== 'undefined') {
-          const returnUrl = sessionStorage.getItem('returnUrl');
-          if (returnUrl) {
-            sessionStorage.removeItem('returnUrl');
-            router.push(returnUrl);
-            return response;
-          }
-        }
-        
-        router.push('/dashboard');
-      }
+      handleRedirectResponse(response, router, showSuccess, '/dashboard', 'Hospital onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
