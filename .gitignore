@@ -99,3 +99,7 @@ temp/
 server/backups/*.sql
 !server/backups/.gitkeep
 
+# Large data files (CSV files should not be committed)
+server/data/*.csv
+!server/data/.gitkeep
+
