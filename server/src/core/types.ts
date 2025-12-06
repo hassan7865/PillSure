@@ -61,7 +61,7 @@ export interface PatientOnboardingRequest {
   mobile: string;
   dateOfBirth: string;
   address: string;
-  bloodGroup: string;
+  bloodGroup?: string; // Optional field
   hasCovid?: boolean;
   pastMedicalHistory?: string[];
   surgicalHistory?: string;

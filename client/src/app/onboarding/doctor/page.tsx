@@ -257,6 +257,7 @@ export default function DoctorOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <User className="h-3.5 w-3.5 text-primary" />
                         Gender
+                        <span className="text-destructive">*</span>
                       </Label>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
@@ -289,6 +290,7 @@ export default function DoctorOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Phone className="h-3.5 w-3.5 text-primary" />
                         Mobile Number
+                        <span className="text-destructive">*</span>
                       </Label>
                       <FormControl>
                         <div className="flex items-center space-x-0">
@@ -388,6 +390,7 @@ export default function DoctorOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Stethoscope className="h-3.5 w-3.5 text-primary" />
                         Specializations (Select multiple)
+                        <span className="text-destructive">*</span>
                       </Label>
                       <p className="text-sm text-muted-foreground mb-2">Choose all your areas of expertise</p>
                       <FormControl>
@@ -448,46 +451,57 @@ export default function DoctorOnboarding() {
                 
                 <Separator />
                 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <GraduationCap className="h-4 w-4 text-primary" />
-                    <Label className="text-base font-semibold text-foreground">Qualifications</Label>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={qualificationInput}
-                      onChange={(e) => setQualificationInput(e.target.value)}
-                      placeholder="Add Qualification (e.g., MBBS, MD)"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddQualification();
-                        }
-                      }}
-                      className="h-9"
-                    />
-                    <Button type="button" onClick={handleAddQualification} variant="default" size="icon" className="h-9 w-9">
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {qualifications.map((q) => (
-                      <Badge key={q} variant="secondary" className="flex items-center gap-1 px-3 py-1">
-                        {q}
-                        <X
-                          className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
-                          onClick={() => {
-                            const updated = qualifications.filter((_, i) => i !== qualifications.indexOf(q));
-                            form.setValue("qualifications", updated);
-                          }}
-                        />
-                      </Badge>
-                    ))}
-                  </div>
-                  {form.formState.errors.qualifications && (
-                    <p className="text-destructive text-sm">{form.formState.errors.qualifications.message}</p>
+                <FormField
+                  control={form.control}
+                  name="qualifications"
+                  rules={{
+                    validate: (value) =>
+                      value && value.length > 0 ? true : "Add at least one qualification"
+                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="space-y-3">
+                        <Label className="flex items-center gap-1.5 text-base font-semibold">
+                          <GraduationCap className="h-4 w-4 text-primary" />
+                          Qualifications
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={qualificationInput}
+                            onChange={(e) => setQualificationInput(e.target.value)}
+                            placeholder="Add Qualification (e.g., MBBS, MD)"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddQualification();
+                              }
+                            }}
+                            className="h-9"
+                          />
+                          <Button type="button" onClick={handleAddQualification} variant="default" size="icon" className="h-9 w-9">
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {qualifications.map((q) => (
+                            <Badge key={q} variant="secondary" className="flex items-center gap-1 px-3 py-1">
+                              {q}
+                              <X
+                                className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                                onClick={() => {
+                                  const updated = qualifications.filter((_, i) => i !== qualifications.indexOf(q));
+                                  form.setValue("qualifications", updated, { shouldValidate: true });
+                                }}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
                   )}
-                </div>
+                />
                 
                 <Separator />
                 
@@ -507,6 +521,7 @@ export default function DoctorOnboarding() {
                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                           <Clock className="h-3.5 w-3.5 text-primary" />
                           Years of Experience
+                          <span className="text-destructive">*</span>
                         </Label>
                         <FormControl>
                           <Input type="number" placeholder="Years of Experience" {...field} className="h-9" />
@@ -530,6 +545,7 @@ export default function DoctorOnboarding() {
                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                           <Pill className="h-3.5 w-3.5 text-primary" />
                           Consultation Fee (PKR)
+                          <span className="text-destructive">*</span>
                         </Label>
                         <FormControl>
                           <Input type="number" placeholder="Fee in PKR" {...field} className="h-9" />

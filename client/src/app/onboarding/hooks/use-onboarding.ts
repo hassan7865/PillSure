@@ -63,7 +63,7 @@ export const usePatientOnboarding = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showSuccess, showError, router]);
+  }, [showSuccess, showError, router, handleRedirect]);
 
   return { mutate, mutateAsync: mutate, isLoading, error };
 };
@@ -75,12 +75,18 @@ export const useDoctorOnboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const handleRedirect = useCallback(
+    (response: any, fallbackPath: string, successTitle: string) =>
+      handleRedirectResponse(response, router, showSuccess, fallbackPath, successTitle),
+    [router, showSuccess]
+  );
+
   const mutate = useCallback(async (data: DoctorOnboardingRequest) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await onboardingApi.saveDoctorOnboarding(data);
-      handleRedirectResponse(response, router, showSuccess, '/dashboard', 'Doctor onboarding completed');
+      handleRedirect(response, '/dashboard/doctor', 'Doctor onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -90,7 +96,7 @@ export const useDoctorOnboarding = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showSuccess, showError, router]);
+  }, [showSuccess, showError, router, handleRedirect]);
 
   return { mutate, mutateAsync: mutate, isLoading, error };
 };
@@ -102,12 +108,18 @@ export const useHospitalOnboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const handleRedirect = useCallback(
+    (response: any, fallbackPath: string, successTitle: string) =>
+      handleRedirectResponse(response, router, showSuccess, fallbackPath, successTitle),
+    [router, showSuccess]
+  );
+
   const mutate = useCallback(async (data: HospitalOnboardingRequest) => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await onboardingApi.saveHospitalOnboarding(data);
-      handleRedirectResponse(response, router, showSuccess, '/dashboard', 'Hospital onboarding completed');
+      handleRedirect(response, '/dashboard/hospital', 'Hospital onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -117,7 +129,7 @@ export const useHospitalOnboarding = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showSuccess, showError, router]);
+  }, [showSuccess, showError, router, handleRedirect]);
 
   return { mutate, mutateAsync: mutate, isLoading, error };
 };

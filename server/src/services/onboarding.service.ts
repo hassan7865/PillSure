@@ -2,354 +2,385 @@ import { db } from '../config/database';
 import { users, patients, hospitals } from '../schema';
 import { doctors } from '../schema/doctor';
 import { eq } from 'drizzle-orm';
-import { createError } from '../middleware/error.handler';
+import { createError, ValidationError } from '../middleware/error.handler';
 import { 
   PatientOnboardingRequest, 
   DoctorOnboardingRequest, 
   HospitalOnboardingRequest
 } from '../core/types';
-// Services should return raw data, not formatted responses
 
 export class OnboardingService {
   constructor() {}
 
+  // =========================================================
+  // PATIENT ONBOARDING
+  // =========================================================
   async savePatientOnboarding(userId: string, data: PatientOnboardingRequest) {
-    // Check if user exists
-    const user = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (user.length === 0) {
-      throw createError("User not found", 404);
-    }
-
-    // Check if patient already exists
-    const existingPatient = await db
-      .select({ id: patients.id })
-      .from(patients)
-      .where(eq(patients.userId, userId))
-      .limit(1);
-
-    // Determine if all required fields are present for completion
-    const isComplete = !!(data.gender && data.mobile && data.dateOfBirth && data.address && data.bloodGroup);
-
-    if (existingPatient.length > 0) {
-      // Update existing patient - only update provided fields
-      const updateData: any = { updatedAt: new Date() };
+    return await db.transaction(async (tx) => {
+      // 1. Check User
+      const user = await tx
+        .select({ id: users.id, onboardingStep: users.onboardingStep })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
       
-      if (data.gender) updateData.gender = data.gender;
-      if (data.mobile) updateData.mobile = data.mobile;
-      if (data.dateOfBirth) updateData.dateOfBirth = data.dateOfBirth;
-      if (data.address) updateData.address = data.address;
-      if (data.bloodGroup) updateData.bloodGroup = data.bloodGroup;
-      if (data.hasCovid !== undefined) updateData.hasCovid = data.hasCovid;
-      if (data.surgicalHistory !== undefined) updateData.surgicalHistory = data.surgicalHistory;
-      if (data.allergies !== undefined) updateData.allergies = data.allergies;
+      if (user.length === 0) {
+        throw createError("User not found", 404);
+      }
+
+      // 2. Fetch Existing Patient Data
+      const existingPatient = await tx
+        .select()
+        .from(patients)
+        .where(eq(patients.userId, userId))
+        .limit(1);
       
-      // JSONB field - no JSON.stringify needed
-      if (data.pastMedicalHistory && data.pastMedicalHistory.length > 0) {
-        updateData.pastMedicalHistory = data.pastMedicalHistory;
+      const current = existingPatient[0] || {};
+
+      // 3. MERGE DATA (Incoming > Existing > Default)
+      const finalData = {
+        gender: data.gender !== undefined ? data.gender : current.gender,
+        mobile: data.mobile !== undefined ? data.mobile : current.mobile,
+        dateOfBirth: data.dateOfBirth !== undefined ? data.dateOfBirth : current.dateOfBirth,
+        address: data.address !== undefined ? data.address : current.address,
+        bloodGroup: data.bloodGroup !== undefined ? data.bloodGroup : current.bloodGroup,
+        hasCovid: data.hasCovid !== undefined ? data.hasCovid : (current.hasCovid || false),
+        pastMedicalHistory: data.pastMedicalHistory !== undefined ? data.pastMedicalHistory : (current.pastMedicalHistory || null),
+        surgicalHistory: data.surgicalHistory !== undefined ? data.surgicalHistory : (current.surgicalHistory || null),
+        allergies: data.allergies !== undefined ? data.allergies : (current.allergies || null),
+      };
+
+      // 4. VALIDATION - Required fields for patient onboarding
+      // Step 1 (Personal Info): gender, mobile, dateOfBirth, address
+      // Step 2 (Medical Info): bloodGroup (but only validated if provided with step 2 data)
+      const missingFields: string[] = [];
+      if (!finalData.gender) missingFields.push('Gender');
+      if (!finalData.mobile) missingFields.push('Mobile');
+      if (!finalData.dateOfBirth) missingFields.push('Date of Birth');
+      if (!finalData.address) missingFields.push('Address');
+
+      if (missingFields.length > 0) {
+        throw ValidationError(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Check if blood group is provided
+      const hasBloodGroup = data.bloodGroup && data.bloodGroup !== '';
+      if (!hasBloodGroup) {
+        // Allow empty blood group - frontend will handle step-based requirement
+        finalData.bloodGroup = current.bloodGroup || '';
+      }
+
+      // 5. SAVE TO DB
+      if (existingPatient.length > 0) {
+        await tx
+          .update(patients)
+          .set({ ...finalData, updatedAt: new Date() })
+          .where(eq(patients.userId, userId));
+      } else {
+        await tx.insert(patients).values({
+          userId,
+          ...finalData,
+        });
+      }
+
+      // 6. UPDATE USER STATUS
+      // Progression logic:
+      // - If no blood group provided → step 1 (first save on personal info)
+      // - If blood group provided → step 3 (completing with medical details)
+      // - If already at step >= 1, and blood group now provided → step 3 (completing)
+      
+      const currentStep = user[0].onboardingStep || 0;
+      
+      // Determine new step
+      let newStep: number;
+      let isComplete: boolean;
+      
+      if (hasBloodGroup) {
+        // User has provided blood group - mark as complete
+        newStep = 3;
+        isComplete = true;
+      } else {
+        // No blood group - user is still on step 1 (personal info only)
+        newStep = 1;
+        isComplete = false;
       }
       
-      await db
-        .update(patients)
-        .set(updateData)
-        .where(eq(patients.userId, userId));
-    } else {
-      // Create new patient
-      await db
-        .insert(patients)
-        .values({
-          userId,
-          gender: data.gender || 'male',
-          mobile: data.mobile || '',
-          dateOfBirth: data.dateOfBirth || new Date().toISOString(),
-          address: data.address || '',
-          bloodGroup: data.bloodGroup || '',
-          hasCovid: data.hasCovid || false,
-          pastMedicalHistory: data.pastMedicalHistory || null,
-          surgicalHistory: data.surgicalHistory || null,
-          allergies: data.allergies || null,
-        });
-    }
-
-    // Update user onboarding status if complete
-    if (isComplete) {
-      await db
+      await tx
         .update(users)
         .set({
-          onboardingStep: 3,
-          isOnboardingComplete: true,
+          onboardingStep: newStep,
+          isOnboardingComplete: isComplete,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
-    }
 
-    return {
-      onboardingStep: isComplete ? 3 : 2,
-      isOnboardingComplete: isComplete,
-    };
+      return {
+        onboardingStep: newStep,
+        isOnboardingComplete: isComplete,
+      };
+    });
   }
 
+  // =========================================================
+  // DOCTOR ONBOARDING
+  // =========================================================
   async saveDoctorOnboarding(userId: string, data: DoctorOnboardingRequest) {
-    // Check if user exists
-    const user = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (user.length === 0) {
-      throw createError("User not found", 404);
-    }
-
-    // Check if doctor already exists
-    const existingDoctor = await db
-      .select({ id: doctors.id })
-      .from(doctors)
-      .where(eq(doctors.userId, userId))
-      .limit(1);
-
-    // Determine if all required fields are present for completion
-    const isComplete = !!(data.gender && data.mobile && data.specializationIds?.length && 
-                         data.qualifications?.length && data.experienceYears && data.address && 
-                         data.consultationModes?.length && data.availableDays?.length);
-
-    if (existingDoctor.length > 0) {
-      // Update existing doctor - only update provided fields
-      const updateData: any = { updatedAt: new Date() };
+    return await db.transaction(async (tx) => {
+      // 1. Check User
+      const user = await tx
+        .select({ id: users.id, onboardingStep: users.onboardingStep })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
       
-      if (data.gender) updateData.gender = data.gender;
-      if (data.mobile) updateData.mobile = data.mobile;
-      if (data.address) updateData.address = data.address;
-      if (data.image !== undefined) updateData.image = data.image;
-      if (data.experienceYears !== undefined) updateData.experienceYears = data.experienceYears;
-      if (data.feePkr !== undefined) updateData.feePkr = data.feePkr.toString();
-      if (data.openingTime !== undefined) updateData.openingTime = data.openingTime;
-      if (data.closingTime !== undefined) updateData.closingTime = data.closingTime;
+      if (user.length === 0) {
+        throw createError("User not found", 404);
+      }
+
+      // 2. Fetch Existing Doctor Data
+      const existingDoctor = await tx
+        .select()
+        .from(doctors)
+        .where(eq(doctors.userId, userId))
+        .limit(1);
       
-    
-      if (data.specializationIds && data.specializationIds.length > 0) {
-        updateData.specializationIds = data.specializationIds;
+      const current = existingDoctor[0] || {};
+
+      // 3. MERGE DATA
+      const finalData = {
+        gender: data.gender !== undefined ? data.gender : current.gender,
+        mobile: data.mobile !== undefined ? data.mobile : current.mobile,
+        experienceYears: data.experienceYears !== undefined ? data.experienceYears : current.experienceYears,
+        specializationIds: data.specializationIds !== undefined 
+          ? data.specializationIds 
+          : (Array.isArray(current.specializationIds) ? current.specializationIds : []),
+        qualifications: data.qualifications !== undefined 
+          ? data.qualifications 
+          : (Array.isArray(current.qualifications) ? current.qualifications : []),
+        consultationModes: data.consultationModes !== undefined 
+          ? data.consultationModes 
+          : (Array.isArray(current.consultationModes) ? current.consultationModes : []),
+        availableDays: data.availableDays !== undefined 
+          ? data.availableDays 
+          : (Array.isArray(current.availableDays) ? current.availableDays : []),
+        address: data.address !== undefined ? data.address : (current.address || ''),
+        image: data.image !== undefined ? data.image : (current.image || null),
+        feePkr: data.feePkr !== undefined ? data.feePkr.toString() : (current.feePkr || null),
+        openingTime: data.openingTime !== undefined ? data.openingTime : (current.openingTime || null),
+        closingTime: data.closingTime !== undefined ? data.closingTime : (current.closingTime || null),
+      };
+
+      // 4. VALIDATION - Required fields for doctor
+      // Step 1 (Info): gender, mobile
+      // Step 2 (Details): experienceYears, specializationIds, qualifications, feePkr
+      const missingFields: string[] = [];
+      if (!finalData.gender) missingFields.push('Gender');
+      if (!finalData.mobile) missingFields.push('Mobile');
+
+      if (missingFields.length > 0) {
+        throw ValidationError(`Missing required fields: ${missingFields.join(', ')}`);
       }
-      if (data.qualifications && data.qualifications.length > 0) {
-        updateData.qualifications = data.qualifications;
-      }
-      if (data.consultationModes && data.consultationModes.length > 0) {
-        updateData.consultationModes = data.consultationModes;
-      }
-      if (data.availableDays && data.availableDays.length > 0) {
-        updateData.availableDays = data.availableDays;
-      }
-      
-      await db
-        .update(doctors)
-        .set(updateData)
-        .where(eq(doctors.userId, userId));
-    } else {
-      // Create new doctor
-      await db
-        .insert(doctors)
-        .values({
+
+      // Check if doctor details are complete (for completion)
+      const hasExperienceYears = finalData.experienceYears !== undefined && finalData.experienceYears !== null;
+      const hasSpecializations = finalData.specializationIds && finalData.specializationIds.length > 0;
+      const hasQualifications = finalData.qualifications && finalData.qualifications.length > 0;
+      const hasFee = finalData.feePkr !== null && finalData.feePkr !== undefined;
+
+      // 5. SAVE TO DB
+      if (existingDoctor.length > 0) {
+        await tx
+          .update(doctors)
+          .set({ ...finalData, updatedAt: new Date() })
+          .where(eq(doctors.userId, userId));
+      } else {
+        await tx.insert(doctors).values({
           userId,
-          gender: data.gender || 'male',
-          mobile: data.mobile || '',
-          specializationIds: data.specializationIds || [],
-          qualifications: data.qualifications || [],
-          experienceYears: data.experienceYears || 0,
+          gender: finalData.gender,
+          mobile: finalData.mobile,
+          experienceYears: finalData.experienceYears || 0, // Default 0 if not provided
+          specializationIds: finalData.specializationIds || [], // Default empty array
+          qualifications: finalData.qualifications || [], // Default empty array
           patientSatisfactionRate: "0.00",
-          address: data.address || '',
-          image: data.image || null,
-          feePkr: data.feePkr ? data.feePkr.toString() : null,
-          consultationModes: data.consultationModes || [],
-          openingTime: data.openingTime || null,
-          closingTime: data.closingTime || null,
-          availableDays: data.availableDays || [],
+          address: finalData.address || "",
+          consultationModes: finalData.consultationModes || [],
+          availableDays: finalData.availableDays || [],
+          image: finalData.image || null,
+          feePkr: finalData.feePkr || null,
+          openingTime: finalData.openingTime || null,
+          closingTime: finalData.closingTime || null,
         });
-    }
+      }
 
-    // Update user onboarding status if complete
-    if (isComplete) {
-      await db
+      // 6. UPDATE USER STATUS
+      // Only mark as complete if all details are provided
+      // Otherwise, keep at step 1 (incomplete)
+      const isComplete: boolean = hasExperienceYears && hasSpecializations && hasQualifications && hasFee;
+      const newStep = isComplete ? 3 : 1;
+      
+      await tx
         .update(users)
         .set({
-          onboardingStep: 3,
-          isOnboardingComplete: true,
+          onboardingStep: newStep,
+          isOnboardingComplete: isComplete,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
-    }
 
-    return {
-      onboardingStep: isComplete ? 3 : 2,
-      isOnboardingComplete: isComplete,
-    };
+      return {
+        onboardingStep: newStep,
+        isOnboardingComplete: isComplete,
+      };
+    });
   }
 
+  // =========================================================
+  // HOSPITAL ONBOARDING
+  // =========================================================
   async saveHospitalOnboarding(userId: string, data: HospitalOnboardingRequest) {
-    // Check if user exists
-    const user = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (user.length === 0) {
-      throw createError("User not found", 404);
-    }
-
-    // Check if hospital already exists for this user
-    const existingHospital = await db
-      .select({ id: hospitals.id })
-      .from(hospitals)
-      .where(eq(hospitals.userId, userId))
-      .limit(1);
-
-    // Determine if all required fields are present for completion
-    const isComplete = !!(data.hospitalName && data.hospitalAddress && data.hospitalContactNo && 
-                         data.hospitalEmail && data.licenseNo && data.adminName);
-
-    if (existingHospital.length > 0) {
-      // Update existing hospital - only update provided fields
-      const updateData: any = { updatedAt: new Date() };
+    return await db.transaction(async (tx) => {
+      // 1. Check User
+      const user = await tx
+        .select({ id: users.id, onboardingStep: users.onboardingStep })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
       
-      if (data.hospitalName) updateData.hospitalName = data.hospitalName;
-      if (data.hospitalAddress) updateData.hospitalAddress = data.hospitalAddress;
-      if (data.hospitalContactNo) updateData.hospitalContactNo = data.hospitalContactNo;
-      if (data.hospitalEmail) updateData.hospitalEmail = data.hospitalEmail;
-      if (data.websiteHospital !== undefined) updateData.websiteHospital = data.websiteHospital;
-      if (data.licenseNo) updateData.licenseNo = data.licenseNo;
-      if (data.adminName) updateData.adminName = data.adminName;
+      if (user.length === 0) {
+        throw createError("User not found", 404);
+      }
+
+      // 2. Fetch Existing Hospital Data
+      const existingHospital = await tx
+        .select()
+        .from(hospitals)
+        .where(eq(hospitals.userId, userId))
+        .limit(1);
       
-      await db
-        .update(hospitals)
-        .set(updateData)
-        .where(eq(hospitals.userId, userId));
-    } else {
-      // Create new hospital
-      await db
-        .insert(hospitals)
-        .values({
+      const current = existingHospital[0] || {};
+
+      // 3. MERGE DATA
+      const finalData = {
+        hospitalName: data.hospitalName !== undefined ? data.hospitalName : current.hospitalName,
+        hospitalAddress: data.hospitalAddress !== undefined ? data.hospitalAddress : current.hospitalAddress,
+        hospitalContactNo: data.hospitalContactNo !== undefined ? data.hospitalContactNo : current.hospitalContactNo,
+        hospitalEmail: data.hospitalEmail !== undefined ? data.hospitalEmail : current.hospitalEmail,
+        licenseNo: data.licenseNo !== undefined ? data.licenseNo : current.licenseNo,
+        adminName: data.adminName !== undefined ? data.adminName : current.adminName,
+        websiteHospital: data.websiteHospital !== undefined ? data.websiteHospital : (current.websiteHospital || null),
+      };
+
+      // 4. VALIDATION
+      // Step 1 (Hospital Info): hospitalName, hospitalAddress, hospitalContactNo, hospitalEmail (required)
+      // Step 2 (Licensing): licenseNo, adminName (required)
+      const missingStep1Fields: string[] = [];
+      if (!finalData.hospitalName) missingStep1Fields.push('Hospital Name');
+      if (!finalData.hospitalAddress) missingStep1Fields.push('Address');
+      if (!finalData.hospitalContactNo) missingStep1Fields.push('Contact No');
+      if (!finalData.hospitalEmail) missingStep1Fields.push('Email');
+
+      if (missingStep1Fields.length > 0) {
+        throw ValidationError(`Missing required fields: ${missingStep1Fields.join(', ')}`);
+      }
+
+      // Check if step 2 (licensing) is complete
+      const hasLicenseNo = finalData.licenseNo !== undefined && finalData.licenseNo !== null && finalData.licenseNo !== '';
+      const hasAdminName = finalData.adminName !== undefined && finalData.adminName !== null && finalData.adminName !== '';
+
+      // 5. SAVE TO DB
+      if (existingHospital.length > 0) {
+        await tx
+          .update(hospitals)
+          .set({ ...finalData, updatedAt: new Date() })
+          .where(eq(hospitals.userId, userId));
+      } else {
+        await tx.insert(hospitals).values({
           userId,
-          hospitalName: data.hospitalName || '',
-          hospitalAddress: data.hospitalAddress || '',
-          hospitalContactNo: data.hospitalContactNo || '',
-          hospitalEmail: data.hospitalEmail || '',
-          websiteHospital: data.websiteHospital || null,
-          licenseNo: data.licenseNo || '',
-          adminName: data.adminName || '',
+          ...finalData,
         });
-    }
+      }
 
-    // Update user onboarding status if complete
-    if (isComplete) {
-      await db
+      // 6. UPDATE USER STATUS
+      // Only mark as complete if all licensing details are provided
+      // Otherwise, keep at step 1 (incomplete)
+      const isComplete: boolean = hasLicenseNo && hasAdminName;
+      const newStep = isComplete ? 3 : 1;
+
+      await tx
         .update(users)
         .set({
-          onboardingStep: 3,
-          isOnboardingComplete: true,
+          onboardingStep: newStep,
+          isOnboardingComplete: isComplete,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
-    }
 
-    return {
-      onboardingStep: isComplete ? 3 : 2,
-      isOnboardingComplete: isComplete,
+      return {
+        onboardingStep: newStep,
+        isOnboardingComplete: isComplete,
+      };
+    });
+  }
+
+  // =========================================================
+  // UTILITY METHODS
+  // =========================================================
+  async getOnboardingStatus(userId: string) {
+    const user = await db
+      .select({ 
+        onboardingStep: users.onboardingStep, 
+        isOnboardingComplete: users.isOnboardingComplete 
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    if (user.length === 0) {
+      throw createError("User not found", 404);
+    }
+    
+    return { 
+      onboardingStep: user[0].onboardingStep, 
+      isOnboardingComplete: user[0].isOnboardingComplete 
     };
   }
 
   async updateOnboardingStep(userId: string, step: number) {
     await db
-        .update(users)
-        .set({
-          onboardingStep: step,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userId));
-
-      return {
-        onboardingStep: step,
-      };
+      .update(users)
+      .set({ onboardingStep: step, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+    
+    return { onboardingStep: step };
   }
 
-  async getOnboardingStatus(userId: string) {
-    const user = await db
-        .select({ 
-          onboardingStep: users.onboardingStep, 
-          isOnboardingComplete: users.isOnboardingComplete 
-        })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (user.length === 0) {
-        throw createError("User not found", 404);
-      }
-
-      return {
-        onboardingStep: user[0].onboardingStep,
-        isOnboardingComplete: user[0].isOnboardingComplete,
-      };
-  }
-
-  // Get saved data methods (made public for routes)
   async getPatientData(userId: string) {
-    const patient = await db
+    const data = await db
       .select()
       .from(patients)
       .where(eq(patients.userId, userId))
       .limit(1);
-
-    if (patient.length === 0) {
-      return null;
-    }
-
-    // JSONB fields are already parsed by the driver, just ensure they're arrays
-    const ensureArray = (value: any) => Array.isArray(value) ? value : [];
-
-    return {
-      ...patient[0],
-      pastMedicalHistory: ensureArray(patient[0].pastMedicalHistory)
-    };
+    
+    return data[0] || null;
   }
 
   async getDoctorData(userId: string) {
-    const doctor = await db
+    const data = await db
       .select()
       .from(doctors)
       .where(eq(doctors.userId, userId))
       .limit(1);
-
-    if (doctor.length === 0) {
-      return null;
-    }
-
-    // JSONB fields are already parsed by the driver, just ensure they're arrays
-    const ensureArray = (value: any) => Array.isArray(value) ? value : [];
-
-    return {
-      ...doctor[0],
-      specializationIds: ensureArray(doctor[0].specializationIds),
-      qualifications: ensureArray(doctor[0].qualifications),
-      consultationModes: ensureArray(doctor[0].consultationModes),
-      availableDays: ensureArray(doctor[0].availableDays),
-    };
+    
+    return data[0] || null;
   }
 
   async getHospitalData(userId: string) {
-    const hospital = await db
+    const data = await db
       .select()
       .from(hospitals)
       .where(eq(hospitals.userId, userId))
       .limit(1);
-
-    if (hospital.length === 0) {
-      return null;
-    }
-
-    return hospital[0];
+    
+    return data[0] || null;
   }
 }

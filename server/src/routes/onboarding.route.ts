@@ -218,8 +218,10 @@ export class OnboardingRoutes {
         return '/dashboard/admin';
       case 'hospital':
         return '/dashboard/hospital';
+      case 'patient':
+        return '/';
       default:
-        return '/dashboard';
+        return '/';
     }
   }
 
