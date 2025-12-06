@@ -165,6 +165,7 @@ export default function HospitalOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Building2 className="h-3.5 w-3.5 text-primary" />
                         Hospital Name
+                        <span className="text-destructive">*</span>
                       </Label>
                       <FormControl>
                         <Input placeholder="Enter hospital name" {...field} className="h-9" />
@@ -184,6 +185,7 @@ export default function HospitalOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <MapPin className="h-3.5 w-3.5 text-primary" />
                         Hospital Address
+                        <span className="text-destructive">*</span>
                       </Label>
                       <FormControl>
                         <Input placeholder="Enter hospital address" {...field} className="h-9" />
@@ -207,14 +209,16 @@ export default function HospitalOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Phone className="h-3.5 w-3.5 text-primary" />
                         Hospital Contact No.
+                        <span className="text-destructive">*</span>
                       </Label>
                       <FormControl>
                         <Input
                           type="tel"
                           placeholder="Enter contact number"
+                          maxLength={15}
                           {...field}
                           onChange={e => {
-                            const value = e.target.value.replace(/[^0-9]/g, "");
+                            const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 15);
                             field.onChange(value);
                           }}
                           className="h-9"
@@ -239,6 +243,7 @@ export default function HospitalOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Mail className="h-3.5 w-3.5 text-primary" />
                         Hospital Email
+                        <span className="text-destructive">*</span>
                       </Label>
                       <FormControl>
                         <Input type="email" placeholder="Enter hospital email" {...field} className="h-9" />
@@ -278,7 +283,7 @@ export default function HospitalOnboarding() {
                       Hospital Website
                     </Label>
                     <FormControl>
-                      <Input placeholder="Website (Optional)" {...field} className="h-9" />
+                      <Input placeholder="Website" {...field} className="h-9" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -295,6 +300,7 @@ export default function HospitalOnboarding() {
                     <Label className="flex items-center gap-1.5 text-sm font-medium">
                       <FileText className="h-3.5 w-3.5 text-primary" />
                       License No
+                      <span className="text-destructive">*</span>
                     </Label>
                     <FormControl>
                       <Input placeholder="Enter license number" {...field} className="h-9" />
@@ -314,6 +320,7 @@ export default function HospitalOnboarding() {
                     <Label className="flex items-center gap-1.5 text-sm font-medium">
                       <User className="h-3.5 w-3.5 text-primary" />
                       Admin & Owner Name
+                      <span className="text-destructive">*</span>
                     </Label>
                     <FormControl>
                       <Input placeholder="Enter admin/owner name" {...field} className="h-9" />

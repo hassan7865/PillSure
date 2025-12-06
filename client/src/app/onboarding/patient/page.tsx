@@ -85,7 +85,15 @@ export default function PatientOnboarding() {
     }
   }, [savedData, loadingSavedData, form]);
 
-  const onSubmit = (data: PatientFormValues) => {
+  const onSubmit = async (data: PatientFormValues) => {
+    if (!data.bloodGroup || data.bloodGroup.trim() === '') {
+      form.setError('bloodGroup', {
+        type: 'manual',
+        message: 'Blood group is required to complete registration'
+      });
+      return;
+    }
+
     const onboardingData: PatientOnboardingRequest = {
       gender: data.gender,
       mobile: data.mobile,
@@ -117,16 +125,43 @@ export default function PatientOnboarding() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  // Define required fields based on step and action
+  const getRequiredFieldsByStep = (currentStep: number): string[] => {
+    switch (currentStep) {
+      case 1:
+        // Step 1: Personal Information - only validate personal fields
+        return ['gender', 'mobile', 'dateOfBirth', 'address'];
+      case 2:
+        // Step 2: Medical Information - validate blood group
+        return ['bloodGroup'];
+      default:
+        return [];
+    }
+  };
+
   const nextStep = async () => {
-    const fieldsToValidate = ['gender', 'mobile', 'dateOfBirth', 'address', 'bloodGroup'];
+    // Only validate fields that are visible on current step
+    const fieldsToValidate = getRequiredFieldsByStep(step);
     const isValid = await form.trigger(fieldsToValidate as any);
     if (!isValid) {
       return; // Stop if validation fails
     }
     
-    // Auto-save all current data (including step 2 if exists)
+    // Save current step data without blood group if on step 1
     const currentData = form.getValues();
-    await patientOnboardingMutation.mutateAsync(currentData);
+    const dataToSave: PatientOnboardingRequest = {
+      gender: currentData.gender,
+      mobile: currentData.mobile,
+      dateOfBirth: currentData.dateOfBirth,
+      address: currentData.address,
+      bloodGroup: step === 1 ? '' : (currentData.bloodGroup || ''), // Empty string on step 1
+      hasCovid: currentData.hasCovid,
+      pastMedicalHistory: currentData.pastMedicalHistory,
+      surgicalHistory: currentData.surgicalHistory,
+      allergies: currentData.allergies,
+    };
+    
+    await patientOnboardingMutation.mutateAsync(dataToSave);
     
     setStep(2);
     updateStepInURL(2);
@@ -168,6 +203,7 @@ export default function PatientOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <User className="h-3.5 w-3.5 text-primary" />
                         Gender
+                        <span className="text-destructive">*</span>
                       </Label>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
@@ -200,6 +236,7 @@ export default function PatientOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <Phone className="h-3.5 w-3.5 text-primary" />
                         Mobile Number
+                        <span className="text-destructive">*</span>
                       </Label>
                       <FormControl>
                         <div className="flex items-center space-x-0">
@@ -235,6 +272,7 @@ export default function PatientOnboarding() {
                       <Label className="flex items-center gap-1.5 text-sm font-medium">
                         <CalendarIcon className="h-3.5 w-3.5 text-primary" />
                         Date of Birth
+                        <span className="text-destructive">*</span>
                       </Label>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -277,11 +315,15 @@ export default function PatientOnboarding() {
                   <FormField
                     control={form.control}
                     name="address"
+                    rules={{
+                      required: "Address is required"
+                    }}
                     render={({ field }) => (
                       <FormItem>
                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                           <MapPin className="h-3.5 w-3.5 text-primary" />
                           Address
+                          <span className="text-destructive">*</span>
                         </Label>
                         <FormControl>
                           <Input 
@@ -322,13 +364,14 @@ export default function PatientOnboarding() {
                     control={form.control}
                     name="bloodGroup"
                     rules={{
-                      required: "Blood group is required"
+                      required: step === 2 ? "Blood group is required" : false
                     }}
                     render={({ field }) => (
                       <FormItem>
                         <Label className="flex items-center gap-1.5 text-sm font-medium">
                           <Droplets className="h-3.5 w-3.5 text-primary" />
                           Blood Group
+                          {step === 2 && <span className="text-destructive">*</span>}
                         </Label>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
@@ -442,7 +485,7 @@ export default function PatientOnboarding() {
                         </Label>
                         <FormControl>
                           <Input 
-                            placeholder="Any previous surgeries (optional)" 
+                            placeholder="Any previous surgeries" 
                             {...field} 
                             className="h-9"
                           />
@@ -468,7 +511,7 @@ export default function PatientOnboarding() {
                         </Label>
                         <FormControl>
                           <Input 
-                            placeholder="Known allergies (optional)" 
+                            placeholder="Known allergies" 
                             {...field} 
                             className="h-9"
                           />
