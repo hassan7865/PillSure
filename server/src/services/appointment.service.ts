@@ -2,6 +2,7 @@ import { db } from "../config/database";
 import { appointments } from "../schema/appointments";
 import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
+import { patients } from "../schema/patient";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 
@@ -103,11 +104,23 @@ export class AppointmentService {
         createdAt: appointments.createdAt,
         updatedAt: appointments.updatedAt,
         patientId: appointments.patientId,
+        doctorId: appointments.doctorId,
+        isActive: appointments.isActive,
         patientName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
         patientEmail: users.email,
+        patientGender: patients.gender,
+        patientMobile: patients.mobile,
+        patientDateOfBirth: patients.dateOfBirth,
+        patientAddress: patients.address,
+        patientBloodGroup: patients.bloodGroup,
+        patientHasCovid: patients.hasCovid,
+        patientPastMedicalHistory: patients.pastMedicalHistory,
+        patientSurgicalHistory: patients.surgicalHistory,
+        patientAllergies: patients.allergies,
       })
       .from(appointments)
       .innerJoin(users, eq(appointments.patientId, users.id))
+      .leftJoin(patients, eq(appointments.patientId, patients.userId))
       .where(and(...conditions))
       .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
 

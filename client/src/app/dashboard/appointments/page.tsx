@@ -198,12 +198,45 @@ export default function AppointmentsPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-foreground mb-4">Patient Information</h2>
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-                    <DetailRow label="Patient Name" value={selected.patientName || selected.patientId || 'N/A'} />
+                    <DetailRow label="Patient Name" value={selected.patientName || 'N/A'} />
                     <Separator />
-                    <DetailRow label="Patient ID" value={selected.patientId || 'N/A'} />
+                    <DetailRow label="Email" value={selected.patientEmail || 'N/A'} />
                     <Separator />
-                    <DetailRow label="Doctor ID" value={selected.doctorId || 'N/A'} />
+                    <DetailRow label="Gender" value={selected.patientGender || 'N/A'} />
                     <Separator />
+                    <DetailRow label="Date of Birth" value={selected.patientDateOfBirth || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="Mobile" value={selected.patientMobile || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="Address" value={selected.patientAddress || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="Blood Group" value={selected.patientBloodGroup || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="COVID Status" value={selected.patientHasCovid ? 'Yes' : 'No'} />
+                    {selected.patientPastMedicalHistory && (
+                      <>
+                        <Separator />
+                        <DetailRow label="Past Medical History" value={selected.patientPastMedicalHistory} />
+                      </>
+                    )}
+                    {selected.patientSurgicalHistory && (
+                      <>
+                        <Separator />
+                        <DetailRow label="Surgical History" value={selected.patientSurgicalHistory} />
+                      </>
+                    )}
+                    {selected.patientAllergies && (
+                      <>
+                        <Separator />
+                        <DetailRow label="Allergies" value={selected.patientAllergies} />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground mb-4">Appointment Overview</h2>
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
                     <DetailRow label="Consultation Mode" value={selected.consultationMode || 'N/A'} />
                     <Separator />
                     <DetailRow label="Status" value={<>{getStatusBadge(selected.status)}</>} />
