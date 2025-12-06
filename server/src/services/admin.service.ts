@@ -302,7 +302,7 @@ export class AdminService {
           images: medicines.images,
           prescriptionRequired: medicines.prescriptionRequired,
           createdAt: medicines.createdAt,
-          drugDescription: medicines.drugDescription,
+          description: medicines.description,
           drugCategory: medicines.drugCategory,
           drugVarient: medicines.drugVarient,
         })
@@ -398,7 +398,7 @@ export class AdminService {
         }
       }
       if (data.prescriptionRequired !== undefined) updateData.prescriptionRequired = Boolean(data.prescriptionRequired);
-      if (data.drugDescription !== undefined) updateData.drugDescription = data.drugDescription || null;
+      if (data.description !== undefined) updateData.description = data.description || null;
       if (data.drugCategory !== undefined) updateData.drugCategory = data.drugCategory || null;
       if (data.drugVarient !== undefined) updateData.drugVarient = data.drugVarient || null;
 

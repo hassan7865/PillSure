@@ -97,7 +97,7 @@ export interface Medicine {
   images: any | null;
   prescriptionRequired: boolean;
   createdAt: string | null;
-  drugDescription: string | null;
+  description: any | null;
   drugCategory: string | null;
   drugVarient: string | null;
 }
@@ -115,7 +115,7 @@ export interface UpdateMedicineRequest {
   stock?: number | null;
   images?: any | null;
   prescriptionRequired?: boolean;
-  drugDescription?: string | null;
+  description?: any | null;
   drugCategory?: string | null;
   drugVarient?: string | null;
 }

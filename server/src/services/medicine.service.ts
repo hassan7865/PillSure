@@ -28,7 +28,7 @@ export class MedicineService {
                     images: medicines.images,
                     prescriptionRequired: medicines.prescriptionRequired,
                     createdAt: medicines.createdAt,
-                    drugDescription: medicines.drugDescription,
+                    description: medicines.description,
                     drugCategory: medicines.drugCategory,
                     drugVarient: medicines.drugVarient,
                     rn: sql<number>`row_number() over (partition by ${medicines.drugCategory} order by ${medicines.createdAt} desc)`.as('rn'),
@@ -49,7 +49,7 @@ export class MedicineService {
                 images: latestInCategory.images,
                 prescriptionRequired: latestInCategory.prescriptionRequired,
                 createdAt: latestInCategory.createdAt,
-                drugDescription: latestInCategory.drugDescription,
+                description: latestInCategory.description,
                 drugCategory: latestInCategory.drugCategory,
                 drugVarient: latestInCategory.drugVarient,
             })

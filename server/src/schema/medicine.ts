@@ -24,18 +24,15 @@ import {
       images: jsonb("images"),
       prescriptionRequired: boolean("prescription_required").default(false),
       createdAt: timestamp("created_at").defaultNow(),
-      drugDescription: text("drug_description"),
       drugCategory: text("drug_category"),
       drugVarient: text("drug_varient"),
+      description: jsonb("description"),
     },
     (table) => {
       return {
         idxDrugCategory: index("idx_medicines_drug_category").on(table.drugCategory),
-        idxDrugDescription: index("idx_medicines_drug_description").using(
-          "gin",
-          sql`to_tsvector('english', ${table.drugDescription})`
-        ),
         idxImages: index("idx_medicines_images").using("gin", table.images),
+        idxDescription: index("idx_medicines_description").using("gin", table.description),
         idxName: index("idx_medicines_name").on(table.medicineName),
         idxPrescription: index("idx_medicines_prescription").on(table.prescriptionRequired),
         idxPrice: index("idx_medicines_price").on(table.price),

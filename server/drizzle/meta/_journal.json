@@ -15,6 +15,27 @@
       "when": 1763843457590,
       "tag": "0001_dizzy_william_stryker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763986032634,
+      "tag": "0002_keen_thena",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1763986047514,
+      "tag": "0003_sudden_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1763986445201,
+      "tag": "0004_elite_micromax",
+      "breakpoints": true
     }
   ]
 }

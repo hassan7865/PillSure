@@ -44,7 +44,7 @@ interface MedicineFormValues {
   stock: number | null;
   images: ImageItem[];
   prescriptionRequired: boolean;
-  drugDescription: string | null;
+  description: any | null;
   drugCategory: string | null;
   drugVarient: string | null;
 }
@@ -66,7 +66,7 @@ export default function EditMedicineDialog({
       stock: null,
       images: [],
       prescriptionRequired: false,
-      drugDescription: null,
+      description: null,
       drugCategory: null,
       drugVarient: null,
     },
@@ -95,7 +95,7 @@ export default function EditMedicineDialog({
         stock: medicine.stock || null,
         images: imagesArray,
         prescriptionRequired: medicine.prescriptionRequired || false,
-        drugDescription: medicine.drugDescription || null,
+        description: medicine.description || null,
         drugCategory: medicine.drugCategory || null,
         drugVarient: medicine.drugVarient || null,
       });
@@ -226,7 +226,7 @@ export default function EditMedicineDialog({
         discount: data.discount || null,
         stock: data.stock || null,
         prescriptionRequired: data.prescriptionRequired,
-        drugDescription: data.drugDescription || null,
+        description: data.description || null,
         drugCategory: data.drugCategory || null,
         drugVarient: data.drugVarient || null,
       };
@@ -482,16 +482,27 @@ export default function EditMedicineDialog({
 
                 <FormField
                   control={form.control}
-                  name="drugDescription"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="drugDescription" className="text-sm font-medium">Description</Label>
+                      <Label htmlFor="description" className="text-sm font-medium">Description (JSON)</Label>
                       <FormControl>
                         <Textarea
-                          id="drugDescription"
+                          id="description"
                           {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
+                          value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (!value) {
+                              field.onChange(null);
+                            } else {
+                              try {
+                                field.onChange(JSON.parse(value));
+                              } catch {
+                                field.onChange(value);
+                              }
+                            }
+                          }}
                           placeholder="Enter medicine description"
                           rows={4}
                           className="w-full resize-none"

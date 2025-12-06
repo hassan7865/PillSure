@@ -29,7 +29,7 @@ type Medicine = {
   images?: any | null;
   prescriptionRequired?: boolean | null;
   createdAt?: string | null;
-  drugDescription?: string | null;
+  description?: any | null;
   drugCategory?: string | null;
   drugVarient?: string | null;
 };
@@ -88,10 +88,10 @@ const FeaturedProductsSection: React.FC = () => {
             originalPrice,
             imageUrl,
             rating: 4.6, // placeholder until ratings exist
-            reviews: 0, // placeholder until reviews exist
+            reviews: 0, // placeholder until ratings exist
             inStock: (m.stock ?? 0) > 0,
             prescriptionRequired: Boolean(m.prescriptionRequired),
-            description: m.drugDescription || undefined,
+            description: m.description ? (typeof m.description === 'string' ? m.description : JSON.stringify(m.description)) : undefined,
           };
         });
         setItems(mapped);

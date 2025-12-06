@@ -15,6 +15,7 @@
     "db:backup": "ts-node scripts/backup-db.ts",
     "db:restore": "ts-node scripts/restore-db.ts",
     "db:restore:file": "ts-node scripts/restore-db.ts",
+    "update:descriptions": "ts-node scripts/update-descriptions.ts",
     "init:roles": "ts-node src/scripts/init-roles.ts"
   },
   "author": "",
@@ -23,6 +24,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.937.0",
     "bcryptjs": "^3.0.2",
+    "csv-parse": "^6.1.0",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.36.4",
     "express": "^5.1.0",
