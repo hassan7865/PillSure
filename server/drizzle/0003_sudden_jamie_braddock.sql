@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "idx_medicines_description" ON "medicines" USING gin ("description");
