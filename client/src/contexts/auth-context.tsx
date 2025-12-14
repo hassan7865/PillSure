@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
@@ -70,6 +70,27 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
   const { showWelcomeBack, showError, showSuccess } = useCustomToast();
   const router = useRouter();
 
+  // Centralize session persistence so Google and email/password flows behave identically
+  const persistSession = useCallback((nextUser: User, nextToken: string) => {
+    setToken(nextToken);
+    setUser(nextUser);
+    localStorage.setItem('authToken', nextToken);
+    localStorage.setItem('user', JSON.stringify(nextUser));
+  }, []);
+
+  // Centralize post-auth navigation to keep Google + email flows aligned
+  const navigateAfterAuth = useCallback((nextUser: User, forceOnboarding = false) => {
+    if (forceOnboarding || !nextUser.isOnboardingComplete) {
+      const onboardingPath = getOnboardingPath(nextUser.role);
+      if (onboardingPath) {
+        router.push(onboardingPath);
+        return;
+      }
+    }
+
+    router.push(getPostOnboardingPath(nextUser.role));
+  }, [router]);
+
 
   useEffect(() => {
     // Check for existing token in localStorage
@@ -90,26 +111,11 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       
       const response = await authApi.login({ email, password });
-      
-      setToken(response.token);
-      setUser(response.user);
-      
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      persistSession(response.user, response.token);
       
       // Show welcome back toast
       showWelcomeBack(response.user.firstName);
-      
-      if(!response.user.isOnboardingComplete) {
-        const role = response.user.role?.toLowerCase();
-
-        const onboardingPath = getOnboardingPath(role);
-        if (onboardingPath) {
-          router.push(onboardingPath);
-        }
-      } else {
-        router.push(getPostOnboardingPath(response.user.role));
-      }
+      navigateAfterAuth(response.user);
    
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
@@ -133,21 +139,13 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
         lastName, 
         role 
       });
-      
-      setToken(response.token);
-      setUser(response.user);
-      
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      persistSession(response.user, response.token);
       
       // Show success toast
       showSuccess('Account Created', `Welcome ${response.user.firstName}! Your account has been created successfully.`);
-      
+
       // For new users, always redirect to onboarding
-      const onboardingPath = getOnboardingPath(response.user.role);
-      if (onboardingPath) {
-        router.push(onboardingPath);
-      }
+      navigateAfterAuth(response.user, true);
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
@@ -170,27 +168,11 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
         idToken: await user.getIdToken(),
         email: user.email!,
       });
-      
-      setToken(response.token);
-      setUser(response.user);
-      
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      persistSession(response.user, response.token);
       
       // Show welcome back toast
       showWelcomeBack(response.user.firstName);
-      
-      // Always redirect to onboarding first, regardless of completion status
-      if(!response.user.isOnboardingComplete) {
-        const role = response.user.role?.toLowerCase();
-
-        const onboardingPath = getOnboardingPath(role);
-        if (onboardingPath) {
-          router.push(onboardingPath);
-        }
-      } else {
-        router.push(getPostOnboardingPath(response.user.role));
-      }
+      navigateAfterAuth(response.user);
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
@@ -221,21 +203,13 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
         lastName: lastName,
         role: role,
       });
-      
-      setToken(response.token);
-      setUser(response.user);
-      
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      persistSession(response.user, response.token);
       
       // Show success toast
       showSuccess('Account Created', `Welcome ${response.user.firstName}! Your account has been created successfully.`);
-      
+
       // For new users, always redirect to onboarding
-      const onboardingPath = getOnboardingPath(response.user.role);
-      if (onboardingPath) {
-        router.push(onboardingPath);
-      }
+      navigateAfterAuth(response.user, true);
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
