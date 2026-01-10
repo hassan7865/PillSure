@@ -55,6 +55,16 @@ export const errorHandler = (
   const statusCode = error.statusCode || 500;
   const message = error.message || "Internal Server Error";
 
+  // Log error to console for debugging
+  console.error('Server Error:', {
+    statusCode,
+    message: error.message,
+    stack: err.stack,
+    method: req.method,
+    url: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+
   res.status(statusCode).json(ApiError(
     message,
     process.env.NODE_ENV === "development" ? err.stack : undefined

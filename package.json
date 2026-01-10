@@ -8,13 +8,13 @@
     "server"
   ],
   "scripts": {
-    "dev": "npm run --workspace=server dev & npm run --workspace=client dev",
+    "dev": "npm-run-all --parallel dev:server dev:client",
     "dev:client": "npm run --workspace=client dev",
     "dev:server": "npm run --workspace=server dev",
     "build": "npm run --workspace=client build && npm run --workspace=server build",
     "build:client": "npm run --workspace=client build",
     "build:server": "npm run --workspace=server build",
-    "start": "npm run --workspace=server start & npm run --workspace=client start",
+    "start": "npm-run-all --parallel start:server start:client",
     "start:client": "npm run --workspace=client start",
     "start:server": "npm run --workspace=server start",
     "clean": "npm run clean:client && npm run clean:server",
@@ -31,5 +31,8 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
   }
 }

@@ -210,14 +210,14 @@ export default function AppointmentsPage() {
         ) : (
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'prescription')} className="flex flex-col h-full">
             <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
-                <TabsList className="w-fit">
-                  <TabsTrigger value="details" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Appointment Details
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <TabsList className="w-full sm:w-fit">
+                  <TabsTrigger value="details" className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm">
+                    <FileText className="h-4 w-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">Appointment </span>Details
                   </TabsTrigger>
-                  <TabsTrigger value="prescription" className="flex items-center gap-2">
-                    <Stethoscope className="h-4 w-4" />
+                  <TabsTrigger value="prescription" className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm">
+                    <Stethoscope className="h-4 w-4 flex-shrink-0" />
                     Prescription
                   </TabsTrigger>
                 </TabsList>
@@ -234,7 +234,7 @@ export default function AppointmentsPage() {
                       );
                     }}
                     variant="default"
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto text-xs sm:text-sm whitespace-nowrap"
                   >
                     <CalendarClock className="h-4 w-4" />
                     Mark Completed
@@ -299,7 +299,7 @@ export default function AppointmentsPage() {
                           <Button
                             onClick={async () => {
                               if (!selected?.id) return;
-                              // mark as in_progress so patient can join
+                              const previousStatus = selected.status || 'confirmed';
                               if (selected.status?.toLowerCase() !== "in_progress") {
                                 await updateStatus({
                                   id: selected.id,
@@ -544,8 +544,12 @@ export default function AppointmentsPage() {
         )}
       </Card>
 
-      {/* Video Call Dialog */}
-      <Dialog open={showVideoCall} onOpenChange={setShowVideoCall}>
+      <Dialog 
+        open={showVideoCall} 
+        onOpenChange={(open) => {
+          setShowVideoCall(open);
+        }}
+      >
         <DialogContent 
           className="w-screen h-screen max-w-[100vw] sm:max-w-[100vw] max-h-none p-0 gap-0 overflow-hidden rounded-none" 
           showCloseButton={true}
@@ -555,14 +559,16 @@ export default function AppointmentsPage() {
           </DialogHeader>
           {selected && selected.meetingId && (
             <div className="flex flex-col lg:flex-row w-full h-full">
-              {/* Left: Jitsi (about 60% on desktop) */}
               <div className="w-full lg:basis-[60%] lg:flex-1 h-[45vh] lg:h-full bg-black min-w-0">
                 <JitsiVideoCall
                   roomName={selected.meetingId}
                   displayName={user?.firstName && user?.lastName 
                     ? `${user.firstName} ${user.lastName}` 
                     : user?.email || 'User'}
-                  onClose={() => setShowVideoCall(false)}
+                  isModerator={true}
+                  onClose={() => {
+                    setShowVideoCall(false);
+                  }}
                 />
               </div>
 

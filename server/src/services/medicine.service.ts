@@ -30,6 +30,8 @@ export class MedicineService {
                     createdAt: medicines.createdAt,
                     drugCategory: medicines.drugCategory,
                     drugVarient: medicines.drugVarient,
+                    drugDescription: medicines.drugDescription,
+                    faqs: medicines.faqs,
                     rn: sql<number>`row_number() over (partition by ${medicines.drugCategory} order by ${medicines.createdAt} desc)`.as('rn'),
                 })
                 .from(medicines)
@@ -50,6 +52,8 @@ export class MedicineService {
                 createdAt: latestInCategory.createdAt,
                 drugCategory: latestInCategory.drugCategory,
                 drugVarient: latestInCategory.drugVarient,
+                drugDescription: latestInCategory.drugDescription,
+                faqs: latestInCategory.faqs,
             })
             .from(latestInCategory)
             .where(sql`${latestInCategory.rn} = 1`)
@@ -177,6 +181,8 @@ export class MedicineService {
                 prescriptionRequired: medicines.prescriptionRequired,
                 drugCategory: medicines.drugCategory,
                 drugVarient: medicines.drugVarient,
+                drugDescription: medicines.drugDescription,
+                faqs: medicines.faqs,
             })
             .from(medicines)
             .where(

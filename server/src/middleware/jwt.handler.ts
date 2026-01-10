@@ -6,7 +6,9 @@ import { UnauthorizedError, ForbiddenError } from "./error.handler";
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
-  const token = (req.headers as any).authorization?.split(" ")[1];
+  const headerToken = (req.headers as any).authorization?.split(" ")[1];
+  const queryToken = req.query.token as string;
+  const token = headerToken || queryToken;
 
   if (!token) {
     return next(UnauthorizedError("Access token is required"));

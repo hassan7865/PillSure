@@ -225,6 +225,7 @@ export class AppointmentService {
 
   async updateAppointmentStatus(appointmentId: string, userId: string, status: string, reason?: string) {
     const appointment = await this.getAppointmentById(appointmentId, userId);
+    const previousStatus = appointment.status;
 
     const updateData: any = {
       status,
@@ -239,6 +240,58 @@ export class AppointmentService {
       .update(appointments)
       .set(updateData)
       .where(eq(appointments.id, appointmentId));
+
+    const updatedAppointment = await db
+      .select({
+        id: appointments.id,
+        patientId: appointments.patientId,
+        status: appointments.status,
+        meetingId: appointments.meetingId,
+        consultationMode: appointments.consultationMode,
+      })
+      .from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+
+    if (updatedAppointment.length > 0 && updatedAppointment[0].patientId) {
+      const apt = updatedAppointment[0];
+      
+      if (status === 'in_progress') {
+        try {
+          const { activeAppointments } = await import('../config/sse');
+          if (!activeAppointments.has(apt.id)) {
+            activeAppointments.set(apt.id, {
+              previousStatus: previousStatus || 'pending',
+              doctorId: userId,
+            });
+          }
+        } catch (error) {
+        }
+      }
+      
+      if (status !== 'in_progress' && previousStatus === 'in_progress') {
+        try {
+          const { activeAppointments } = await import('../config/sse');
+          const appointmentInfo = activeAppointments.get(apt.id);
+          if (appointmentInfo && appointmentInfo.doctorId === userId) {
+            activeAppointments.delete(apt.id);
+          }
+        } catch (error) {
+        }
+      }
+      
+      try {
+        const { sendSSEToPatient } = await import('../config/sse');
+        
+        sendSSEToPatient(apt.patientId, {
+          appointmentId: apt.id,
+          status: apt.status,
+          meetingId: apt.meetingId,
+          consultationMode: apt.consultationMode,
+        });
+      } catch (error) {
+      }
+    }
 
     return { success: true, status };
   }

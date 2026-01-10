@@ -10,21 +10,15 @@ import { Separator } from "@/components/ui/separator";
 import {
   ShoppingCart,
   Heart,
-  Star,
   CheckCircle,
   XCircle,
   AlertCircle,
   ArrowLeft,
-  Package,
-  Tag,
-  Info,
-  BookOpen,
-  Pill,
-  Shield,
   FileText,
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  Info,
 } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
@@ -126,66 +120,23 @@ export default function MedicineProductPage() {
   const originalPrice = discountPct > 0 ? priceNum / (1 - discountPct / 100) : undefined;
   const inStock = (medicine.stock ?? 0) > 0;
 
-  // Parse and group description (JSONB field)
-  const description = medicine.description;
-  let rawSections: Array<{ title: string; content: string | any }> = [];
+  // Parse drugDescription (plain text field)
+  const drugDescription = medicine.drugDescription;
   
-  if (description) {
-    if (Array.isArray(description)) {
-      rawSections = description;
-    } else if (typeof description === 'object') {
-      rawSections = [description];
-    } else if (typeof description === 'string') {
+  // Parse FAQs (JSONB field)
+  let faqs: Array<{ question: string; answer: string }> = [];
+  if (medicine.faqs) {
+    if (Array.isArray(medicine.faqs)) {
+      faqs = medicine.faqs;
+    } else if (typeof medicine.faqs === 'string') {
       try {
-        const parsed = JSON.parse(description);
-        rawSections = Array.isArray(parsed) ? parsed : [parsed];
+        const parsed = JSON.parse(medicine.faqs);
+        faqs = Array.isArray(parsed) ? parsed : [];
       } catch {
-        rawSections = [{ title: "Description", content: description }];
+        faqs = [];
       }
     }
   }
-
-  // Group sections by title
-  const groupedSections = rawSections.reduce((acc, section) => {
-    const title = section.title?.trim().toUpperCase() || "OTHER";
-    if (!acc[title]) {
-      acc[title] = [];
-    }
-    acc[title].push(section);
-    return acc;
-  }, {} as Record<string, Array<{ title: string; content: string | any }>>);
-
-  // Get icon for section title
-  const getSectionIcon = (title: string) => {
-    const upperTitle = title.toUpperCase();
-    if (upperTitle.includes("INTRODUCTION") || upperTitle.includes("ABOUT")) {
-      return <Info className="h-5 w-5 text-primary" />;
-    } else if (upperTitle.includes("USES") || upperTitle.includes("USE")) {
-      return <Pill className="h-5 w-5 text-primary" />;
-    } else if (upperTitle.includes("SIDE EFFECT") || upperTitle.includes("EFFECT")) {
-      return <AlertCircle className="h-5 w-5 text-destructive" />;
-    } else if (upperTitle.includes("DIRECTION") || upperTitle.includes("HOW TO")) {
-      return <FileText className="h-5 w-5 text-primary" />;
-    } else if (upperTitle.includes("PRECAUTION") || upperTitle.includes("WARNING")) {
-      return <Shield className="h-5 w-5 text-amber-600" />;
-    } else if (upperTitle.includes("INTERACTION")) {
-      return <AlertCircle className="h-5 w-5 text-amber-600" />;
-    } else if (upperTitle.includes("SYNOPSIS") || upperTitle.includes("SUMMARY")) {
-      return <BookOpen className="h-5 w-5 text-primary" />;
-    } else if (upperTitle.includes("FAQ") || upperTitle.includes("QUESTION")) {
-      return <HelpCircle className="h-5 w-5 text-primary" />;
-    } else if (upperTitle.includes("MORE INFORMATION") || upperTitle.includes("INFORMATION")) {
-      return <Info className="h-5 w-5 text-muted-foreground" />;
-    } else if (upperTitle.includes("HOW IT WORKS") || upperTitle.includes("WORK")) {
-      return <Tag className="h-5 w-5 text-primary" />;
-    }
-    return <FileText className="h-5 w-5 text-muted-foreground" />;
-  };
-
-  // Check if section is FAQ
-  const isFaqSection = (title: string) => {
-    return title.toUpperCase().includes("FAQ") || title.toUpperCase().includes("QUESTION");
-  };
 
   return (
     <PublicLayout>
@@ -359,110 +310,70 @@ export default function MedicineProductPage() {
           </div>
         </div>
 
-        {/* Description Section */}
-        {Object.keys(groupedSections).length > 0 && (
+        {/* Drug Description Section */}
+        {drugDescription && (
           <Card className="mt-8">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
-                <Package className="h-6 w-6" />
-                Product Description
+                <FileText className="h-6 w-6" />
+                Description
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {Object.entries(groupedSections).map(([title, sections], groupIndex) => {
-                  const isFaq = isFaqSection(title);
+              <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {drugDescription}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* FAQs Section */}
+        {faqs.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <HelpCircle className="h-6 w-6" />
+                Frequently Asked Questions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {faqs.map((faq, index) => {
+                  const faqId = `faq-${index}`;
+                  const isOpen = openFaqs[faqId] || false;
                   
                   return (
-                    <div key={groupIndex} className="space-y-4">
-                      {/* Section Title with Icon */}
-                      <div className="flex items-center gap-3 pb-2 border-b">
-                        {getSectionIcon(title)}
-                        <h3 className="text-xl font-semibold text-foreground">
-                          {title}
-                        </h3>
-                      </div>
-
-                      {/* Grouped Content */}
-                      <div className="space-y-4 pl-8">
-                        {sections.map((section, sectionIndex) => {
-                          const content = section.content;
-                          
-                          // Handle FAQ content
-                          if (isFaq && Array.isArray(content)) {
-                            return (
-                              <div key={sectionIndex} className="space-y-2">
-                                {content.map((faq: any, faqIndex: number) => {
-                                  const faqId = `${groupIndex}-${sectionIndex}-${faqIndex}`;
-                                  const isOpen = openFaqs[faqId] || false;
-                                  
-                                  return (
-                                    <Collapsible
-                                      key={faqIndex}
-                                      open={isOpen}
-                                      onOpenChange={(open) => {
-                                        setOpenFaqs(prev => ({
-                                          ...prev,
-                                          [faqId]: open
-                                        }));
-                                      }}
-                                    >
-                                      <CollapsibleTrigger className="w-full text-left">
-                                        <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                                          <div className="flex items-start gap-3 flex-1">
-                                            <HelpCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                                            <p className="font-medium text-foreground pr-4">
-                                              {faq.question || "Question"}
-                                            </p>
-                                          </div>
-                                          {isOpen ? (
-                                            <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                          ) : (
-                                            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                                          )}
-                                        </div>
-                                      </CollapsibleTrigger>
-                                      <CollapsibleContent className="pt-2">
-                                        <div className="pl-8 pr-4 pb-4 text-muted-foreground">
-                                          {faq.answer || "No answer provided."}
-                                        </div>
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  );
-                                })}
-                              </div>
-                            );
-                          }
-                          
-                          // Handle regular content
-                          return (
-                            <div key={sectionIndex} className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                              {typeof content === 'string' 
-                                ? content 
-                                : Array.isArray(content)
-                                  ? content.map((item: any, idx: number) => (
-                                      <div key={idx} className="mb-3">
-                                        {item.question && (
-                                          <p className="font-medium text-foreground mb-1">
-                                            Q: {item.question}
-                                          </p>
-                                        )}
-                                        {item.answer && (
-                                          <p className="ml-4 text-muted-foreground">A: {item.answer}</p>
-                                        )}
-                                      </div>
-                                    ))
-                                  : JSON.stringify(content, null, 2)
-                              }
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {groupIndex < Object.keys(groupedSections).length - 1 && (
-                        <Separator className="my-6" />
-                      )}
-                    </div>
+                    <Collapsible
+                      key={index}
+                      open={isOpen}
+                      onOpenChange={(open) => {
+                        setOpenFaqs(prev => ({
+                          ...prev,
+                          [faqId]: open
+                        }));
+                      }}
+                    >
+                      <CollapsibleTrigger className="w-full text-left">
+                        <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                          <div className="flex items-start gap-3 flex-1">
+                            <HelpCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                            <p className="font-medium text-foreground pr-4">
+                              {faq.question || "Question"}
+                            </p>
+                          </div>
+                          {isOpen ? (
+                            <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          )}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2">
+                        <div className="pl-8 pr-4 pb-4 text-muted-foreground">
+                          {faq.answer || "No answer provided."}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   );
                 })}
               </div>

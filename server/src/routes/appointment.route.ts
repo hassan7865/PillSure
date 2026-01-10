@@ -16,6 +16,7 @@ export class AppointmentRoute {
     this.router.post('/', verifyToken, this.createAppointment);
     this.router.get('/patient', verifyToken, this.getPatientAppointments);
     this.router.get('/patient/:patientId/completed', verifyToken, this.getCompletedAppointmentsByPatientId);
+    this.router.get('/patient/status/stream', verifyToken, this.streamPatientAppointmentStatus);
     this.router.get('/doctor/:doctorId', verifyToken, this.getDoctorAppointments);
     this.router.get('/doctor/:doctorId/stats', verifyToken, this.getDoctorAppointmentStats);
     this.router.get('/doctor/:doctorId/yearly-stats', verifyToken, this.getDoctorYearlyStats);
@@ -173,6 +174,32 @@ export class AppointmentRoute {
 
       const result = await appointmentService.getBookedSlots(doctorId, date);
       res.status(200).json(ApiResponse(result, "Booked slots retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private streamPatientAppointmentStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = (req as any).user;
+      
+      if (!user || !user.userId || user.role !== 'patient') {
+        res.status(403).end();
+        return;
+      }
+
+      const patientId = user.userId;
+      const { addSSEConnection, removeSSEConnection } = await import('../config/sse');
+      
+      addSSEConnection(patientId, res);
+      
+      req.on('close', () => {
+        removeSSEConnection(patientId);
+      });
+      
+      req.on('aborted', () => {
+        removeSSEConnection(patientId);
+      });
     } catch (error) {
       next(error);
     }

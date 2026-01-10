@@ -9,7 +9,6 @@ import {
   User, 
   LogOut, 
   ShoppingCart, 
-  Heart, 
   Menu,
   Stethoscope,
   Building2,
@@ -97,52 +96,13 @@ const Navbar: React.FC = () => {
             </span>
           </div>
 
-          {/* Desktop Menu */}
-          <div className="hidden lg:flex items-center space-x-1">
-            <Button 
-              variant="ghost" 
-              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
-              onClick={() => router.push('/')}
-            >
-              Home
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
-              onClick={() => router.push('/search-doctor')}
-            >
-              Find Doctors
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
-              onClick={() => router.push('/medicines')}
-            >
-              Medicines
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
-              onClick={() => router.push('/hospitals')}
-            >
-              Hospitals
-            </Button>
-            <Button 
-              variant="ghost" 
-              className="text-foreground/70 hover:text-primary hover:bg-primary/5 font-medium px-4 py-2 rounded-lg transition-all"
-              onClick={() => router.push('/about')}
-            >
-              About
-            </Button>
-          </div>
-
           {/* Right Side Actions */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Search Icon - Hidden on mobile */}
             <Button
               variant="ghost"
               size="icon"
-              className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all"
+              className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200"
             >
               <Search className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
@@ -151,7 +111,7 @@ const Navbar: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="relative text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all"
+              className="relative text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200"
               onClick={() => router.push('/cart')}
             >
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -160,38 +120,34 @@ const Navbar: React.FC = () => {
               </span>
             </Button>
 
-            {/* Wishlist Icon */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all"
-              onClick={() => router.push('/wishlist')}
-            >
-              <Heart className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-
             {/* Join as Doctor/Hospital Dropdown - Only show when not logged in */}
             {!user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="hidden lg:flex items-center space-x-2 border-primary/20 hover:border-primary  hover:bg-primary/5 text-primary hover:text-primary px-3 sm:px-4 py-2 rounded-lg transition-all text-sm sm:text-base"
+                    className="hidden lg:flex items-center space-x-2 border-primary/20 hover:border-primary hover:bg-primary/5 text-primary hover:text-primary px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 text-sm sm:text-base"
                   >
                     <span className="font-medium">For Professionals</span>
                     <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={handleJoinAsDoctor} className="cursor-pointer">
+                  <DropdownMenuItem 
+                    onClick={handleJoinAsDoctor} 
+                    className="cursor-pointer focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary"
+                  >
                     <Stethoscope className="mr-2 h-4 w-4 text-primary" />
                     <div>
                       <p className="font-medium">For Doctors</p>
                       <p className="text-xs text-muted-foreground">Join our medical network</p>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleRegisterAsHospital} className="cursor-pointer">
-                    <Building2 className="mr-2 h-4 w-4 text-green-600" />
+                  <DropdownMenuItem 
+                    onClick={handleRegisterAsHospital} 
+                    className="cursor-pointer focus:bg-green-50 focus:text-green-700 data-[highlighted]:bg-green-50 data-[highlighted]:text-green-700"
+                  >
+                    <Building2 className="mr-2 h-4 w-4 text-green-600 data-[highlighted]:text-green-700" />
                     <div>
                       <p className="font-medium">For Hospitals</p>
                       <p className="text-xs text-muted-foreground">Register your facility</p>
@@ -226,27 +182,35 @@ const Navbar: React.FC = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer py-2 sm:py-3">
-                    <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                  <DropdownMenuItem 
+                    onClick={() => router.push('/profile')} 
+                    className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
+                  >
+                    <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
                     <span className="text-sm sm:text-base">My Profile</span>
                   </DropdownMenuItem>
                   {user?.role === 'patient' && (
-                    <DropdownMenuItem onClick={() => router.push('/appointments')} className="cursor-pointer py-2 sm:py-3">
-                      <CalendarClock className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                    <DropdownMenuItem 
+                      onClick={() => router.push('/appointments')} 
+                      className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
+                    >
+                      <CalendarClock className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
                       <span className="text-sm sm:text-base">My Appointments</span>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => router.push('/orders')} className="cursor-pointer py-2 sm:py-3">
-                    <ShoppingCart className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                  <DropdownMenuItem 
+                    onClick={() => router.push('/orders')} 
+                    className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
+                  >
+                    <ShoppingCart className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
                     <span className="text-sm sm:text-base">My Orders</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/wishlist')} className="cursor-pointer py-2 sm:py-3">
-                    <Heart className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                    <span className="text-sm sm:text-base">Wishlist</span>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer py-2 sm:py-3 text-red-600 focus:text-red-600">
-                    <LogOut className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
+                  <DropdownMenuItem 
+                    onClick={logout} 
+                    className="cursor-pointer py-2 sm:py-3 text-red-600 focus:text-red-700 focus:bg-red-50 data-[highlighted]:text-red-700 data-[highlighted]:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-red-600 transition-colors" />
                     <span className="text-sm sm:text-base">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -264,7 +228,7 @@ const Navbar: React.FC = () => {
             <Button 
               variant="ghost" 
               size="icon"
-              className="lg:hidden text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-lg transition-all" 
+              className="lg:hidden text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-lg transition-all duration-200" 
               onClick={toggleMobileMenu}
             >
               {isMobileMenuOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <Menu className="h-5 w-5 sm:h-6 sm:w-6" />}
@@ -309,50 +273,50 @@ const Navbar: React.FC = () => {
                 </p>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   onClick={() => { router.push('/'); closeMobileMenu(); }}
                 >
-                  <Home className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                  <Home className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm sm:text-base">Home</span>
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   onClick={() => { router.push('/medicines'); closeMobileMenu(); }}
                 >
-                  <Pill className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                  <Pill className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm sm:text-base">Medicines</span>
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
-                  onClick={() => { router.push('/doctors'); closeMobileMenu(); }}
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
+                  onClick={() => { router.push('/search-doctor'); closeMobileMenu(); }}
                 >
-                  <Stethoscope className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                  <Stethoscope className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm sm:text-base">Find Doctors</span>
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   onClick={() => { router.push('/hospitals'); closeMobileMenu(); }}
                 >
-                  <Building2 className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                  <Building2 className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm sm:text-base">Hospitals</span>
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   onClick={() => { router.push('/about'); closeMobileMenu(); }}
                 >
-                  <Info className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                  <Info className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm sm:text-base">About</span>
                 </Button>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                  className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   onClick={() => { router.push('/contact'); closeMobileMenu(); }}
                 >
-                  <Phone className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                  <Phone className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm sm:text-base">Contact</span>
                 </Button>
               </div>
@@ -366,17 +330,17 @@ const Navbar: React.FC = () => {
                   <Button 
                     onClick={() => { handleJoinAsDoctor(); closeMobileMenu(); }}
                     variant="outline" 
-                    className="w-full justify-start border-primary/20 text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                    className="w-full justify-start border-primary/20 text-primary hover:bg-primary/5 hover:border-primary hover:text-primary rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   >
-                    <Stethoscope className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                    <Stethoscope className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-primary transition-colors" />
                     <span className="font-medium text-sm sm:text-base">Join as Doctor</span>
                   </Button>
                   <Button 
                     onClick={() => { handleRegisterAsHospital(); closeMobileMenu(); }}
                     variant="outline" 
-                    className="w-full justify-start border-green-200 text-green-600 hover:bg-green-50 rounded-lg py-4 sm:py-6"
+                    className="w-full justify-start border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300 hover:text-green-700 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                   >
-                    <Building2 className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                    <Building2 className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-green-600 group-hover:text-green-700 transition-colors" />
                     <span className="font-medium text-sm sm:text-base">Register as Hospital</span>
                   </Button>
                 </div>
@@ -390,44 +354,36 @@ const Navbar: React.FC = () => {
                   </p>
                   <Button 
                     variant="ghost" 
-                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                     onClick={() => { router.push('/profile'); closeMobileMenu(); }}
                   >
-                    <User className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                    <User className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span className="font-medium text-sm sm:text-base">My Profile</span>
                   </Button>
                   {user?.role === 'patient' && (
                     <Button 
                       variant="ghost" 
-                      className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                      className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                       onClick={() => { router.push('/appointments'); closeMobileMenu(); }}
                     >
-                      <CalendarClock className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                      <CalendarClock className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                       <span className="font-medium text-sm sm:text-base">My Appointments</span>
                     </Button>
                   )}
                   <Button 
                     variant="ghost" 
-                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                     onClick={() => { router.push('/orders'); closeMobileMenu(); }}
                   >
-                    <ShoppingCart className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                    <ShoppingCart className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span className="font-medium text-sm sm:text-base">My Orders</span>
                   </Button>
                   <Button 
                     variant="ghost" 
-                    className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
-                    onClick={() => { router.push('/wishlist'); closeMobileMenu(); }}
-                  >
-                    <Heart className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
-                    <span className="font-medium text-sm sm:text-base">Wishlist</span>
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg py-4 sm:py-6"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg py-4 sm:py-6 transition-all duration-200 group"
                     onClick={() => { logout(); closeMobileMenu(); }}
                   >
-                    <LogOut className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                    <LogOut className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-red-600 group-hover:text-red-700 transition-colors" />
                     <span className="font-medium text-sm sm:text-base">Log out</span>
                   </Button>
                 </div>

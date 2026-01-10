@@ -304,6 +304,8 @@ export class AdminService {
           createdAt: medicines.createdAt,
           drugCategory: medicines.drugCategory,
           drugVarient: medicines.drugVarient,
+          drugDescription: medicines.drugDescription,
+          faqs: medicines.faqs,
         })
         .from(medicines)
         .where(whereClause)
@@ -397,9 +399,24 @@ export class AdminService {
         }
       }
       if (data.prescriptionRequired !== undefined) updateData.prescriptionRequired = Boolean(data.prescriptionRequired);
-      if (data.description !== undefined) updateData.description = data.description || null;
+      if (data.drugDescription !== undefined) {
+        const desc = String(data.drugDescription).trim();
+        updateData.drugDescription = desc || null;
+      }
       if (data.drugCategory !== undefined) updateData.drugCategory = data.drugCategory || null;
       if (data.drugVarient !== undefined) updateData.drugVarient = data.drugVarient || null;
+      if (data.faqs !== undefined) {
+        // If faqs is a string, try to parse it as JSON, otherwise use as is
+        if (typeof data.faqs === 'string') {
+          try {
+            updateData.faqs = JSON.parse(data.faqs);
+          } catch {
+            updateData.faqs = null;
+          }
+        } else {
+          updateData.faqs = data.faqs || null;
+        }
+      }
 
       // Handle image updates if files are provided or existingImages is sent
       if (newImages.length > 0 || existingImageUrls.length > 0 || data.existingImages !== undefined) {

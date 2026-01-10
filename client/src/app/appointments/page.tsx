@@ -16,10 +16,11 @@ import { useAuth } from "@/contexts/auth-context";
 import PublicLayout from "@/layout/PublicLayout";
 
 export default function PatientAppointmentsPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [selected, setSelected] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'prescription'>('details');
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [appointmentsList, setAppointmentsList] = useState<any[]>([]);
 
   // Fetch patient appointments
   const { data: appointments, isLoading: apptLoading } = usePatientAppointments(undefined);
@@ -29,15 +30,93 @@ export default function PatientAppointmentsPage() {
     ? appointments
     : appointments?.data;
 
-  // Auto-select the first appointment when data loads
   useEffect(() => {
-    if (!selected && apptArray && apptArray.length > 0) {
-      setSelected(apptArray[0]);
+    if (apptArray) {
+      setAppointmentsList(apptArray);
+      if (!selected && apptArray.length > 0) {
+        setSelected(apptArray[0]);
+      }
     }
-  }, [apptArray, selected]);
+  }, [apptArray]);
+
+  useEffect(() => {
+    if (selected?.id && appointmentsList.length > 0) {
+      const updated = appointmentsList.find((apt: any) => apt.id === selected.id);
+      if (updated && updated.status !== selected.status) {
+        setSelected(updated);
+      }
+    }
+  }, [appointmentsList]);
+
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
+
+    const connectSSE = () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      eventSource = new EventSource(`${apiUrl}/api/appointments/patient/status/stream?token=${encodeURIComponent(token)}`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          setAppointmentsList((prevList) => {
+            const updatedList = prevList.map((apt: any) => 
+              apt.id === data.appointmentId 
+                ? { ...apt, status: data.status, meetingId: data.meetingId || apt.meetingId, consultationMode: data.consultationMode || apt.consultationMode }
+                : apt
+            );
+            return updatedList;
+          });
+
+          setSelected((prevSelected: any) => {
+            if (prevSelected?.id === data.appointmentId) {
+              return { ...prevSelected, status: data.status, meetingId: data.meetingId || prevSelected.meetingId, consultationMode: data.consultationMode || prevSelected.consultationMode };
+            }
+            return prevSelected;
+          });
+        } catch (error) {
+        }
+      };
+
+      eventSource.onerror = () => {
+        if (eventSource) {
+          eventSource.close();
+        }
+        reconnectTimeout = setTimeout(() => {
+          connectSSE();
+        }, 3000);
+      };
+
+      eventSource.onopen = () => {
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+      };
+    };
+
+    connectSSE();
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+    };
+  }, [token, user]);
 
   const getStatusBadge = (status: string) => {
-    const statusLower = status?.toLowerCase();
+    if (!status) return <Badge variant="outline">Unknown</Badge>;
+    
+    const statusLower = status.toLowerCase().trim();
     switch (statusLower) {
       case 'completed':
         return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>;
@@ -45,10 +124,14 @@ export default function PatientAppointmentsPage() {
         return <Badge variant="outline" className="border-yellow-500 text-yellow-700">Pending</Badge>;
       case 'confirmed':
         return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">Confirmed</Badge>;
+      case 'in_progress':
+      case 'in-progress':
+        return <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">In Progress</Badge>;
       case 'cancelled':
+      case 'canceled':
         return <Badge variant="destructive">Cancelled</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</Badge>;
     }
   };
 
@@ -86,7 +169,7 @@ export default function PatientAppointmentsPage() {
                 Appointments
               </CardTitle>
               <CardDescription>
-                {apptArray?.length || 0} appointment{apptArray?.length !== 1 ? 's' : ''} found
+                {appointmentsList?.length || 0} appointment{appointmentsList?.length !== 1 ? 's' : ''} found
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-0 min-h-[400px] max-h-[600px]">
@@ -97,7 +180,7 @@ export default function PatientAppointmentsPage() {
                     description="Fetching your appointments..."
                   />
                 </div>
-              ) : !apptArray || apptArray.length === 0 ? (
+              ) : !appointmentsList || appointmentsList.length === 0 ? (
                 <EmptyState
                   type="empty"
                   title="No Appointments Found"
@@ -106,7 +189,7 @@ export default function PatientAppointmentsPage() {
                 />
               ) : (
                 <div className="flex flex-col gap-3 p-4">
-                  {apptArray.map((appt: any) => (
+                  {appointmentsList.map((appt: any) => (
                     <div
                       key={appt.id}
                       className={`transition-all duration-200 cursor-pointer rounded-lg border p-4 hover:shadow-md ${

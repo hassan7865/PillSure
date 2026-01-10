@@ -11,9 +11,10 @@ export interface Medicine {
   images?: string[] | null;
   prescriptionRequired?: boolean;
   createdAt?: string | null;
-  description?: any | null; // JSONB field - only included when fetching single medicine
+  drugDescription?: string | null; // Plain text description
   drugCategory?: string | null;
   drugVarient?: string | null;
+  faqs?: Array<{ question: string; answer: string }> | null; // FAQs array
 }
 
 export const medicineApi = {

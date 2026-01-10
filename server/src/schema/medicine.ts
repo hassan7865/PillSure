@@ -26,13 +26,15 @@ import {
       createdAt: timestamp("created_at").defaultNow(),
       drugCategory: text("drug_category"),
       drugVarient: text("drug_varient"),
-      description: jsonb("description"),
+      drugDescription: text("drug_description"),
+      faqs: jsonb("faqs"),
     },
     (table) => {
       return {
         idxDrugCategory: index("idx_medicines_drug_category").on(table.drugCategory),
         idxImages: index("idx_medicines_images").using("gin", table.images),
-        idxDescription: index("idx_medicines_description").using("gin", table.description),
+        idxDrugDescription: index("idx_medicines_drug_description").on(table.drugDescription),
+        idxFaqs: index("idx_medicines_faqs").using("gin", table.faqs),
         idxName: index("idx_medicines_name").on(table.medicineName),
         idxPrescription: index("idx_medicines_prescription").on(table.prescriptionRequired),
         idxPrice: index("idx_medicines_price").on(table.price),
