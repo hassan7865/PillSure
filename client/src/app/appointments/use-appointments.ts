@@ -393,3 +393,62 @@ export const useDoctorYearlyStats = (doctorId: string, year?: number) => {
   return { data, isLoading, error };
 };
 
+export const useCompletedAppointmentsByPatientId = (patientId: string | undefined) => {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!patientId) {
+      setIsLoading(false);
+      setData([]);
+      return;
+    }
+
+    let isMounted = true;
+    
+    const fetchAppointments = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const result = await appointmentApi.getCompletedAppointmentsByPatientId(patientId);
+        if (isMounted) {
+          setData(result);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error('Failed to fetch completed appointments'));
+          setData([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchAppointments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [patientId]);
+
+  const refetch = useCallback(async () => {
+    if (!patientId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await appointmentApi.getCompletedAppointmentsByPatientId(patientId);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch completed appointments'));
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [patientId]);
+
+  return { data, isLoading, error, refetch };
+};
+

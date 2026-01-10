@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, ilike, or } from "drizzle-orm";
 import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
 import { s3Service } from "./s3.service";
@@ -28,7 +28,6 @@ export class MedicineService {
                     images: medicines.images,
                     prescriptionRequired: medicines.prescriptionRequired,
                     createdAt: medicines.createdAt,
-                    description: medicines.description,
                     drugCategory: medicines.drugCategory,
                     drugVarient: medicines.drugVarient,
                     rn: sql<number>`row_number() over (partition by ${medicines.drugCategory} order by ${medicines.createdAt} desc)`.as('rn'),
@@ -49,7 +48,6 @@ export class MedicineService {
                 images: latestInCategory.images,
                 prescriptionRequired: latestInCategory.prescriptionRequired,
                 createdAt: latestInCategory.createdAt,
-                description: latestInCategory.description,
                 drugCategory: latestInCategory.drugCategory,
                 drugVarient: latestInCategory.drugVarient,
             })
@@ -156,6 +154,40 @@ export class MedicineService {
         }
 
         return medicine[0];
+    }
+
+  
+    async searchMedicines(query: string, limit: number = 20) {
+        if (!query || query.trim().length === 0) {
+            return [];
+        }
+
+        const safeLimit = Math.max(1, Math.min(50, limit));
+        const searchTerm = `%${query.trim()}%`;
+
+        const results = await db
+            .select({
+                id: medicines.id,
+                medicineName: medicines.medicineName,
+                medicineUrl: medicines.medicineUrl,
+                price: medicines.price,
+                discount: medicines.discount,
+                stock: medicines.stock,
+                images: medicines.images,
+                prescriptionRequired: medicines.prescriptionRequired,
+                drugCategory: medicines.drugCategory,
+                drugVarient: medicines.drugVarient,
+            })
+            .from(medicines)
+            .where(
+                or(
+                    ilike(medicines.medicineName, searchTerm),
+                    ilike(medicines.drugCategory, searchTerm)
+                )
+            )
+            .limit(safeLimit);
+
+        return results;
     }
 }
 

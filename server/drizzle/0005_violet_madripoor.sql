@@ -1,0 +1,1 @@
+ALTER TABLE "appointments" ADD COLUMN "meeting_id" varchar(100);

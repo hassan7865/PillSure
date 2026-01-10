@@ -55,6 +55,11 @@ export const appointmentApi = {
     const response = await api.get(`/appointments/doctor/${doctorId}/yearly-stats${params}`);
     return response.data.data;
   },
+
+  getCompletedAppointmentsByPatientId: async (patientId: string): Promise<ApiResponse> => {
+    const response = await api.get(`/appointments/patient/${patientId}/completed`);
+    return response.data.data;
+  },
 };
 
 export default appointmentApi;

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -45,10 +46,10 @@ type UIProduct = {
   reviews: number;
   inStock: boolean;
   prescriptionRequired: boolean;
-  description?: string;
 };
 
 const FeaturedProductsSection: React.FC = () => {
+  const router = useRouter();
   const [items, setItems] = useState<UIProduct[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +92,6 @@ const FeaturedProductsSection: React.FC = () => {
             reviews: 0, // placeholder until ratings exist
             inStock: (m.stock ?? 0) > 0,
             prescriptionRequired: Boolean(m.prescriptionRequired),
-            description: m.description ? (typeof m.description === 'string' ? m.description : JSON.stringify(m.description)) : undefined,
           };
         });
         setItems(mapped);
@@ -168,7 +168,10 @@ const FeaturedProductsSection: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="group h-full bg-card border-border hover:border-primary/30 hover:shadow-purple transition-all duration-300 overflow-hidden">
+              <Card 
+                className="group h-full bg-card border-border hover:border-primary/30 hover:shadow-purple transition-all duration-300 overflow-hidden cursor-pointer"
+                onClick={() => router.push(`/medicine/${product.id}`)}
+              >
                 <CardContent className="p-0">
                   {/* Product Image */}
                   <div className="relative h-40 sm:h-48 bg-white overflow-hidden">
@@ -212,11 +215,6 @@ const FeaturedProductsSection: React.FC = () => {
                       </h3>
                     </div>
                     
-                    {/* Description */}
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">
-                      {product.description || 'No description available'}
-                    </p>
-
                     {/* Rating */}
                     <div className="flex items-center gap-2 mb-3 sm:mb-4">
                       <div className="flex items-center">
@@ -258,9 +256,13 @@ const FeaturedProductsSection: React.FC = () => {
                     <Button 
                       className="w-full h-8 sm:h-9 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground" 
                       disabled={!product.inStock}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/medicine/${product.id}`);
+                      }}
                     >
                       <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      {product.prescriptionRequired ? "Consult Doctor" : "Add to Cart"}
+                      {product.prescriptionRequired ? "View Details" : "View Details"}
                     </Button>
                   </div>
                 </CardContent>

@@ -36,6 +36,20 @@
       "when": 1763986445201,
       "tag": "0004_elite_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1765647532422,
+      "tag": "0005_violet_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1765809603249,
+      "tag": "0006_striped_blizzard",
+      "breakpoints": true
     }
   ]
 }

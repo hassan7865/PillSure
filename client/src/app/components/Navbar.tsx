@@ -20,7 +20,8 @@ import {
   Info,
   Phone,
   Search,
-  ChevronDown
+  ChevronDown,
+  CalendarClock
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -229,6 +230,12 @@ const Navbar: React.FC = () => {
                     <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                     <span className="text-sm sm:text-base">My Profile</span>
                   </DropdownMenuItem>
+                  {user?.role === 'patient' && (
+                    <DropdownMenuItem onClick={() => router.push('/appointments')} className="cursor-pointer py-2 sm:py-3">
+                      <CalendarClock className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                      <span className="text-sm sm:text-base">My Appointments</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => router.push('/orders')} className="cursor-pointer py-2 sm:py-3">
                     <ShoppingCart className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                     <span className="text-sm sm:text-base">My Orders</span>
@@ -389,6 +396,16 @@ const Navbar: React.FC = () => {
                     <User className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
                     <span className="font-medium text-sm sm:text-base">My Profile</span>
                   </Button>
+                  {user?.role === 'patient' && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"
+                      onClick={() => { router.push('/appointments'); closeMobileMenu(); }}
+                    >
+                      <CalendarClock className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="font-medium text-sm sm:text-base">My Appointments</span>
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start text-foreground hover:text-primary hover:bg-primary/5 rounded-lg py-4 sm:py-6"

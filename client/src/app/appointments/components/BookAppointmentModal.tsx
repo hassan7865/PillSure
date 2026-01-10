@@ -38,11 +38,28 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
     ? (doctor as any).consultationModes 
     : ["inperson"];
 
+  // Convert day names to numbers (0 = Sunday, 1 = Monday, etc.) - same as doctor profile
+  const dayNameToNumber: Record<string, number> = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+  };
+
+  const availableDayNumbers = availableDays.map(
+    (day: string) => dayNameToNumber[day.toLowerCase()] ?? -1
+  ).filter((num: number) => num !== -1);
+
   const form = useForm<AppointmentFormValues>({
     defaultValues: {
       appointmentDate: undefined,
       appointmentTime: "",
-      consultationMode: consultationModes.includes("inperson") ? "inperson" : "online",
+      consultationMode: consultationModes.length > 0 
+        ? (consultationModes.includes("inperson") ? "inperson" : consultationModes[0])
+        : "inperson",
       patientNotes: "",
     },
     mode: "onChange",
@@ -60,16 +77,18 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
       form.reset({
         appointmentDate: undefined,
         appointmentTime: "",
-        consultationMode: consultationModes.includes("inperson") ? "inperson" : "online",
+        consultationMode: consultationModes.length > 0 
+          ? (consultationModes.includes("inperson") ? "inperson" : consultationModes[0])
+          : "inperson",
         patientNotes: "",
       });
     }
   }, [open, form, consultationModes]);
 
-  const isDayAvailable = (date: Date) => {
-    if (availableDays.length === 0) return true;
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    return availableDays.includes(dayName);
+  const isDayAvailable = (date: Date): boolean => {
+    if (availableDayNumbers.length === 0) return true;
+    const dayOfWeek = date.getDay();
+    return availableDayNumbers.includes(dayOfWeek);
   };
 
   const generateTimeSlots = (start: string, end: string): string[] => {
@@ -184,6 +203,10 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                                 return false;
                               }}
                               className="rounded-md scale-90 sm:scale-100"
+                              modifiersClassNames={{
+                                selected: "bg-primary text-primary-foreground",
+                                disabled: "text-muted-foreground opacity-50",
+                              }}
                             />
                           </div>
                         </FormControl>
@@ -195,6 +218,55 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                   {selectedDate && (
                     <>
                       <Separator />
+                      
+                      {/* Consultation Mode - Show if both are available, allow selection */}
+                      {consultationModes.length > 1 && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="consultationMode"
+                            rules={{
+                              required: "Please select a consultation mode"
+                            }}
+                            render={({ field }) => (
+                              <FormItem>
+                                <Label className="text-sm sm:text-base font-semibold flex items-center gap-2">
+                                  <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                                  Consultation Mode
+                                </Label>
+                                <FormControl>
+                                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                    {consultationModes.includes("inperson") && (
+                                      <Button
+                                        type="button"
+                                        variant={field.value === "inperson" ? "default" : "outline"}
+                                        onClick={() => field.onChange("inperson")}
+                                        className="h-12 sm:h-14 flex flex-col gap-0.5 sm:gap-1"
+                                      >
+                                        <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        <span className="text-[10px] sm:text-xs">In-Person</span>
+                                      </Button>
+                                    )}
+                                    {consultationModes.includes("online") && (
+                                      <Button
+                                        type="button"
+                                        variant={field.value === "online" ? "default" : "outline"}
+                                        onClick={() => field.onChange("online")}
+                                        className="h-12 sm:h-14 flex flex-col gap-0.5 sm:gap-1"
+                                      >
+                                        <Video className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        <span className="text-[10px] sm:text-xs">Online</span>
+                                      </Button>
+                                    )}
+                                  </div>
+                                </FormControl>
+                                <FormMessage className="text-xs sm:text-sm" />
+                              </FormItem>
+                            )}
+                          />
+                          <Separator />
+                        </>
+                      )}
                       
                       <FormField
                         control={form.control}
@@ -255,7 +327,8 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                     </>
                   )}
 
-                  {selectedTime && (
+                  {/* Show consultation mode if only one option is available (for display purposes) */}
+                  {selectedTime && consultationModes.length === 1 && (
                     <>
                       <Separator />
                       

@@ -19,8 +19,13 @@ export interface ApiResponse<T = any> {
   }
   
   export interface UpdateAppointmentNotesRequest {
-    doctorNotes?: string;
-    prescription?: string;
-    diagnosis?: string;
-  }
+  doctorNotes?: string;
+  prescription?: {
+    medicineId?: number;
+    medicineName: string;
+    quantity: number;
+    dose: string;
+  }[];
+  diagnosis?: string[];
+}
   

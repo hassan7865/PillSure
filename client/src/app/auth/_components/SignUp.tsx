@@ -31,6 +31,8 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
       firstName: "",
       lastName: "",
     },
+    mode: "onBlur", // Only validate when user leaves the field
+    reValidateMode: "onBlur", // Re-validate on blur
   });
 
   const signupMutation = useSignup();
@@ -237,9 +239,14 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                       name="password"
                       rules={{
                         required: "Password is required",
-                        validate: (value: string) => validatePassword(value) || "Password must be at least 8 characters and contain a letter and a number."
+                        validate: (value: string) => {
+                          if (!value || value.trim() === "") {
+                            return "Password is required";
+                          }
+                          return validatePassword(value) || "Password must be at least 8 characters and contain a letter and a number.";
+                        }
                       }}
-                      render={({ field }) => (
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel className="text-sm font-medium text-card-foreground">
                             Password
@@ -255,7 +262,11 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                               />
                             </div>
                           </FormControl>
-                          <FormMessage className="text-destructive text-xs" />
+                          {fieldState.error && (
+                            <FormMessage className="text-destructive text-xs">
+                              {fieldState.error.message}
+                            </FormMessage>
+                          )}
                         </FormItem>
                       )}
                     />

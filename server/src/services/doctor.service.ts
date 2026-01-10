@@ -65,6 +65,9 @@ export class DoctorService {
           image: doctors.image,
           feePkr: doctors.feePkr,
           consultationModes: doctors.consultationModes,
+          openingTime: doctors.openingTime,
+          closingTime: doctors.closingTime,
+          availableDays: doctors.availableDays,
           createdAt: doctors.createdAt,
           updatedAt: doctors.updatedAt,
           // Hospital information

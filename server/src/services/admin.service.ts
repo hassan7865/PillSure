@@ -302,7 +302,6 @@ export class AdminService {
           images: medicines.images,
           prescriptionRequired: medicines.prescriptionRequired,
           createdAt: medicines.createdAt,
-          description: medicines.description,
           drugCategory: medicines.drugCategory,
           drugVarient: medicines.drugVarient,
         })

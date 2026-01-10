@@ -15,6 +15,7 @@ export class AppointmentRoute {
   private initializeRoutes() {
     this.router.post('/', verifyToken, this.createAppointment);
     this.router.get('/patient', verifyToken, this.getPatientAppointments);
+    this.router.get('/patient/:patientId/completed', verifyToken, this.getCompletedAppointmentsByPatientId);
     this.router.get('/doctor/:doctorId', verifyToken, this.getDoctorAppointments);
     this.router.get('/doctor/:doctorId/stats', verifyToken, this.getDoctorAppointmentStats);
     this.router.get('/doctor/:doctorId/yearly-stats', verifyToken, this.getDoctorYearlyStats);
@@ -48,6 +49,21 @@ export class AppointmentRoute {
 
       const result = await appointmentService.getAppointmentsByPatient(patientId, status);
       res.status(200).json(ApiResponse(result, "Appointments retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getCompletedAppointmentsByPatientId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const patientId = req.params.patientId;
+
+      if (!patientId) {
+        return next(BadRequestError("Patient ID is required"));
+      }
+
+      const result = await appointmentService.getCompletedAppointmentsByPatientId(patientId);
+      res.status(200).json(ApiResponse(result, "Completed appointments retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -110,7 +126,7 @@ export class AppointmentRoute {
         return next(BadRequestError("Status is required"));
       }
 
-      const validStatuses = ["pending", "confirmed", "cancelled", "completed", "no-show"];
+      const validStatuses = ["pending", "confirmed", "cancelled", "completed", "no-show", "in_progress"];
       if (!validStatuses.includes(status)) {
         return next(BadRequestError("Invalid status"));
       }

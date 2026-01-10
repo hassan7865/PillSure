@@ -23,8 +23,7 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
 
   return (
     <Card 
-      className="group h-full bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer"
-      onClick={handleViewProfile}
+      className="group h-full bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
     >
       <CardContent className="p-0 h-full flex flex-col">
         {/* Responsive Header */}
@@ -53,7 +52,12 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
 
             {/* Doctor Info */}
             <div className="space-y-2 md:space-y-3">
-              <h3 className="text-base md:text-lg font-bold text-foreground leading-tight line-clamp-1">{doc.name}</h3>
+              <h3 
+                className="text-base md:text-lg font-bold text-foreground leading-tight line-clamp-1 cursor-pointer hover:text-primary transition-colors"
+                onClick={handleViewProfile}
+              >
+                {doc.name}
+              </h3>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Award className="w-3 h-3 md:w-4 md:h-4 text-primary flex-shrink-0" />
                 <span className="text-xs md:text-sm font-medium truncate">{doc.specialization}</span>
@@ -117,14 +121,30 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
                   <p className="text-xs text-muted-foreground">Per consultation</p>
                 </div>
                 <div className="text-right">
-                  <div className="flex items-center gap-1 mb-1">
-                    <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 text-green-500" />
-                    <span className="text-xs font-medium text-green-600">Online</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-2.5 h-2.5 md:w-3 md:h-3 text-blue-500" />
-                    <span className="text-xs font-medium text-blue-600">In-Person</span>
-                  </div>
+                  {(() => {
+                    const consultationModes = Array.isArray((doc as any).consultationModes) 
+                      ? (doc as any).consultationModes 
+                      : ["inperson"];
+                    const hasOnline = consultationModes.includes("online");
+                    const hasInPerson = consultationModes.includes("inperson");
+                    
+                    return (
+                      <>
+                        {hasOnline && (
+                          <div className="flex items-center gap-1 mb-1">
+                            <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 text-green-500" />
+                            <span className="text-xs font-medium text-green-600">Online</span>
+                          </div>
+                        )}
+                        {hasInPerson && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5 md:w-3 md:h-3 text-blue-500" />
+                            <span className="text-xs font-medium text-blue-600">In-Person</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -138,7 +158,11 @@ export default function DoctorCard({ doc }: { doc: Doctor }) {
             >
               {(handleAction) => (
                 <Button 
-                  onClick={handleAction}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAction();
+                  }}
                   className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white rounded-lg md:rounded-xl py-2.5 md:py-3 text-xs md:text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-primary/25"
                 >
                   Book Appointment

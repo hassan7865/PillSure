@@ -3,8 +3,11 @@ import { appointments } from "../schema/appointments";
 import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { patients } from "../schema/patient";
+import { hospitals } from "../schema/hospitals";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
+import { randomBytes } from "crypto";
+import { randomUUID } from "crypto";
 
 export class AppointmentService {
   async createAppointment(patientId: string, data: any) {
@@ -29,6 +32,18 @@ export class AppointmentService {
       throw createError("This time slot is already booked", 400);
     }
 
+    // Generate unique meeting ID for online appointments
+    // Use a simple numeric format that Jitsi public instance accepts
+    let meetingId: string | null = null;
+    if (data.consultationMode?.toLowerCase() === 'online') {
+      // Generate a simple numeric meeting ID (10-12 digits)
+      // Jitsi's public instance is more lenient with numeric room names
+      // Format: timestamp + random to ensure uniqueness
+      const timestamp = Date.now().toString().slice(-8); // Last 8 digits of timestamp
+      const random = Math.floor(1000 + Math.random() * 9000).toString(); // 4 random digits
+      meetingId = `${timestamp}${random}`;
+    }
+    
     const newAppointment = await db
       .insert(appointments)
       .values({
@@ -38,6 +53,7 @@ export class AppointmentService {
         appointmentTime: data.appointmentTime,
         consultationMode: data.consultationMode,
         patientNotes: data.patientNotes || null,
+        meetingId: meetingId,
         status: "pending",
       })
       .returning();
@@ -59,6 +75,7 @@ export class AppointmentService {
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
         consultationMode: appointments.consultationMode,
+        meetingId: appointments.meetingId,
         patientNotes: appointments.patientNotes,
         doctorNotes: appointments.doctorNotes,
         prescription: appointments.prescription,
@@ -82,6 +99,41 @@ export class AppointmentService {
     return result;
   }
 
+  async getCompletedAppointmentsByPatientId(patientId: string) {
+    const result = await db
+      .select({
+        id: appointments.id,
+        appointmentDate: appointments.appointmentDate,
+        appointmentTime: appointments.appointmentTime,
+        status: appointments.status,
+        consultationMode: appointments.consultationMode,
+        patientNotes: appointments.patientNotes,
+        doctorNotes: appointments.doctorNotes,
+        prescription: appointments.prescription,
+        diagnosis: appointments.diagnosis,
+        createdAt: appointments.createdAt,
+        updatedAt: appointments.updatedAt,
+        patientId: appointments.patientId,
+        doctorId: appointments.doctorId,
+        doctorName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        hospitalName: hospitals.hospitalName,
+      })
+      .from(appointments)
+      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .innerJoin(users, eq(doctors.userId, users.id))
+      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
+      .where(
+        and(
+          eq(appointments.patientId, patientId),
+          eq(appointments.status, "completed"),
+          eq(appointments.isActive, true)
+        )
+      )
+      .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
+
+    return result;
+  }
+
   async getAppointmentsByDoctor(doctorId: string, status?: string) {
     const conditions = [eq(appointments.doctorId, doctorId), eq(appointments.isActive, true)];
     
@@ -96,6 +148,7 @@ export class AppointmentService {
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
         consultationMode: appointments.consultationMode,
+        meetingId: appointments.meetingId,
         patientNotes: appointments.patientNotes,
         doctorNotes: appointments.doctorNotes,
         prescription: appointments.prescription,
@@ -117,10 +170,13 @@ export class AppointmentService {
         patientPastMedicalHistory: patients.pastMedicalHistory,
         patientSurgicalHistory: patients.surgicalHistory,
         patientAllergies: patients.allergies,
+        hospitalName: hospitals.hospitalName,
       })
       .from(appointments)
       .innerJoin(users, eq(appointments.patientId, users.id))
       .leftJoin(patients, eq(appointments.patientId, patients.userId))
+      .leftJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
       .where(and(...conditions))
       .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
 
@@ -137,6 +193,7 @@ export class AppointmentService {
         appointmentTime: appointments.appointmentTime,
         status: appointments.status,
         consultationMode: appointments.consultationMode,
+        meetingId: appointments.meetingId,
         patientNotes: appointments.patientNotes,
         doctorNotes: appointments.doctorNotes,
         prescription: appointments.prescription,
@@ -146,13 +203,14 @@ export class AppointmentService {
         updatedAt: appointments.updatedAt,
       })
       .from(appointments)
+      .leftJoin(doctors, eq(appointments.doctorId, doctors.id))
       .where(
         and(
           eq(appointments.id, appointmentId),
           eq(appointments.isActive, true),
           or(
             eq(appointments.patientId, userId),
-            eq(appointments.doctorId, userId)
+            eq(doctors.userId, userId)
           )
         )
       )
@@ -189,11 +247,12 @@ export class AppointmentService {
     const appointment = await db
       .select()
       .from(appointments)
+      .leftJoin(doctors, eq(appointments.doctorId, doctors.id))
       .where(
         and(
           eq(appointments.id, appointmentId),
-          eq(appointments.doctorId, doctorId),
-          eq(appointments.isActive, true)
+          eq(appointments.isActive, true),
+          eq(doctors.userId, doctorId)
         )
       )
       .limit(1);

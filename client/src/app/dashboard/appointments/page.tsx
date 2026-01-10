@@ -3,21 +3,31 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { useDoctorAppointments } from "@/app/appointments/use-appointments";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useDoctorAppointments, useCompletedAppointmentsByPatientId } from "@/app/appointments/use-appointments";
 import { doctorApi } from "@/app/search-doctor/_api";
 import { Doctor } from "@/lib/types";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
-import { CalendarClock, User, Clock, Video, Phone, Stethoscope, FileText, AlertCircle } from "lucide-react";
+import { CalendarClock, User, Clock, Video, Phone, Stethoscope, FileText, AlertCircle, Calendar, Building2 } from "lucide-react";
+import JitsiVideoCall from "@/components/jitsi/JitsiVideoCall";
+import { useAuth } from "@/contexts/auth-context";
+import { useUpdateAppointmentStatus } from "@/app/appointments/use-appointments";
+import PrescriptionDiagnosis from "@/app/dashboard/appointments/components/PrescriptionDiagnosis";
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
   const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
   const [doctorLoading, setDoctorLoading] = useState(true);
   const doctorId = currentDoctor?.id;
   const [selected, setSelected] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'prescription'>('details');
+  const [showVideoCall, setShowVideoCall] = useState(false);
+
+  const { mutateAsync: updateStatus } = useUpdateAppointmentStatus();
 
   // Fetch current doctor
   useEffect(() => {
@@ -54,12 +64,20 @@ export default function AppointmentsPage() {
     ? appointments
     : appointments?.data;
 
+  // Fetch completed appointments for the selected patient
+  const { data: completedAppointments, isLoading: loadingCompleted } = useCompletedAppointmentsByPatientId(selected?.patientId);
+  
+  const completedAppointmentsArray = Array.isArray(completedAppointments)
+    ? completedAppointments
+    : completedAppointments?.data || [];
+
   // Auto-select the first appointment when data loads
   useEffect(() => {
     if (!selected && apptArray && apptArray.length > 0) {
       setSelected(apptArray[0]);
     }
   }, [apptArray, selected]);
+
 
   if (doctorLoading || !doctorId) {
     return (
@@ -97,6 +115,16 @@ export default function AppointmentsPage() {
         return <User className="h-4 w-4" />;
       default:
         return <Stethoscope className="h-4 w-4" />;
+    }
+  };
+
+  const handlePrescriptionSave = async () => {
+
+    if (selected?.id && apptArray) {
+      const updated = apptArray.find((apt: any) => apt.id === selected.id);
+      if (updated) {
+        setSelected(updated);
+      }
     }
   };
 
@@ -182,16 +210,37 @@ export default function AppointmentsPage() {
         ) : (
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'prescription')} className="flex flex-col h-full">
             <CardHeader className="border-b">
-              <TabsList className="w-fit">
-                <TabsTrigger value="details" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Appointment Details
-                </TabsTrigger>
-                <TabsTrigger value="prescription" className="flex items-center gap-2">
-                  <Stethoscope className="h-4 w-4" />
-                  Prescription
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between">
+                <TabsList className="w-fit">
+                  <TabsTrigger value="details" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Appointment Details
+                  </TabsTrigger>
+                  <TabsTrigger value="prescription" className="flex items-center gap-2">
+                    <Stethoscope className="h-4 w-4" />
+                    Prescription
+                  </TabsTrigger>
+                </TabsList>
+                {selected.status?.toLowerCase() !== 'completed' && (
+                  <Button
+                    onClick={async () => {
+                      if (!selected?.id) return;
+                      await updateStatus({
+                        id: selected.id,
+                        data: { status: "completed" },
+                      });
+                      setSelected((prev: any) =>
+                        prev ? { ...prev, status: "completed" } : prev
+                      );
+                    }}
+                    variant="default"
+                    className="gap-2"
+                  >
+                    <CalendarClock className="h-4 w-4" />
+                    Mark Completed
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-6">
                 <TabsContent value="details" className="space-y-6 mt-0">
@@ -240,6 +289,37 @@ export default function AppointmentsPage() {
                     <DetailRow label="Consultation Mode" value={selected.consultationMode || 'N/A'} />
                     <Separator />
                     <DetailRow label="Status" value={<>{getStatusBadge(selected.status)}</>} />
+                    {selected.consultationMode?.toLowerCase() === 'online' && 
+                     selected.meetingId && 
+                     selected.status?.toLowerCase() !== 'completed' && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-muted-foreground text-sm">Video Consultation</span>
+                          <Button
+                            onClick={async () => {
+                              if (!selected?.id) return;
+                              // mark as in_progress so patient can join
+                              if (selected.status?.toLowerCase() !== "in_progress") {
+                                await updateStatus({
+                                  id: selected.id,
+                                  data: { status: "in_progress" },
+                                });
+                                setSelected((prev: any) =>
+                                  prev ? { ...prev, status: "in_progress" } : prev
+                                );
+                              }
+                              setShowVideoCall(true);
+                            }}
+                            className="gap-2"
+                            variant="default"
+                          >
+                            <Video className="h-4 w-4" />
+                            Join Video Call
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -254,7 +334,7 @@ export default function AppointmentsPage() {
                   </div>
                 </div>
 
-                {(selected.patientNotes || selected.doctorNotes || selected.diagnosis || selected.cancellationReason) && (
+                {(selected.patientNotes || selected.doctorNotes || selected.cancellationReason) && (
                   <div>
                     <h2 className="text-lg font-semibold text-foreground mb-4">Notes & Information</h2>
                     <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
@@ -270,14 +350,56 @@ export default function AppointmentsPage() {
                           <Separator />
                         </>
                       )}
-                      {selected.diagnosis && (
+                      {selected.cancellationReason && (
+                        <DetailRow label="Cancellation Reason" value={selected.cancellationReason} />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selected.status?.toLowerCase() === 'completed' && (
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <Stethoscope className="h-5 w-5 text-primary" />
+                      Prescription & Diagnosis
+                    </h2>
+                    <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                      {Array.isArray(selected.prescription) && selected.prescription.length > 0 && (
                         <>
-                          <DetailRow label="Diagnosis" value={selected.diagnosis} />
+                          <div>
+                            <h3 className="text-sm font-semibold mb-2">Prescription:</h3>
+                            <div className="space-y-2">
+                              {selected.prescription.map((item: any, idx: number) => (
+                                <div key={idx} className="text-sm">
+                                  <span className="font-medium">{item.medicineName}</span>
+                                  {item.quantity && (
+                                    <span className="text-muted-foreground"> - Qty: {item.quantity}</span>
+                                  )}
+                                  {item.dose && (
+                                    <span className="text-muted-foreground">, Dose: {item.dose}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                           <Separator />
                         </>
                       )}
-                      {selected.cancellationReason && (
-                        <DetailRow label="Cancellation Reason" value={selected.cancellationReason} />
+                      {Array.isArray(selected.diagnosis) && selected.diagnosis.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-semibold mb-2">Diagnosis:</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {selected.diagnosis.map((diag: string, idx: number) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {diag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {(!selected.prescription || (Array.isArray(selected.prescription) && selected.prescription.length === 0)) &&
+                       (!selected.diagnosis || (Array.isArray(selected.diagnosis) && selected.diagnosis.length === 0)) && (
+                        <p className="text-sm text-muted-foreground">No prescription or diagnosis recorded.</p>
                       )}
                     </div>
                   </div>
@@ -287,30 +409,175 @@ export default function AppointmentsPage() {
               <TabsContent value="prescription" className="space-y-6 mt-0">
                 <div>
                   <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Stethoscope className="h-5 w-5 text-primary" />
-                    Prescription
+                    <CalendarClock className="h-5 w-5 text-primary" />
+                    Previous Appointments
                   </h2>
-                  {selected.prescription ? (
-                    <div className="rounded-lg border bg-primary/5 p-6">
-                      <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                        {selected.prescription}
+                  {(() => {
+                    // Use API data for completed appointments
+                    if (!selected?.patientId) {
+                      return (
+                        <div className="text-center py-8 rounded-lg border bg-muted/30">
+                          <p className="text-sm text-muted-foreground">
+                            No appointment selected.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    if (loadingCompleted) {
+                      return (
+                        <div className="text-center py-8 rounded-lg border bg-muted/30">
+                          <Loader 
+                            title="Loading History"
+                            description="Fetching previous appointments..."
+                          />
+                        </div>
+                      );
+                    }
+
+                    // Filter out current appointment from the results
+                    const historyAppointments = (completedAppointmentsArray || []).filter(
+                      (apt: any) => apt.id !== selected.id
+                    );
+
+                    if (historyAppointments.length === 0) {
+                      return (
+                        <div className="text-center py-8 rounded-lg border bg-muted/30">
+                          <p className="text-sm text-muted-foreground">
+                            No previous completed appointments found for this patient.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {historyAppointments.map((apt: any) => (
+                          <div
+                            key={apt.id}
+                            className="rounded-lg border bg-muted/30 p-4 space-y-3"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-semibold">
+                                    {apt.doctorName || currentDoctor?.name || "Unknown Doctor"}
+                                  </span>
+                                </div>
+                                {apt.hospitalName && (
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm text-muted-foreground">
+                                      {apt.hospitalName}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {apt.appointmentDate} {apt.appointmentTime}
+                                  </span>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {apt.status}
+                              </Badge>
+                            </div>
+
+                            {Array.isArray(apt.prescription) && apt.prescription.length > 0 && (
+                              <>
+                                <Separator />
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-2">Prescription:</h4>
+                                  <div className="space-y-2">
+                                    {apt.prescription.map((item: any, idx: number) => (
+                                      <div key={idx} className="text-sm text-foreground">
+                                        <span className="font-medium">• {item.medicineName}</span>
+                                        {item.quantity && (
+                                          <span className="text-muted-foreground"> - Qty: {item.quantity}</span>
+                                        )}
+                                        {item.dose && (
+                                          <span className="text-muted-foreground">, Dose: {item.dose}</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+
+                            {Array.isArray(apt.diagnosis) && apt.diagnosis.length > 0 && (
+                              <>
+                                <Separator />
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-2">Diagnosis:</h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {apt.diagnosis.map((diag: string, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-xs">
+                                        {diag}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+
+                            {apt.doctorNotes && (
+                              <>
+                                <Separator />
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-2">Notes:</h4>
+                                  <p className="text-sm text-muted-foreground">{apt.doctorNotes}</p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full py-12 text-center rounded-lg border border-dashed">
-                      <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground font-medium">No prescription available</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        This appointment does not have a prescription yet.
-                      </p>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </TabsContent>
             </CardContent>
           </Tabs>
         )}
       </Card>
+
+      {/* Video Call Dialog */}
+      <Dialog open={showVideoCall} onOpenChange={setShowVideoCall}>
+        <DialogContent 
+          className="w-screen h-screen max-w-[100vw] sm:max-w-[100vw] max-h-none p-0 gap-0 overflow-hidden rounded-none" 
+          showCloseButton={true}
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Video Consultation</DialogTitle>
+          </DialogHeader>
+          {selected && selected.meetingId && (
+            <div className="flex flex-col lg:flex-row w-full h-full">
+              {/* Left: Jitsi (about 60% on desktop) */}
+              <div className="w-full lg:basis-[60%] lg:flex-1 h-[45vh] lg:h-full bg-black min-w-0">
+                <JitsiVideoCall
+                  roomName={selected.meetingId}
+                  displayName={user?.firstName && user?.lastName 
+                    ? `${user.firstName} ${user.lastName}` 
+                    : user?.email || 'User'}
+                  onClose={() => setShowVideoCall(false)}
+                />
+              </div>
+
+              {/* Right: Prescription & Diagnosis side panel (about 40%, with max width) */}
+              <div className="w-full lg:basis-[40%] lg:max-w-[420px] border-t lg:border-t-0 lg:border-l bg-background overflow-hidden p-4">
+                <PrescriptionDiagnosis
+                  appointment={selected}
+                  allAppointments={apptArray || []}
+                  onSave={handlePrescriptionSave}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
