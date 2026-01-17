@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useCurrentDoctorAppointments, useCompletedAppointmentsByPatientId } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
-import { CalendarClock, User, Clock, Video, Phone, Stethoscope, FileText, AlertCircle, Calendar, Building2 } from "lucide-react";
+import { CalendarClock, User, Clock, Video, Stethoscope, FileText, AlertCircle, Calendar, Building2 } from "lucide-react";
 import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import { useUpdateAppointmentStatus } from "@/app/appointments/use-appointments";
 import PrescriptionDiagnosis from "@/app/dashboard/appointments/components/PrescriptionDiagnosis";
+import { getStatusBadge, getConsultationModeIcon } from "@/lib/component-utils";
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
@@ -57,34 +58,6 @@ export default function AppointmentsPage() {
       </div>
     );
   }
-
-  const getStatusBadge = (status: string) => {
-    const statusLower = status?.toLowerCase();
-    switch (statusLower) {
-      case 'completed':
-        return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-700">Pending</Badge>;
-      case 'cancelled':
-        return <Badge variant="destructive">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getConsultationModeIcon = (mode: string) => {
-    const modeLower = mode?.toLowerCase();
-    switch (modeLower) {
-      case 'online':
-        return <Video className="h-4 w-4" />;
-      case 'phone':
-        return <Phone className="h-4 w-4" />;
-      case 'in-person':
-        return <User className="h-4 w-4" />;
-      default:
-        return <Stethoscope className="h-4 w-4" />;
-    }
-  };
 
   const handlePrescriptionSave = async () => {
 
@@ -520,14 +493,14 @@ export default function AppointmentsPage() {
       >
         <DialogContent 
           className="w-screen h-screen max-w-[100vw] sm:max-w-[100vw] max-h-none p-0 gap-0 overflow-hidden rounded-none" 
-          showCloseButton={true}
+          showCloseButton={false}
         >
           <DialogHeader className="sr-only">
             <DialogTitle>Video Consultation</DialogTitle>
           </DialogHeader>
           {selected && selected.meetingId && (
             <div className="flex flex-col lg:flex-row w-full h-full">
-              <div className="w-full lg:basis-[60%] lg:flex-1 h-[45vh] lg:h-full bg-black min-w-0">
+              <div className="w-full lg:basis-[60%] lg:flex-1 h-[45vh] lg:h-full bg-background min-w-0">
                 <LiveKitVideoCall
                   roomName={selected.meetingId}
                   displayName={user?.firstName && user?.lastName 

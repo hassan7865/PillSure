@@ -245,3 +245,53 @@
 .react-select__clear-indicator:hover {
   color: var(--destructive) !important;
 }
+
+/* LiveKit Component Styles - Teams/Meet Style Dark Theme */
+[data-lk-theme="default"] {
+  --lk-bg: #1a1a1a;
+  --lk-bg-secondary: #2d2d2d;
+  --lk-control-bar-bg: #1a1a1a;
+  --lk-text: #ffffff;
+}
+
+[data-lk-theme="default"] .lk-participant-tile,
+[data-lk-theme="default"] .lk-participant-tile-white,
+[data-lk-theme="default"] .lk-participant-view {
+  background-color: #2d2d2d !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+[data-lk-theme="default"] .lk-video-conference {
+  background-color: #1a1a1a !important;
+}
+
+[data-lk-theme="default"] .lk-participant-placeholder,
+[data-lk-theme="default"] .lk-placeholder {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+}
+
+[data-lk-theme="default"] .lk-participant-metadata {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  color: #ffffff !important;
+}
+
+[data-lk-theme="default"] .lk-participant-name {
+  color: #ffffff !important;
+}
+
+[data-lk-theme="default"] .lk-control-bar,
+[data-lk-theme="default"] .lk-button-group {
+  background-color: #1a1a1a !important;
+  border-top: 1px solid #333333 !important;
+}
+
+[data-lk-theme="default"] .lk-button {
+  color: #ffffff !important;
+  background-color: #2d2d2d !important;
+}
+
+[data-lk-theme="default"] .lk-button:hover {
+  background-color: #3d3d3d !important;
+}

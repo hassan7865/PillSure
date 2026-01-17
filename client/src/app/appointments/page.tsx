@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { usePatientAppointments } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
-import { CalendarClock, User, Clock, Video, Phone, Stethoscope, FileText, AlertCircle } from "lucide-react";
+import { CalendarClock, Clock, Video, Stethoscope, FileText, AlertCircle } from "lucide-react";
 import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import PublicLayout from "@/layout/PublicLayout";
+import { getStatusBadge, getConsultationModeIcon } from "@/lib/component-utils";
 
 export default function PatientAppointmentsPage() {
   const { user, token } = useAuth();
@@ -113,46 +114,9 @@ export default function PatientAppointmentsPage() {
     };
   }, [token, user]);
 
-  const getStatusBadge = (status: string) => {
-    if (!status) return <Badge variant="outline">Unknown</Badge>;
-    
-    const statusLower = status.toLowerCase().trim();
-    switch (statusLower) {
-      case 'completed':
-        return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="border-yellow-500 text-yellow-700">Pending</Badge>;
-      case 'confirmed':
-        return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">Confirmed</Badge>;
-      case 'in_progress':
-      case 'in-progress':
-        return <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">In Progress</Badge>;
-      case 'cancelled':
-      case 'canceled':
-        return <Badge variant="destructive">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</Badge>;
-    }
-  };
-
-  const getConsultationModeIcon = (mode: string) => {
-    const modeLower = mode?.toLowerCase();
-    switch (modeLower) {
-      case 'online':
-        return <Video className="h-4 w-4" />;
-      case 'phone':
-        return <Phone className="h-4 w-4" />;
-      case 'inperson':
-      case 'in-person':
-        return <User className="h-4 w-4" />;
-      default:
-        return <Stethoscope className="h-4 w-4" />;
-    }
-  };
-
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl h-full flex flex-col">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">My Appointments</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
@@ -160,9 +124,9 @@ export default function PatientAppointmentsPage() {
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+        <div className="flex flex-col lg:flex-row flex-1 gap-4 lg:gap-6 min-h-0">
           {/* Left: Appointment List */}
-          <Card className="w-full lg:w-[400px] lg:min-w-[360px] lg:max-w-md flex flex-col">
+          <Card className="w-full lg:w-[400px] lg:min-w-[360px] lg:max-w-md flex flex-col h-full">
             <CardHeader className="border-b">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
@@ -229,7 +193,7 @@ export default function PatientAppointmentsPage() {
           </Card>
 
           {/* Right: Tabbed Details/Prescription */}
-          <Card className="flex-1 flex flex-col">
+          <Card className="flex-1 flex flex-col h-full">
             {!selected ? (
               <CardContent className="flex-1 flex items-center justify-center min-h-[400px]">
                 <div className="flex flex-col items-center justify-center text-center p-6">
@@ -374,10 +338,15 @@ export default function PatientAppointmentsPage() {
         </div>
 
         {/* Video Call Dialog */}
-        <Dialog open={showVideoCall} onOpenChange={setShowVideoCall}>
+        <Dialog 
+          open={showVideoCall} 
+          onOpenChange={(open) => {
+            setShowVideoCall(open);
+          }}
+        >
           <DialogContent 
-            className="max-w-[95vw] w-full h-[95vh] max-h-[95vh] p-0 gap-0 overflow-hidden" 
-            showCloseButton={true}
+            className="w-screen h-screen max-w-[100vw] sm:max-w-[100vw] max-h-none p-0 gap-0 overflow-hidden rounded-none" 
+            showCloseButton={false}
           >
             <DialogHeader className="sr-only">
               <DialogTitle>Video Consultation</DialogTitle>
@@ -388,7 +357,9 @@ export default function PatientAppointmentsPage() {
                 displayName={user?.firstName && user?.lastName 
                   ? `${user.firstName} ${user.lastName}` 
                   : user?.email || 'User'}
-                onClose={() => setShowVideoCall(false)}
+                onClose={() => {
+                  setShowVideoCall(false);
+                }}
               />
             )}
           </DialogContent>

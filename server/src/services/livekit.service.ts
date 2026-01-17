@@ -41,8 +41,6 @@ export class LiveKitService {
 
     const token = await at.toJwt();
 
-    console.log('[LiveKit] Generated token:', token);
-
     return token;
   }
 }

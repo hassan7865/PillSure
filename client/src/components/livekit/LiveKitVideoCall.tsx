@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { RoomOptions, VideoPresets } from "livekit-client";
 import { 
   LiveKitRoom, 
@@ -8,7 +8,6 @@ import {
   useRoomContext,
   useTracks,
   ParticipantTile,
-  GridLayout,
   ControlBar,
   useParticipants,
   useLocalParticipant,
@@ -18,13 +17,11 @@ import "@livekit/components-styles";
 import { useAuth } from "@/contexts/auth-context";
 import api from "@/lib/interceptor";
 import Loader from "@/components/ui/loader";
-import Image from "next/image";
 
 interface LiveKitVideoCallProps {
   roomName: string;
   displayName: string;
   isModerator?: boolean;
-  avatarUrl?: string | null;
   onClose?: () => void;
 }
 
@@ -32,7 +29,6 @@ export default function LiveKitVideoCall({
   roomName,
   displayName,
   isModerator = false,
-  avatarUrl: propAvatarUrl,
   onClose,
 }: LiveKitVideoCallProps) {
   const { user } = useAuth();
@@ -86,19 +82,19 @@ export default function LiveKitVideoCall({
 
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <Loader 
-          title="Loading Meeting"
-          description="Initializing video call..."
-        />
+      <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-lg">Loading meeting...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !token) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">{error || "Failed to initialize meeting"}</p>
+      <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+        <p className="text-white">{error || "Failed to initialize meeting"}</p>
       </div>
     );
   }
@@ -113,7 +109,13 @@ export default function LiveKitVideoCall({
   };
 
   return (
-    <div className="w-full h-full bg-black" data-lk-theme="default">
+    <div 
+      className="w-full h-full bg-[#1a1a1a]" 
+      data-lk-theme="default"
+      style={{
+        '--lk-bg': '#1a1a1a',
+      } as React.CSSProperties}
+    >
       <LiveKitRoom
         video={false}
         audio={false}
@@ -129,13 +131,13 @@ export default function LiveKitVideoCall({
         className="w-full h-full"
       >
         <RoomAudioRenderer />
-        <VideoConference displayName={displayName} avatarUrl={propAvatarUrl} onClose={onClose} />
+        <VideoConference displayName={displayName} onClose={onClose} />
       </LiveKitRoom>
     </div>
   );
 }
 
-function VideoConference({ displayName, avatarUrl, onClose }: { displayName: string; avatarUrl?: string | null; onClose?: () => void }) {
+function VideoConference({ displayName, onClose }: { displayName: string; onClose?: () => void }) {
   const room = useRoomContext();
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
@@ -143,6 +145,76 @@ function VideoConference({ displayName, avatarUrl, onClose }: { displayName: str
     [Track.Source.Camera, Track.Source.ScreenShare],
     { onlySubscribed: false }
   );
+
+  // Get all participants including local, avoiding duplicates
+  // This must be called before any conditional returns (Rules of Hooks)
+  const allParticipants = useMemo(() => {
+    const participantMap = new Map();
+    
+    // Add local participant first if it exists
+    if (localParticipant) {
+      participantMap.set(localParticipant.identity || localParticipant.sid, localParticipant);
+    }
+    
+    // Add remote participants, skipping if already added (local participant)
+    participants.forEach((participant) => {
+      const key = participant.identity || participant.sid;
+      if (!participantMap.has(key)) {
+        participantMap.set(key, participant);
+      }
+    });
+    
+    return Array.from(participantMap.values());
+  }, [localParticipant, participants]);
+
+  // Check if anyone is sharing their screen
+  // MUST be called before any conditional returns (Rules of Hooks)
+  const activeScreenShare = useMemo(() => {
+    for (const participant of allParticipants) {
+      const screenShareTrack = participant.getTrackPublication(Track.Source.ScreenShare);
+      if (screenShareTrack && (screenShareTrack.track || screenShareTrack.isSubscribed)) {
+        return {
+          participant,
+          publication: screenShareTrack,
+        };
+      }
+    }
+    return null;
+  }, [allParticipants]);
+
+  // Ensure screen share tracks are subscribed when published
+  useEffect(() => {
+    if (room.state === 'connected') {
+      const subscribeToRemoteTracks = () => {
+        participants.forEach((participant) => {
+          participant.trackPublications.forEach((publication) => {
+            // Only subscribe to remote tracks (not local)
+            if ('setSubscribed' in publication && publication.kind === 'video' && !publication.isSubscribed) {
+              try {
+                (publication as any).setSubscribed(true);
+              } catch (error) {
+                console.error('Error subscribing to track:', error);
+              }
+            }
+          });
+        });
+      };
+
+      // Subscribe immediately
+      subscribeToRemoteTracks();
+
+      // Listen for track published events (including screen shares)
+      const handleTrackPublished = () => {
+        subscribeToRemoteTracks();
+      };
+
+      room.on('trackPublished', handleTrackPublished);
+
+      return () => {
+        room.off('trackPublished', handleTrackPublished);
+      };
+    }
+  }, [room, room.state, participants]);
 
   // Disable camera and mic on connect
   useEffect(() => {
@@ -161,7 +233,7 @@ function VideoConference({ displayName, avatarUrl, onClose }: { displayName: str
 
   if (room.state === 'connecting' || room.state === 'reconnecting') {
     return (
-      <div className="flex items-center justify-center h-full w-full bg-black">
+      <div className="flex items-center justify-center h-full w-full bg-[#1a1a1a]">
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-lg">Connecting to meeting...</p>
@@ -172,7 +244,7 @@ function VideoConference({ displayName, avatarUrl, onClose }: { displayName: str
 
   if (room.state !== 'connected') {
     return (
-      <div className="flex items-center justify-center h-full w-full bg-black">
+      <div className="flex items-center justify-center h-full w-full bg-[#1a1a1a]">
         <div className="text-center text-white">
           <p className="text-lg">Connection error. Please try again.</p>
         </div>
@@ -180,57 +252,95 @@ function VideoConference({ displayName, avatarUrl, onClose }: { displayName: str
     );
   }
 
-  const allParticipants = [...participants, localParticipant].filter(Boolean);
+  // Calculate optimal grid columns based on participant count (Teams/Meet style)
+  const getGridCols = (count: number) => {
+    if (count === 1) return 'grid-cols-1';
+    if (count === 2) return 'grid-cols-2';
+    if (count <= 4) return 'grid-cols-2';
+    if (count <= 9) return 'grid-cols-3';
+    if (count <= 16) return 'grid-cols-4';
+    return 'grid-cols-5';
+  };
 
   return (
-    <div className="flex flex-col h-full w-full bg-black">
-      {/* Video Grid Area */}
-      <div className="flex-1 overflow-hidden relative min-h-0">
-        {tracks.length > 0 ? (
-          <GridLayout 
-            tracks={tracks} 
-            className="h-full w-full"
-            style={{ padding: '0.5rem', gap: '0.5rem' }}
-          >
-            <ParticipantTile />
-          </GridLayout>
-        ) : (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className="text-center text-white">
-              {avatarUrl ? (
-                <div className="w-32 h-32 rounded-full overflow-hidden mx-auto mb-4 border-4 border-primary/30">
-                  <Image
-                    src={avatarUrl}
-                    alt={displayName}
-                    width={128}
-                    height={128}
-                    className="w-full h-full object-cover"
+    <div 
+      className="flex flex-col h-full w-full bg-[#1a1a1a]"
+      style={{
+        '--lk-bg': '#1a1a1a',
+      } as React.CSSProperties}
+    >
+      {/* Video Grid Area - Teams/Meet Style */}
+      <div className="flex-1 overflow-hidden relative min-h-0 bg-[#1a1a1a]">
+        {activeScreenShare ? (
+          // Full screen view when someone is sharing
+          <div className="w-full h-full bg-[#1a1a1a]">
+            <ParticipantTile
+              trackRef={{
+                participant: activeScreenShare.participant,
+                publication: activeScreenShare.publication,
+                source: Track.Source.ScreenShare,
+              }}
+              className="w-full h-full"
+            />
+          </div>
+        ) : allParticipants.length > 0 ? (
+          // Normal grid layout when no screen share
+          <div className={`grid ${getGridCols(allParticipants.length)} gap-1 w-full h-full p-1`}>
+            {allParticipants.map((participant) => {
+              const cameraTrack = participant.getTrackPublication(Track.Source.Camera);
+              const screenShareTrack = participant.getTrackPublication(Track.Source.ScreenShare);
+              
+              // Show camera track (or placeholder if no camera)
+              const trackRef = cameraTrack?.track && cameraTrack.isSubscribed
+                ? {
+                    participant,
+                    publication: cameraTrack,
+                    source: Track.Source.Camera,
+                  }
+                : cameraTrack
+                ? {
+                    participant,
+                    publication: cameraTrack,
+                    source: Track.Source.Camera,
+                  }
+                : {
+                    participant,
+                    publication: undefined,
+                    source: Track.Source.Camera,
+                  };
+              
+              return (
+                <div 
+                  key={participant.identity || participant.sid} 
+                  className="relative w-full h-full bg-[#2d2d2d] rounded overflow-hidden"
+                >
+                  <ParticipantTile
+                    trackRef={trackRef}
+                    className="w-full h-full"
                   />
                 </div>
-              ) : (
-                <div className="w-32 h-32 bg-gradient-to-br from-primary/40 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-primary/30">
-                  <span className="text-5xl font-bold text-white">
-                    {displayName?.charAt(0)?.toUpperCase() || 'U'}
-                  </span>
-                </div>
-              )}
-              <p className="text-lg mb-2 font-semibold">You're in the meeting</p>
-              <p className="text-sm text-gray-400">Enable your camera to start video</p>
-            </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="h-full w-full flex items-center justify-center bg-[#1a1a1a]">
+            <p className="text-white">Waiting for participants to join...</p>
           </div>
         )}
       </div>
-
-      {/* Controls Bar - Always visible when connected */}
-      <ControlBar
-        controls={{
-          microphone: true,
-          camera: true,
-          screenShare: true,
-          chat: false,
-          leave: true,
-        }}
-      />
+      
+      {/* Control Bar - Teams/Meet Style */}
+      <div className="bg-[#1a1a1a] border-t border-gray-800">
+        <ControlBar
+          controls={{
+            microphone: true,
+            camera: true,
+            screenShare: true,
+            chat: false,
+            leave: true,
+          }}
+        />
+      </div>
     </div>
   );
 }
