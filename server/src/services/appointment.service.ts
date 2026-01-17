@@ -8,6 +8,7 @@ import { eq, and, or, desc, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { randomBytes } from "crypto";
 import { randomUUID } from "crypto";
+import { doctorService } from "./doctor.service";
 
 export class AppointmentService {
   async createAppointment(patientId: string, data: any) {
@@ -33,11 +34,9 @@ export class AppointmentService {
     }
 
     // Generate unique meeting ID for online appointments
-    // Use a simple numeric format that Jitsi public instance accepts
     let meetingId: string | null = null;
     if (data.consultationMode?.toLowerCase() === 'online') {
       // Generate a simple numeric meeting ID (10-12 digits)
-      // Jitsi's public instance is more lenient with numeric room names
       // Format: timestamp + random to ensure uniqueness
       const timestamp = Date.now().toString().slice(-8); // Last 8 digits of timestamp
       const random = Math.floor(1000 + Math.random() * 9000).toString(); // 4 random digits
@@ -486,6 +485,22 @@ export class AppointmentService {
       },
       monthly
     };
+  }
+
+  // New methods that accept userId instead of doctorId
+  async getAppointmentsByDoctorUserId(userId: string, status?: string) {
+    const doctor = await doctorService.getDoctorByUserId(userId);
+    return this.getAppointmentsByDoctor(doctor.id, status);
+  }
+
+  async getAppointmentStatsByUserId(userId: string) {
+    const doctor = await doctorService.getDoctorByUserId(userId);
+    return this.getAppointmentStats(doctor.id);
+  }
+
+  async getYearlyAppointmentStatsByUserId(userId: string, year?: number) {
+    const doctor = await doctorService.getDoctorByUserId(userId);
+    return this.getYearlyAppointmentStats(doctor.id, year);
   }
 }
 

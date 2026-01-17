@@ -14,9 +14,9 @@ export const appointmentApi = {
     return response.data.data;
   },
 
-  getDoctorAppointments: async (doctorId: string, status?: string): Promise<ApiResponse> => {
+  getCurrentDoctorAppointments: async (status?: string): Promise<ApiResponse> => {
     const params = status ? `?status=${status}` : '';
-    const response = await api.get(`/appointments/doctor/${doctorId}${params}`);
+    const response = await api.get(`/appointments/doctor/appointments${params}`);
     return response.data.data;
   },
 
@@ -45,14 +45,14 @@ export const appointmentApi = {
     return response.data.data;
   },
 
-  getDoctorAppointmentStats: async (doctorId: string): Promise<ApiResponse> => {
-    const response = await api.get(`/appointments/doctor/${doctorId}/stats`);
+  getCurrentDoctorAppointmentStats: async (): Promise<ApiResponse> => {
+    const response = await api.get(`/appointments/doctor/stats`);
     return response.data.data;
   },
 
-  getDoctorYearlyStats: async (doctorId: string, year?: number): Promise<ApiResponse> => {
+  getCurrentDoctorYearlyStats: async (year?: number): Promise<ApiResponse> => {
     const params = year ? `?year=${year}` : '';
-    const response = await api.get(`/appointments/doctor/${doctorId}/yearly-stats${params}`);
+    const response = await api.get(`/appointments/doctor/yearly-stats${params}`);
     return response.data.data;
   },
 

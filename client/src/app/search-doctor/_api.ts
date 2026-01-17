@@ -74,17 +74,6 @@ export const doctorApi = {
 
     return transformDoctor(doctor);
   },
-
-  getCurrentDoctor: async (): Promise<Doctor> => {
-    const response = await api.get<ApiResponse<any>>('/doctor/me');
-    const doctor = response.data.data;
-    
-    if (!doctor) {
-      throw new Error('Doctor profile not found');
-    }
-
-    return transformDoctor(doctor);
-  },
 };
 
 export interface Review {

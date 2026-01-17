@@ -18,8 +18,6 @@ export class DoctorRoute {
     this.router.get('/specializations', this.getSpecializations);
     // Get all doctors with search and filter (public endpoint)
     this.router.get('/search-doctors', this.getDoctors);
-    // Get current doctor profile (protected endpoint) - must come before /:id
-    this.router.get('/me', verifyToken, this.getCurrentDoctor);
     
     // Review routes - must come before /:id to avoid route conflicts
     this.router.post('/:doctorId/reviews', verifyToken, this.createReview);
@@ -73,16 +71,6 @@ export class DoctorRoute {
         return next(BadRequestError("Doctor ID is required"));
       }
       const result = await doctorService.getDoctorById(doctorId);
-      res.status(200).json(ApiResponse(result, "Doctor profile retrieved successfully"));
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  private getCurrentDoctor = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = (req as any).user.userId;
-      const result = await doctorService.getDoctorByUserId(userId);
       res.status(200).json(ApiResponse(result, "Doctor profile retrieved successfully"));
     } catch (error) {
       next(error);

@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { appointmentService } from '../services/appointment.service';
+import { doctorService } from '../services/doctor.service';
 import { verifyToken } from '../middleware/jwt.handler';
 import { BadRequestError } from '../middleware/error.handler';
 import { ApiResponse } from '../core/api-response';
@@ -17,9 +18,10 @@ export class AppointmentRoute {
     this.router.get('/patient', verifyToken, this.getPatientAppointments);
     this.router.get('/patient/:patientId/completed', verifyToken, this.getCompletedAppointmentsByPatientId);
     this.router.get('/patient/status/stream', verifyToken, this.streamPatientAppointmentStatus);
-    this.router.get('/doctor/:doctorId', verifyToken, this.getDoctorAppointments);
-    this.router.get('/doctor/:doctorId/stats', verifyToken, this.getDoctorAppointmentStats);
-    this.router.get('/doctor/:doctorId/yearly-stats', verifyToken, this.getDoctorYearlyStats);
+    // Endpoints for current doctor (uses JWT userId)
+    this.router.get('/doctor/appointments', verifyToken, this.getCurrentDoctorAppointments);
+    this.router.get('/doctor/stats', verifyToken, this.getCurrentDoctorAppointmentStats);
+    this.router.get('/doctor/yearly-stats', verifyToken, this.getCurrentDoctorYearlyStats);
     this.router.get('/booked-slots/:doctorId/:date', this.getBookedSlots);
     this.router.get('/:id', verifyToken, this.getAppointmentById);
     this.router.put('/:id/status', verifyToken, this.updateAppointmentStatus);
@@ -70,35 +72,50 @@ export class AppointmentRoute {
     }
   };
 
-  private getDoctorAppointments = async (req: Request, res: Response, next: NextFunction) => {
+  private getCurrentDoctorAppointments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const doctorId = req.params.doctorId;
-      const status = req.query.status as string;
+      const userId = (req as any).user.userId;
+      const userRole = (req as any).user.role;
+      
+      if (userRole !== 'doctor') {
+        return next(BadRequestError("This endpoint is only available for doctors"));
+      }
 
-      const result = await appointmentService.getAppointmentsByDoctor(doctorId, status);
+      const status = req.query.status as string;
+      const result = await appointmentService.getAppointmentsByDoctorUserId(userId, status);
       res.status(200).json(ApiResponse(result, "Appointments retrieved successfully"));
     } catch (error) {
       next(error);
     }
   };
 
-  private getDoctorAppointmentStats = async (req: Request, res: Response, next: NextFunction) => {
+  private getCurrentDoctorAppointmentStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const doctorId = req.params.doctorId;
+      const userId = (req as any).user.userId;
+      const userRole = (req as any).user.role;
+      
+      if (userRole !== 'doctor') {
+        return next(BadRequestError("This endpoint is only available for doctors"));
+      }
 
-      const result = await appointmentService.getAppointmentStats(doctorId);
+      const result = await appointmentService.getAppointmentStatsByUserId(userId);
       res.status(200).json(ApiResponse(result, "Appointment statistics retrieved successfully"));
     } catch (error) {
       next(error);
     }
   };
 
-  private getDoctorYearlyStats = async (req: Request, res: Response, next: NextFunction) => {
+  private getCurrentDoctorYearlyStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const doctorId = req.params.doctorId;
-      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const userId = (req as any).user.userId;
+      const userRole = (req as any).user.role;
+      
+      if (userRole !== 'doctor') {
+        return next(BadRequestError("This endpoint is only available for doctors"));
+      }
 
-      const result = await appointmentService.getYearlyAppointmentStats(doctorId, year);
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const result = await appointmentService.getYearlyAppointmentStatsByUserId(userId, year);
       res.status(200).json(ApiResponse(result, "Yearly appointment statistics retrieved successfully"));
     } catch (error) {
       next(error);

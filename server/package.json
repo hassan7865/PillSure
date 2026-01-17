@@ -29,6 +29,7 @@
     "drizzle-orm": "^0.36.4",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "livekit-server-sdk": "^2.15.0",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
     "uuid": "^13.0.0"

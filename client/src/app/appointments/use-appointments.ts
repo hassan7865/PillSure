@@ -79,24 +79,19 @@ export const usePatientAppointments = (status?: string) => {
   return { data, isLoading, error, refetch };
 };
 
-export const useDoctorAppointments = (doctorId: string, status?: string) => {
+export const useCurrentDoctorAppointments = (status?: string) => {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!doctorId) {
-      setIsLoading(false);
-      return;
-    }
-
     let isMounted = true;
     
     const fetchAppointments = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const result = await appointmentApi.getDoctorAppointments(doctorId, status);
+        const result = await appointmentApi.getCurrentDoctorAppointments(status);
         if (isMounted) {
           setData(result);
         }
@@ -116,21 +111,20 @@ export const useDoctorAppointments = (doctorId: string, status?: string) => {
     return () => {
       isMounted = false;
     };
-  }, [doctorId, status]);
+  }, [status]);
 
   const refetch = useCallback(async () => {
-    if (!doctorId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await appointmentApi.getDoctorAppointments(doctorId, status);
+      const result = await appointmentApi.getCurrentDoctorAppointments(status);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch appointments'));
     } finally {
       setIsLoading(false);
     }
-  }, [doctorId, status]);
+  }, [status]);
 
   return { data, isLoading, error, refetch };
 };
@@ -309,24 +303,19 @@ export const useBookedSlots = (doctorId: string, date: string | undefined) => {
   return { data, isLoading, error };
 };
 
-export const useDoctorAppointmentStats = (doctorId: string) => {
+export const useCurrentDoctorAppointmentStats = () => {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!doctorId) {
-      setIsLoading(false);
-      return;
-    }
-
     let isMounted = true;
     
     const fetchStats = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const result = await appointmentApi.getDoctorAppointmentStats(doctorId);
+        const result = await appointmentApi.getCurrentDoctorAppointmentStats();
         if (isMounted) {
           setData(result);
         }
@@ -346,29 +335,24 @@ export const useDoctorAppointmentStats = (doctorId: string) => {
     return () => {
       isMounted = false;
     };
-  }, [doctorId]);
+  }, []);
 
   return { data, isLoading, error };
 };
 
-export const useDoctorYearlyStats = (doctorId: string, year?: number) => {
+export const useCurrentDoctorYearlyStats = (year?: number) => {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!doctorId) {
-      setIsLoading(false);
-      return;
-    }
-
     let isMounted = true;
     
     const fetchStats = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const result = await appointmentApi.getDoctorYearlyStats(doctorId, year);
+        const result = await appointmentApi.getCurrentDoctorYearlyStats(year);
         if (isMounted) {
           setData(result);
         }
@@ -388,7 +372,7 @@ export const useDoctorYearlyStats = (doctorId: string, year?: number) => {
     return () => {
       isMounted = false;
     };
-  }, [doctorId, year]);
+  }, [year]);
 
   return { data, isLoading, error };
 };

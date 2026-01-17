@@ -11,7 +11,7 @@ import { usePatientAppointments } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
 import { CalendarClock, User, Clock, Video, Phone, Stethoscope, FileText, AlertCircle } from "lucide-react";
-import JitsiVideoCall from "@/components/jitsi/JitsiVideoCall";
+import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import PublicLayout from "@/layout/PublicLayout";
 
@@ -383,7 +383,7 @@ export default function PatientAppointmentsPage() {
               <DialogTitle>Video Consultation</DialogTitle>
             </DialogHeader>
             {selected && selected.meetingId && (
-              <JitsiVideoCall
+              <LiveKitVideoCall
                 roomName={selected.meetingId}
                 displayName={user?.firstName && user?.lastName 
                   ? `${user.firstName} ${user.lastName}` 

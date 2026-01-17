@@ -6,7 +6,7 @@ import { DoctorRoute } from "./src/routes/doctor.route";
 import { MedicineRoute } from "./src/routes/medicine.route";
 import { AppointmentRoute } from "./src/routes/appointment.route";
 import { AdminRoute } from "./src/routes/admin.route";
-import { JitsiRoute } from "./src/routes/jitsi.route";
+import LiveKitRoute from "./src/routes/livekit.route";
 import { AuthService } from "./src/services/auth.service";
 import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
@@ -51,7 +51,7 @@ const initializeApp = async () => {
     const medicineRoutes = new MedicineRoute();
     const appointmentRoutes = new AppointmentRoute();
     const adminRoutes = new AdminRoute();
-    const jitsiRoutes = new JitsiRoute();
+    const livekitRoutes = new LiveKitRoute();
 
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
@@ -60,7 +60,7 @@ const initializeApp = async () => {
     app.use("/api/medicine", medicineRoutes.getRouter());
     app.use("/api/appointments", appointmentRoutes.getRouter());
     app.use("/api/admin", adminRoutes.getRouter());
-    app.use("/api/jitsi", jitsiRoutes.getRouter());
+    app.use("/api/livekit", livekitRoutes.getRouter());
 
     // Health check endpoint
     app.get("/health", (req, res) => {

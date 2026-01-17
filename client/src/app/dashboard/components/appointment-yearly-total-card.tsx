@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useDoctorYearlyStats } from '@/app/appointments/use-appointments';
-import { doctorApi } from '@/app/search-doctor/_api';
-import { Doctor } from '@/lib/types';
+import { useCurrentDoctorYearlyStats } from '@/app/appointments/use-appointments';
 import { Badge } from "@/components/ui/badge";
 import { CardAction } from "@/components/ui/card";
 import { IconTrendingUp, IconTrendingDown, IconCalendar } from "@tabler/icons-react";
@@ -14,47 +12,10 @@ interface AppointmentYearlyTotalCardProps {
   year?: number;
 }
 
-const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({ doctorId, year = new Date().getFullYear() }) => {
-  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
-  const [doctorLoading, setDoctorLoading] = useState(true);
+const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({ year = new Date().getFullYear() }) => {
+  const { data: yearlyStats, isLoading: statsLoading, error } = useCurrentDoctorYearlyStats(year);
 
-  // Fetch current doctor if no doctorId provided
-  useEffect(() => {
-    if (doctorId) {
-      setDoctorLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    
-    const fetchCurrentDoctor = async () => {
-      try {
-        setDoctorLoading(true);
-        const result = await doctorApi.getCurrentDoctor();
-        if (isMounted) {
-          setCurrentDoctor(result);
-        }
-      } catch (err) {
-        console.error('Failed to fetch current doctor:', err);
-      } finally {
-        if (isMounted) {
-          setDoctorLoading(false);
-        }
-      }
-    };
-
-    fetchCurrentDoctor();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [doctorId]);
-
-  const currentDoctorId = doctorId || currentDoctor?.id;
-  const { data: yearlyStats, isLoading: statsLoading, error } = useDoctorYearlyStats(currentDoctorId || '', year);
-  const isLoading = doctorLoading || statsLoading;
-
-  if (isLoading) {
+  if (statsLoading) {
     return (
       <Card className="@container/card animate-pulse">
         <CardHeader>
@@ -66,7 +27,7 @@ const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({
     );
   }
 
-  if (error || !yearlyStats || !currentDoctorId) {
+  if (error || !yearlyStats) {
     return (
       <Card className="@container/card">
         <CardHeader>

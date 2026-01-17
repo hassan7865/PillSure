@@ -4,10 +4,7 @@ import React from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IconCalendar, IconTrendingUp } from "@tabler/icons-react";
-import { useDoctorYearlyStats } from '@/app/appointments/use-appointments';
-import { doctorApi } from '@/app/search-doctor/_api';
-import { Doctor } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useCurrentDoctorYearlyStats } from '@/app/appointments/use-appointments';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -23,55 +20,11 @@ interface AppointmentBarChartProps {
 }
 
 export const AppointmentBarChart: React.FC<AppointmentBarChartProps> = ({ 
-  doctorId, 
   year = new Date().getFullYear() 
 }) => {
-  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
-  const [doctorLoading, setDoctorLoading] = useState(true);
+  const { data: yearlyStats, isLoading: statsLoading, error } = useCurrentDoctorYearlyStats(year);
 
-  // Fetch current doctor if no doctorId provided
-  useEffect(() => {
-    if (doctorId) {
-      setDoctorLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    
-    const fetchCurrentDoctor = async () => {
-      try {
-        setDoctorLoading(true);
-        const result = await doctorApi.getCurrentDoctor();
-        if (isMounted) {
-          setCurrentDoctor(result);
-        }
-      } catch (err) {
-        console.error('Failed to fetch current doctor:', err);
-      } finally {
-        if (isMounted) {
-          setDoctorLoading(false);
-        }
-      }
-    };
-
-    fetchCurrentDoctor();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [doctorId]);
-  
-  // Use doctorId from props or try to get from current doctor
-  const currentDoctorId = doctorId || currentDoctor?.id;
-  
-  const { data: yearlyStats, isLoading: statsLoading, error } = useDoctorYearlyStats(
-    currentDoctorId || '', 
-    year
-  );
-  
-  const isLoading = doctorLoading || statsLoading;
-
-  if (isLoading) {
+  if (statsLoading) {
     return (
       <Card className="col-span-4">
         <CardHeader>
@@ -96,7 +49,7 @@ export const AppointmentBarChart: React.FC<AppointmentBarChartProps> = ({
     );
   }
 
-  if (error || !yearlyStats || !currentDoctorId) {
+  if (error || !yearlyStats) {
     return (
       <Card className="col-span-4">
         <CardHeader>

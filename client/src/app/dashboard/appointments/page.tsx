@@ -7,57 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useDoctorAppointments, useCompletedAppointmentsByPatientId } from "@/app/appointments/use-appointments";
-import { doctorApi } from "@/app/search-doctor/_api";
-import { Doctor } from "@/lib/types";
+import { useCurrentDoctorAppointments, useCompletedAppointmentsByPatientId } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
 import { CalendarClock, User, Clock, Video, Phone, Stethoscope, FileText, AlertCircle, Calendar, Building2 } from "lucide-react";
-import JitsiVideoCall from "@/components/jitsi/JitsiVideoCall";
+import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import { useUpdateAppointmentStatus } from "@/app/appointments/use-appointments";
 import PrescriptionDiagnosis from "@/app/dashboard/appointments/components/PrescriptionDiagnosis";
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
-  const [currentDoctor, setCurrentDoctor] = useState<Doctor | null>(null);
-  const [doctorLoading, setDoctorLoading] = useState(true);
-  const doctorId = currentDoctor?.id;
   const [selected, setSelected] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'prescription'>('details');
   const [showVideoCall, setShowVideoCall] = useState(false);
 
   const { mutateAsync: updateStatus } = useUpdateAppointmentStatus();
 
-  // Fetch current doctor
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchCurrentDoctor = async () => {
-      try {
-        setDoctorLoading(true);
-        const result = await doctorApi.getCurrentDoctor();
-        if (isMounted) {
-          setCurrentDoctor(result);
-        }
-      } catch (err) {
-        console.error('Failed to fetch current doctor:', err);
-      } finally {
-        if (isMounted) {
-          setDoctorLoading(false);
-        }
-      }
-    };
-
-    fetchCurrentDoctor();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Only fetch appointments when doctorId is available
-  const { data: appointments, isLoading: apptLoading } = useDoctorAppointments(doctorId || "", undefined);
+  // Fetch appointments for current doctor
+  const { data: appointments, isLoading: apptLoading } = useCurrentDoctorAppointments(undefined);
 
   // Support both array and ApiResponse object
   const apptArray = Array.isArray(appointments)
@@ -79,12 +47,12 @@ export default function AppointmentsPage() {
   }, [apptArray, selected]);
 
 
-  if (doctorLoading || !doctorId) {
+  if (apptLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <Loader 
-          title="Loading Doctor Info"
-          description="Fetching your profile information..."
+          title="Loading Appointments"
+          description="Fetching your appointments..."
         />
       </div>
     );
@@ -462,7 +430,7 @@ export default function AppointmentsPage() {
                                 <div className="flex items-center gap-2 mb-2">
                                   <User className="h-4 w-4 text-muted-foreground" />
                                   <span className="text-sm font-semibold">
-                                    {apt.doctorName || currentDoctor?.name || "Unknown Doctor"}
+                                    {apt.doctorName || user?.firstName || "Unknown Doctor"}
                                   </span>
                                 </div>
                                 {apt.hospitalName && (
@@ -560,7 +528,7 @@ export default function AppointmentsPage() {
           {selected && selected.meetingId && (
             <div className="flex flex-col lg:flex-row w-full h-full">
               <div className="w-full lg:basis-[60%] lg:flex-1 h-[45vh] lg:h-full bg-black min-w-0">
-                <JitsiVideoCall
+                <LiveKitVideoCall
                   roomName={selected.meetingId}
                   displayName={user?.firstName && user?.lastName 
                     ? `${user.firstName} ${user.lastName}` 

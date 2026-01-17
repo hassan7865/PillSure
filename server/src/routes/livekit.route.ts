@@ -2,9 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../middleware/jwt.handler';
 import { BadRequestError } from '../middleware/error.handler';
 import { ApiResponse } from '../core/api-response';
-import { jitsiService } from '../services/jitsi.service';
+import { livekitService } from '../services/livekit.service';
 
-export class JitsiRoute {
+export class LiveKitRoute {
   private router: Router;
 
   constructor() {
@@ -13,10 +13,10 @@ export class JitsiRoute {
   }
 
   private initializeRoutes() {
-    this.router.get('/token', verifyToken, this.getJitsiToken);
+    this.router.get('/token', verifyToken, this.getLiveKitToken);
   }
 
-  private getJitsiToken = async (req: Request, res: Response, next: NextFunction) => {
+  private getLiveKitToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = (req as any).user;
       const roomName = req.query.roomName as string;
@@ -30,7 +30,7 @@ export class JitsiRoute {
         return next(BadRequestError('User information is missing'));
       }
 
-      const token = jitsiService.generateJitsiToken(
+      const token = await livekitService.generateAccessToken(
         {
           userId: user.userId,
           email: user.email,
@@ -41,7 +41,7 @@ export class JitsiRoute {
         isModerator
       );
 
-      res.status(200).json(ApiResponse({ token }, 'Jitsi token generated successfully'));
+      res.status(200).json(ApiResponse({ token }, 'LiveKit token generated successfully'));
     } catch (error: any) {
       next(error);
     }
@@ -52,5 +52,4 @@ export class JitsiRoute {
   }
 }
 
-export default JitsiRoute;
-
+export default LiveKitRoute;
