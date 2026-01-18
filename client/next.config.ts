@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'pillsure.s3.amazonaws.com',
+        pathname: '/**',
+      },
+    ],
+  },
   // Standard webpack bundler works better with npm workspaces than Turbopack
   webpack: (config) => {
     // Resolve modules from both client and root node_modules for monorepo compatibility

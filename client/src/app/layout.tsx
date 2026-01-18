@@ -5,6 +5,7 @@ import { fontVariables } from "@/lib/font";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
+import FloatingRecommendationButton from "@/components/recommendation/FloatingRecommendationButton";
 
 export const metadata: Metadata = {
   title: "Pillsure - Medication Management",
@@ -26,6 +27,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           {children}
+          <FloatingRecommendationButton />
           <Toaster richColors position="top-right" />
         </AuthProvider>
       </body>
