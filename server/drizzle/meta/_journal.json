@@ -57,6 +57,13 @@
       "when": 1768056808474,
       "tag": "0007_little_spitfire",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1768761010060,
+      "tag": "0008_yielding_nuke",
+      "breakpoints": true
     }
   ]
 }

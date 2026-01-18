@@ -7,3 +7,4 @@ export * from './medicine';
 export * from './patient';
 export * from './appointments';
 export * from './reviews';
+export * from './drugCategorySpecializationMapping';

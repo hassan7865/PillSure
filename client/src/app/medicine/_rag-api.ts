@@ -1,6 +1,7 @@
 import api from '@/lib/interceptor';
 import { ApiResponse } from '@/lib/types';
 import { Medicine } from './_api';
+import { Doctor } from '@/lib/types';
 
 export interface RAGMedicineInfo extends Medicine {
   ragScore?: number;
@@ -11,6 +12,7 @@ export interface RAGRecommendationResponse {
   rewritten_query: string;
   result: RAGMedicineInfo | null;
   suggestions: RAGMedicineInfo[];
+  recommendedDoctors: Doctor[];
   latency_ms: number;
 }
 

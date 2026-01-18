@@ -16,6 +16,7 @@ import { ragApi, RAGRecommendationResponse } from "@/app/medicine/_rag-api";
 import { toast } from "sonner";
 import RecommendationResultCard from "./RecommendationResultCard";
 import RecommendationSuggestionCard from "./RecommendationSuggestionCard";
+import RecommendedDoctorCard from "./RecommendedDoctorCard";
 
 interface RecommendationDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ export default function RecommendationDialog({
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<RAGRecommendationResponse | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleSearch = async () => {
     if (!query.trim() || query.trim().length < 3) {
@@ -62,14 +64,32 @@ export default function RecommendationDialog({
   };
 
   const handleCardClick = (medicineId: number) => {
+    setIsNavigating(true);
     router.push(`/medicine/${medicineId}`);
+    // Just close without resetting - user is navigating away
     onOpenChange(false);
   };
 
-  const handleClose = () => {
-    setQuery("");
-    setResults(null);
+  const handleDoctorClick = (doctorId: string) => {
+    setIsNavigating(true);
+    router.push(`/doctor/${doctorId}`);
+    // Just close without resetting - user is navigating away
     onOpenChange(false);
+  };
+
+  // Reset dialog state when closed via X button or backdrop (but not when navigating)
+  const handleClose = (open: boolean) => {
+    if (!open && !isNavigating) {
+      // Reset state when closing via X/backdrop
+      setQuery("");
+      setResults(null);
+      setIsLoading(false);
+    }
+    // Reset navigation flag after dialog closes
+    if (!open) {
+      setIsNavigating(false);
+    }
+    onOpenChange(open);
   };
 
   return (
@@ -148,6 +168,26 @@ export default function RecommendationDialog({
                       medicine={results.result}
                       onClick={() => handleCardClick(results.result!.id)}
                     />
+                  </div>
+                )}
+
+                {/* Recommended Doctors */}
+                {results.recommendedDoctors && results.recommendedDoctors.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 text-foreground">
+                      Recommended Doctors
+                    </h3>
+                    <div className="overflow-x-auto pb-2 -mx-2 px-2">
+                      <div className="flex gap-4 min-w-max">
+                        {results.recommendedDoctors.map((doctor) => (
+                          <RecommendedDoctorCard
+                            key={doctor.id}
+                            doctor={doctor}
+                            onViewProfile={() => handleDoctorClick(doctor.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 
