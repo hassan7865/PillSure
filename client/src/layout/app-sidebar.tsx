@@ -56,6 +56,24 @@ const company = {
 import { useAuth } from '@/contexts/auth-context';
 import type { User as AuthUser } from '@/lib/types';
 function getNavItems(user: AuthUser | null) {
+  // If user is a doctor, only show Dashboard and Appointments
+  if (user?.role === 'doctor') {
+    return [
+      {
+        title: 'Dashboard',
+        url: '/dashboard',
+        icon: LayoutDashboard,
+        isActive: true
+      },
+      {
+        title: 'Appointments',
+        url: '/dashboard/appointments',
+        icon: CalendarClock
+      }
+    ];
+  }
+
+  // For other roles (admin, etc.), show all items
   const items = [
     {
       title: 'Dashboard',
@@ -63,13 +81,6 @@ function getNavItems(user: AuthUser | null) {
       icon: LayoutDashboard,
       isActive: true
     },
-    ...(user?.role === 'doctor'
-      ? [{
-          title: 'Appointments',
-          url: '/dashboard/appointments',
-          icon: CalendarClock
-        }]
-      : []),
     {
       title: 'Doctors',
       url: '/dashboard/admin/doctors',
@@ -189,6 +200,7 @@ export default function AppSidebar() {
                     tooltip={item.title}
                     isActive={isActive}
                     onClick={() => handleNavigation(item.url)}
+                    className="cursor-pointer"
                   >
                     <Icon />
                     <span>{item.title}</span>
