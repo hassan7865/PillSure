@@ -57,6 +57,11 @@ export const appointmentApi = {
     const response = await api.get(`/appointments/patient/${patientId}/completed`);
     return extractApiData(response);
   },
+
+  getPrescriptionByAppointmentId: async (appointmentId: string): Promise<any[]> => {
+    const response = await api.get(`/appointments/${appointmentId}/prescription`);
+    return response.data.data;
+  },
 };
 
 export default appointmentApi;

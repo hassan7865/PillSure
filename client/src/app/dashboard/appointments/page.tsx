@@ -224,6 +224,23 @@ export default function AppointmentsPage() {
                   </div>
                 </div>
 
+                {/* Hospital Information Section */}
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    Hospital Information
+                  </h2>
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                    <DetailRow label="Hospital Name" value={selected.hospitalName || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="Address" value={selected.hospitalAddress || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="Contact No" value={selected.hospitalContactNo || 'N/A'} />
+                    <Separator />
+                    <DetailRow label="Email" value={selected.hospitalEmail || 'N/A'} />
+                  </div>
+                </div>
+
                 <div>
                   <h2 className="text-lg font-semibold text-foreground mb-4">Appointment Overview</h2>
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
@@ -350,134 +367,38 @@ export default function AppointmentsPage() {
               <TabsContent value="prescription" className="space-y-6 mt-0">
                 <div>
                   <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <CalendarClock className="h-5 w-5 text-primary" />
-                    Previous Appointments
+                    <Stethoscope className="h-5 w-5 text-primary" />
+                    Prescription
                   </h2>
-                  {(() => {
-                    // Use API data for completed appointments
-                    if (!selected?.patientId) {
-                      return (
-                        <div className="text-center py-8 rounded-lg border bg-muted/30">
-                          <p className="text-sm text-muted-foreground">
-                            No appointment selected.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    if (loadingCompleted) {
-                      return (
-                        <div className="text-center py-8 rounded-lg border bg-muted/30">
-                          <Loader 
-                            title="Loading History"
-                            description="Fetching previous appointments..."
-                          />
-                        </div>
-                      );
-                    }
-
-                    // Filter out current appointment from the results
-                    const historyAppointments = (completedAppointmentsArray || []).filter(
-                      (apt: any) => apt.id !== selected.id
-                    );
-
-                    if (historyAppointments.length === 0) {
-                      return (
-                        <div className="text-center py-8 rounded-lg border bg-muted/30">
-                          <p className="text-sm text-muted-foreground">
-                            No previous completed appointments found for this patient.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-3">
-                        {historyAppointments.map((apt: any) => (
-                          <div
-                            key={apt.id}
-                            className="rounded-lg border bg-muted/30 p-4 space-y-3"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <User className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm font-semibold">
-                                    {apt.doctorName || user?.firstName || "Unknown Doctor"}
-                                  </span>
-                                </div>
-                                {apt.hospitalName && (
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm text-muted-foreground">
-                                      {apt.hospitalName}
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>
-                                    {apt.appointmentDate} {apt.appointmentTime}
-                                  </span>
-                                </div>
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                {apt.status}
-                              </Badge>
+                  {/* Match Prescription & Diagnosis section exactly */}
+                  {Array.isArray(selected.prescription) && selected.prescription.length > 0 ? (
+                    <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                      <div>
+                        <h3 className="text-sm font-semibold mb-2">Prescription:</h3>
+                        <div className="space-y-2">
+                          {selected.prescription.map((item: any, idx: number) => (
+                            <div key={idx} className="text-sm">
+                              <span className="font-medium">{item.medicineName}</span>
+                              {item.quantity && (
+                                <span className="text-muted-foreground"> - Qty: {item.quantity}</span>
+                              )}
+                              {item.dose && (
+                                <span className="text-muted-foreground">, Dose: {item.dose}</span>
+                              )}
                             </div>
-
-                            {Array.isArray(apt.prescription) && apt.prescription.length > 0 && (
-                              <>
-                                <Separator />
-                                <div>
-                                  <h4 className="text-sm font-semibold mb-2">Prescription:</h4>
-                                  <div className="space-y-2">
-                                    {apt.prescription.map((item: any, idx: number) => (
-                                      <div key={idx} className="text-sm text-foreground">
-                                        <span className="font-medium">• {item.medicineName}</span>
-                                        {item.quantity && (
-                                          <span className="text-muted-foreground"> - Qty: {item.quantity}</span>
-                                        )}
-                                        {item.dose && (
-                                          <span className="text-muted-foreground">, Dose: {item.dose}</span>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-
-                            {Array.isArray(apt.diagnosis) && apt.diagnosis.length > 0 && (
-                              <>
-                                <Separator />
-                                <div>
-                                  <h4 className="text-sm font-semibold mb-2">Diagnosis:</h4>
-                                  <div className="flex flex-wrap gap-2">
-                                    {apt.diagnosis.map((diag: string, idx: number) => (
-                                      <Badge key={idx} variant="outline" className="text-xs">
-                                        {diag}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-
-                            {apt.doctorNotes && (
-                              <>
-                                <Separator />
-                                <div>
-                                  <h4 className="text-sm font-semibold mb-2">Notes:</h4>
-                                  <p className="text-sm text-muted-foreground">{apt.doctorNotes}</p>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })()}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full py-12 text-center rounded-lg border border-dashed">
+                      <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                      <p className="text-muted-foreground font-medium">No prescription available</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        This appointment does not have a prescription yet.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </CardContent>

@@ -335,6 +335,34 @@ export default function PrescriptionDiagnosis({
         </TabsContent>
 
         <TabsContent value="history" className="flex-1 overflow-y-auto space-y-3">
+          {/* Summary Section */}
+          <div className="rounded-lg border bg-muted/30 p-3 mb-3">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-xs">Visits:</span>
+                <Badge variant="secondary" className="text-xs">{historyAppointments.length + 1}</Badge>
+              </div>
+              {appointment.hospitalName && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-xs">{appointment.hospitalName}</span>
+                </div>
+              )}
+            </div>
+            {(appointment.hospitalAddress || appointment.hospitalContactNo || appointment.hospitalEmail) && (
+              <div className="mt-2 space-y-1 pl-1">
+                {appointment.hospitalAddress && (
+                  <div className="text-xs text-muted-foreground">Address: {appointment.hospitalAddress}</div>
+                )}
+                {appointment.hospitalContactNo && (
+                  <div className="text-xs text-muted-foreground">Contact: {appointment.hospitalContactNo}</div>
+                )}
+                {appointment.hospitalEmail && (
+                  <div className="text-xs text-muted-foreground">Email: {appointment.hospitalEmail}</div>
+                )}
+              </div>
+            )}
+          </div>
           {historyAppointments.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">

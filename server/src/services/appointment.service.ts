@@ -7,6 +7,7 @@ import { hospitals } from "../schema/hospitals";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { doctorService } from "./doctor.service";
+import { alias } from "drizzle-orm/pg-core";
 
 export class AppointmentService {
   async createAppointment(patientId: string, data: any) {
@@ -114,6 +115,9 @@ export class AppointmentService {
         doctorId: appointments.doctorId,
         doctorName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
         hospitalName: hospitals.hospitalName,
+        hospitalAddress: hospitals.hospitalAddress,
+        hospitalContactNo: hospitals.hospitalContactNo,
+        hospitalEmail: hospitals.hospitalEmail,
       })
       .from(appointments)
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
@@ -131,54 +135,71 @@ export class AppointmentService {
     return result;
   }
 
-  async getAppointmentsByDoctor(doctorId: string, status?: string) {
-    const conditions = [eq(appointments.doctorId, doctorId), eq(appointments.isActive, true)];
-    
-    if (status) {
-      conditions.push(eq(appointments.status, status));
-    }
 
-    const result = await db
-      .select({
-        id: appointments.id,
-        appointmentDate: appointments.appointmentDate,
-        appointmentTime: appointments.appointmentTime,
-        status: appointments.status,
-        consultationMode: appointments.consultationMode,
-        meetingId: appointments.meetingId,
-        patientNotes: appointments.patientNotes,
-        doctorNotes: appointments.doctorNotes,
-        prescription: appointments.prescription,
-        diagnosis: appointments.diagnosis,
-        cancellationReason: appointments.cancellationReason,
-        createdAt: appointments.createdAt,
-        updatedAt: appointments.updatedAt,
-        patientId: appointments.patientId,
-        doctorId: appointments.doctorId,
-        isActive: appointments.isActive,
-        patientName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
-        patientEmail: users.email,
-        patientGender: patients.gender,
-        patientMobile: patients.mobile,
-        patientDateOfBirth: patients.dateOfBirth,
-        patientAddress: patients.address,
-        patientBloodGroup: patients.bloodGroup,
-        patientHasCovid: patients.hasCovid,
-        patientPastMedicalHistory: patients.pastMedicalHistory,
-        patientSurgicalHistory: patients.surgicalHistory,
-        patientAllergies: patients.allergies,
-        hospitalName: hospitals.hospitalName,
-      })
-      .from(appointments)
-      .innerJoin(users, eq(appointments.patientId, users.id))
-      .leftJoin(patients, eq(appointments.patientId, patients.userId))
-      .leftJoin(doctors, eq(appointments.doctorId, doctors.id))
-      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
-      .where(and(...conditions))
+async getAppointmentsByDoctor(doctorId: string, status?: string) {
+  const conditions = [
+    eq(appointments.doctorId, doctorId),
+    eq(appointments.isActive, true),
+  ];
+
+  if (status) {
+    conditions.push(eq(appointments.status, status));
+  }
+
+  // ✅ Aliases
+  const patientUser = alias(users, "patient_user");
+  const doctorUser = alias(users, "doctor_user");
+
+  const result = await db
+    .select({
+      id: appointments.id,
+      appointmentDate: appointments.appointmentDate,
+      appointmentTime: appointments.appointmentTime,
+      status: appointments.status,
+      consultationMode: appointments.consultationMode,
+      meetingId: appointments.meetingId,
+      patientNotes: appointments.patientNotes,
+      doctorNotes: appointments.doctorNotes,
+      prescription: appointments.prescription,
+      diagnosis: appointments.diagnosis,
+      cancellationReason: appointments.cancellationReason,
+      createdAt: appointments.createdAt,
+      updatedAt: appointments.updatedAt,
+      patientId: appointments.patientId,
+      doctorId: appointments.doctorId,
+      isActive: appointments.isActive,
+      patientName: sql<string>`CONCAT(${patientUser.firstName}, ' ', ${patientUser.lastName})`,
+      patientEmail: patientUser.email,
+      patientGender: patients.gender,
+      patientMobile: patients.mobile,
+      patientDateOfBirth: patients.dateOfBirth,
+      patientAddress: patients.address,
+      patientBloodGroup: patients.bloodGroup,
+      patientHasCovid: patients.hasCovid,
+      patientPastMedicalHistory: patients.pastMedicalHistory,
+      patientSurgicalHistory: patients.surgicalHistory,
+      patientAllergies: patients.allergies,
+      doctorName: sql<string>`CONCAT(${doctorUser.firstName}, ' ', ${doctorUser.lastName})`,
+      doctorSpecializations: doctors.specializationIds,
+      doctorFee: doctors.feePkr,
+      doctorMobile: doctors.mobile,
+      doctorImage: doctors.image,
+      hospitalName: hospitals.hospitalName,
+      hospitalAddress: hospitals.hospitalAddress,
+      hospitalContactNo: hospitals.hospitalContactNo,
+      hospitalEmail: hospitals.hospitalEmail,
+    })
+    .from(appointments)
+      .innerJoin(patientUser, eq(appointments.patientId, patientUser.id))
+    .leftJoin(patients, eq(appointments.patientId, patients.userId))
+    .leftJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .leftJoin(doctorUser, eq(doctors.userId, doctorUser.id))
+    .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
+    .where(and(...conditions))
       .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
 
-    return result;
-  }
+  return result;
+}
 
   async getAppointmentById(appointmentId: string, userId: string) {
     const result = await db
@@ -499,6 +520,15 @@ export class AppointmentService {
   async getYearlyAppointmentStatsByUserId(userId: string, year?: number) {
     const doctor = await doctorService.getDoctorByUserId(userId);
     return this.getYearlyAppointmentStats(doctor.id, year);
+  }
+
+  async getPrescriptionByAppointmentId(appointmentId: string) {
+    const appointment = await db
+      .select({ prescription: appointments.prescription })
+      .from(appointments)
+      .where(eq(appointments.id, appointmentId))
+      .limit(1);
+    return appointment.length > 0 ? appointment[0].prescription || [] : [];
   }
 }
 

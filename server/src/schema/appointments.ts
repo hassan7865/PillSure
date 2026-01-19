@@ -62,3 +62,15 @@ import {
     }
   );
   
+  // Utility function to fetch prescription for a specific appointment
+  import { db } from '../config/database';
+
+  export async function getPrescriptionByAppointmentId(appointmentId: string) {
+    const appointment = await db.query.appointments.findFirst({
+      where: (appt, { eq }) => eq(appt.id, appointmentId),
+      columns: {
+        prescription: true,
+      },
+    });
+    return appointment?.prescription || [];
+  }
