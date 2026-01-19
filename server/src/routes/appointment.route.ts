@@ -27,6 +27,7 @@ export class AppointmentRoute {
     this.router.put('/:id/status', verifyToken, this.updateAppointmentStatus);
     this.router.put('/:id/notes', verifyToken, this.updateAppointmentNotes);
     this.router.delete('/:id', verifyToken, this.deleteAppointment);
+    this.router.get('/:id/prescription', verifyToken, this.getPrescriptionByAppointmentId);
   }
 
   private createAppointment = async (req: Request, res: Response, next: NextFunction) => {
@@ -217,6 +218,18 @@ export class AppointmentRoute {
       req.on('aborted', () => {
         removeSSEConnection(patientId);
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getPrescriptionByAppointmentId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const appointmentId = req.params.id;
+      const userId = (req as any).user.userId;
+      // Optionally, validate user access to this appointment
+      const prescription = await appointmentService.getPrescriptionByAppointmentId(appointmentId);
+      res.status(200).json(ApiResponse(prescription, "Prescription retrieved successfully"));
     } catch (error) {
       next(error);
     }

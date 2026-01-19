@@ -22,6 +22,7 @@ export default function PatientAppointmentsPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'prescription'>('details');
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [appointmentsList, setAppointmentsList] = useState<any[]>([]);
+  const [prescription, setPrescription] = useState<any>(null);
 
   // Fetch patient appointments
   const { data: appointments, isLoading: apptLoading } = usePatientAppointments(undefined);
@@ -113,6 +114,20 @@ export default function PatientAppointmentsPage() {
       }
     };
   }, [token, user]);
+
+  useEffect(() => {
+    if (activeTab === 'prescription' && selected?.id) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      fetch(`${apiUrl}/api/appointments/${selected.id}/prescription`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          setPrescription(Array.isArray(data.data) ? data.data : []);
+        })
+        .catch(() => setPrescription([]));
+    }
+  }, [activeTab, selected?.id, token]);
 
   return (
     <PublicLayout>
@@ -314,11 +329,16 @@ export default function PatientAppointmentsPage() {
                         <Stethoscope className="h-5 w-5 text-primary" />
                         Prescription
                       </h2>
-                      {selected.prescription ? (
+                      {/* Only show prescription for current appointment. */}
+                      {prescription && prescription.length > 0 ? (
                         <div className="rounded-lg border bg-primary/5 p-6">
-                          <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                            {selected.prescription}
-                          </div>
+                          <ul className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                            {prescription.map((item: any, idx: number) => (
+                              <li key={idx}>
+                                <strong>{item.medicineName}</strong> - {item.dose} ({item.quantity})
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full py-12 text-center rounded-lg border border-dashed">
