@@ -60,7 +60,7 @@ export const appointmentApi = {
 
   getPrescriptionByAppointmentId: async (appointmentId: string): Promise<any[]> => {
     const response = await api.get(`/appointments/${appointmentId}/prescription`);
-    return response.data.data;
+    return extractApiData(response);
   },
 };
 
