@@ -7,6 +7,14 @@ import { appointments } from "../schema/appointments";
 import { roles } from "../schema/roles";
 import { eq, sql, count, and, or, ilike, desc } from "drizzle-orm";
 import { s3Service } from "./s3.service";
+import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
+import { buildSearchConditions } from "./utils/search.utils";
+import {
+  handleMedicineImageUpdate,
+  cleanupUploadedImages,
+  deleteOldImages,
+  formatImagesForDB,
+} from "./utils/image.utils";
 
 export class AdminService {
   async getStats() {
@@ -105,21 +113,19 @@ export class AdminService {
 
   async getDoctors(page: number = 1, limit: number = 10, search: string = '') {
     try {
-      const offset = (page - 1) * limit;
+      const offset = calculateOffset(page, limit);
       const conditions = [];
 
       // Add search filter if provided
-      if (search && search.trim()) {
-        const searchTerm = `%${search.trim()}%`;
-        conditions.push(
-          or(
-            ilike(users.firstName, searchTerm),
-            ilike(users.lastName, searchTerm),
-            ilike(users.email, searchTerm),
-            ilike(doctors.mobile, searchTerm),
-            ilike(doctors.address, searchTerm)
-          )
-        );
+      const searchCondition = buildSearchConditions(search, [
+        users.firstName,
+        users.lastName,
+        users.email,
+        doctors.mobile,
+        doctors.address,
+      ]);
+      if (searchCondition) {
+        conditions.push(searchCondition);
       }
 
       // Build query with user and hospital information
@@ -178,14 +184,7 @@ export class AdminService {
 
       return {
         doctors: doctorsList,
-        pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit),
-          hasNextPage: page < Math.ceil(totalCount / limit),
-          hasPrevPage: page > 1,
-        },
+        pagination: calculatePagination(page, limit, totalCount),
       };
     } catch (error) {
       console.error("Error fetching paginated doctors:", error);
@@ -195,25 +194,23 @@ export class AdminService {
 
   async getHospitals(page: number = 1, limit: number = 10, search: string = '') {
     try {
-      const offset = (page - 1) * limit;
+      const offset = calculateOffset(page, limit);
       const conditions = [];
 
       // Add search filter if provided
-      if (search && search.trim()) {
-        const searchTerm = `%${search.trim()}%`;
-        conditions.push(
-          or(
-            ilike(hospitals.hospitalName, searchTerm),
-            ilike(hospitals.hospitalAddress, searchTerm),
-            ilike(hospitals.hospitalEmail, searchTerm),
-            ilike(hospitals.hospitalContactNo, searchTerm),
-            ilike(hospitals.licenseNo, searchTerm),
-            ilike(hospitals.adminName, searchTerm),
-            ilike(users.email, searchTerm),
-            ilike(users.firstName, searchTerm),
-            ilike(users.lastName, searchTerm)
-          )
-        );
+      const searchCondition = buildSearchConditions(search, [
+        hospitals.hospitalName,
+        hospitals.hospitalAddress,
+        hospitals.hospitalEmail,
+        hospitals.hospitalContactNo,
+        hospitals.licenseNo,
+        hospitals.adminName,
+        users.email,
+        users.firstName,
+        users.lastName,
+      ]);
+      if (searchCondition) {
+        conditions.push(searchCondition);
       }
 
       // Build query with user information
@@ -260,14 +257,7 @@ export class AdminService {
 
       return {
         hospitals: hospitalsList,
-        pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit),
-          hasNextPage: page < Math.ceil(totalCount / limit),
-          hasPrevPage: page > 1,
-        },
+        pagination: calculatePagination(page, limit, totalCount),
       };
     } catch (error) {
       console.error("Error fetching paginated hospitals:", error);
@@ -277,15 +267,13 @@ export class AdminService {
 
   async getMedicines(page: number = 1, limit: number = 10, search: string = '') {
     try {
-      const offset = (page - 1) * limit;
+      const offset = calculateOffset(page, limit);
       const conditions = [];
 
       // Add search filter if provided - only search by medicine name
-      if (search && search.trim()) {
-        const searchTerm = `%${search.trim()}%`;
-        conditions.push(
-          ilike(medicines.medicineName, searchTerm)
-        );
+      const searchCondition = buildSearchConditions(search, [medicines.medicineName]);
+      if (searchCondition) {
+        conditions.push(searchCondition);
       }
 
       // Build query
@@ -328,14 +316,7 @@ export class AdminService {
 
       return {
         medicines: medicinesList,
-        pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit),
-          hasNextPage: page < Math.ceil(totalCount / limit),
-          hasPrevPage: page > 1,
-        },
+        pagination: calculatePagination(page, limit, totalCount),
       };
     } catch (error) {
       console.error("Error fetching paginated medicines:", error);
@@ -422,28 +403,16 @@ export class AdminService {
       if (newImages.length > 0 || existingImageUrls.length > 0 || data.existingImages !== undefined) {
         const currentImages = (existing[0].images as string[]) || [];
 
-        // Validate total images (existing + new) <= 4
-        const totalImages = existingImageUrls.length + newImages.length;
-        if (totalImages > 4) {
-          throw new Error(`Maximum 4 images allowed. You are trying to have ${totalImages} images.`);
-        }
-
-        // Upload new images to S3
-        if (newImages.length > 0) {
-          const uploadResults = await s3Service.uploadMultipleFiles(newImages, {
-            folder: "medicines",
-          });
-          uploadedImages = uploadResults.map((result) => result.url);
-        }
-
-        // Determine which images to delete
-        const imagesToDelete = currentImages.filter(
-          (imageUrl) => !existingImageUrls.includes(imageUrl)
+        // Use utility function to handle image updates
+        const imageUpdateResult = await handleMedicineImageUpdate(
+          currentImages,
+          existingImageUrls,
+          newImages,
+          4
         );
 
-        // Combine existing and new images
-        const finalImages = [...existingImageUrls, ...uploadedImages];
-        updateData.images = sql`${JSON.stringify(finalImages)}::jsonb`;
+        uploadedImages = imageUpdateResult.uploadedImages;
+        updateData.images = formatImagesForDB(imageUpdateResult.finalImages);
 
         // Update medicine in database first
         await db
@@ -452,18 +421,7 @@ export class AdminService {
           .where(eq(medicines.id, medicineId));
 
         // Delete old images from S3 AFTER successful DB update (best-effort)
-        if (imagesToDelete.length > 0) {
-          const keysToDelete = imagesToDelete
-            .map((url) => s3Service.extractKeyFromUrl(url))
-            .filter((key): key is string => key !== null);
-
-          if (keysToDelete.length > 0) {
-            await s3Service.deleteMultipleFiles(keysToDelete).catch((err) => {
-              console.error("Warning: Failed to delete old images from S3:", err);
-              // Don't throw - DB update succeeded, S3 cleanup is best-effort
-            });
-          }
-        }
+        await deleteOldImages(imageUpdateResult.imagesToDelete);
       } else {
         // No image updates, just update other fields
         await db
@@ -484,17 +442,7 @@ export class AdminService {
       console.error("Error updating medicine:", error);
       
       // Rollback: delete newly uploaded images if DB update fails
-      if (uploadedImages.length > 0) {
-        const keysToCleanup = uploadedImages
-          .map((url) => s3Service.extractKeyFromUrl(url))
-          .filter((key): key is string => key !== null);
-        
-        if (keysToCleanup.length > 0) {
-          await s3Service.deleteMultipleFiles(keysToCleanup).catch((cleanupErr) => {
-            console.error("Error cleaning up uploaded images after failure:", cleanupErr);
-          });
-        }
-      }
+      await cleanupUploadedImages(uploadedImages);
       
       throw error;
     }

@@ -3,6 +3,11 @@ import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
 import { s3Service } from "./s3.service";
 import { BadRequestError } from "../middleware/error.handler";
+import {
+  handleMedicineImageUpdate,
+  deleteOldImages,
+  formatImagesForDB,
+} from "./utils/image.utils";
 
 export class MedicineService {
 
@@ -87,47 +92,22 @@ export class MedicineService {
         // Get current images
         const currentImages = (medicine[0].images as string[]) || [];
 
-        // Calculate total images after update
-        const totalImages = existingImageUrls.length + newImages.length;
-
-        // Validate: max 4 images allowed
-        if (totalImages > 4) {
-            throw BadRequestError(`Maximum 4 images allowed. You are trying to upload ${totalImages} images.`);
-        }
-
-        // Upload new images to S3
-        const uploadedImages = [];
-        if (newImages.length > 0) {
-            const uploadResults = await s3Service.uploadMultipleFiles(newImages, {
-                folder: "medicines",
-            });
-            uploadedImages.push(...uploadResults.map((result) => result.url));
-        }
-
-        // Determine which images to delete (images that were in DB but not in existingImageUrls)
-        const imagesToDelete = currentImages.filter(
-            (imageUrl) => !existingImageUrls.includes(imageUrl)
+        // Use utility function to handle image updates
+        const imageUpdateResult = await handleMedicineImageUpdate(
+            currentImages,
+            existingImageUrls,
+            newImages,
+            4
         );
 
         // Delete old images from S3
-        if (imagesToDelete.length > 0) {
-            const keysToDelete = imagesToDelete
-                .map((url) => s3Service.extractKeyFromUrl(url))
-                .filter((key): key is string => key !== null);
-
-            if (keysToDelete.length > 0) {
-                await s3Service.deleteMultipleFiles(keysToDelete);
-            }
-        }
-
-        // Combine existing and new images
-        const updatedImages = [...existingImageUrls, ...uploadedImages];
+        await deleteOldImages(imageUpdateResult.imagesToDelete);
 
         // Update medicine in database with explicit JSONB casting
         await db
             .update(medicines)
             .set({ 
-                images: sql`${JSON.stringify(updatedImages)}::jsonb`
+                images: formatImagesForDB(imageUpdateResult.finalImages)
             })
             .where(eq(medicines.id, medicineId));
 

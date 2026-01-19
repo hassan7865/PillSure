@@ -6,8 +6,6 @@ import { patients } from "../schema/patient";
 import { hospitals } from "../schema/hospitals";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
-import { randomBytes } from "crypto";
-import { randomUUID } from "crypto";
 import { doctorService } from "./doctor.service";
 
 export class AppointmentService {

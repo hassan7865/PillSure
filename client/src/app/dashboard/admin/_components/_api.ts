@@ -2,40 +2,30 @@ import api from '@/lib/interceptor';
 import { ApiResponse } from '@/lib/types';
 import { AdminStats, PaginatedDoctors, PaginatedHospitals, PaginatedMedicines, Medicine, UpdateMedicineRequest } from './_types';
 
+import { extractApiData, buildQueryParams } from '@/lib/api-utils';
+
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     const response = await api.get<ApiResponse<AdminStats>>('/admin/stats');
-    return response.data.data!;
+    return extractApiData(response);
   },
 
   getDoctors: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedDoctors> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(search && { search }),
-    });
+    const params = buildQueryParams({ page, limit, search: search || undefined });
     const response = await api.get<ApiResponse<PaginatedDoctors>>(`/admin/doctors?${params}`);
-    return response.data.data!;
+    return extractApiData(response);
   },
 
   getHospitals: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedHospitals> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(search && { search }),
-    });
+    const params = buildQueryParams({ page, limit, search: search || undefined });
     const response = await api.get<ApiResponse<PaginatedHospitals>>(`/admin/hospitals?${params}`);
-    return response.data.data!;
+    return extractApiData(response);
   },
 
   getMedicines: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedMedicines> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(search && { search }),
-    });
+    const params = buildQueryParams({ page, limit, search: search || undefined });
     const response = await api.get<ApiResponse<PaginatedMedicines>>(`/admin/medicines?${params}`);
-    return response.data.data!;
+    return extractApiData(response);
   },
 
   updateMedicine: async (
@@ -77,12 +67,12 @@ export const adminApi = {
         }
       );
 
-      return response.data.data!;
+      return extractApiData(response);
     }
 
     // Otherwise, send JSON data
     const response = await api.put<ApiResponse<Medicine>>(`/admin/medicines/${medicineId}`, data);
-    return response.data.data!;
+    return extractApiData(response);
   },
 };
 

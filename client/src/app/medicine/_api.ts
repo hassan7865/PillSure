@@ -1,5 +1,6 @@
 import api from '@/lib/interceptor';
 import { ApiResponse } from '@/lib/types';
+import { extractApiData, extractApiDataWithFallback, buildQueryString } from '@/lib/api-utils';
 
 export interface Medicine {
   id: number;
@@ -20,13 +21,7 @@ export interface Medicine {
 export const medicineApi = {
   getMedicineById: async (medicineId: number): Promise<Medicine> => {
     const response = await api.get<ApiResponse<Medicine>>(`/medicine/${medicineId}`);
-    const medicine = response.data.data;
-    
-    if (!medicine) {
-      throw new Error("Medicine not found");
-    }
-
-    return medicine;
+    return extractApiData(response);
   },
 
   getFeaturedMedicines: async (params?: {
@@ -34,35 +29,28 @@ export const medicineApi = {
     category?: string;
     uniqueCategories?: boolean;
   }): Promise<Medicine[]> => {
-    const searchParams = new URLSearchParams();
-    if (params?.limit) searchParams.set('limit', params.limit.toString());
-    if (params?.category) searchParams.set('category', params.category);
-    if (params?.uniqueCategories !== undefined) {
-      searchParams.set('uniqueCategories', params.uniqueCategories.toString());
-    }
+    const queryString = buildQueryString({
+      limit: params?.limit,
+      category: params?.category,
+      uniqueCategories: params?.uniqueCategories,
+    });
 
-    const url = `/medicine/featured${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    const response = await api.get<ApiResponse<Medicine[]>>(url);
-    return response.data.data || [];
+    const response = await api.get<ApiResponse<Medicine[]>>(`/medicine/featured${queryString}`);
+    return extractApiDataWithFallback(response, []);
   },
 
   searchMedicines: async (query: string, limit: number = 20): Promise<Medicine[]> => {
     if (!query || query.trim().length === 0) {
       return [];
     }
-    const searchParams = new URLSearchParams();
-    searchParams.set('q', query.trim());
-    if (limit) searchParams.set('limit', limit.toString());
 
-    const url = `/medicine/search?${searchParams.toString()}`;
-    const response = await api.get<ApiResponse<Medicine[]>>(url);
-    const apiResponse = response.data;
-    const medicines = apiResponse?.data;
-    
-    if (Array.isArray(medicines)) {
-      return medicines;
-    }
-    return [];
+    const queryString = buildQueryString({
+      q: query.trim(),
+      limit: limit || undefined,
+    });
+
+    const response = await api.get<ApiResponse<Medicine[]>>(`/medicine/search${queryString}`);
+    return extractApiDataWithFallback(response, []);
   },
 };
 

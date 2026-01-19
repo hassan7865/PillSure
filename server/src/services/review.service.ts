@@ -4,6 +4,7 @@ import { users } from "../schema/users";
 import { doctors } from "../schema/doctor";
 import { eq, desc, and, avg, count, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
+import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
 
 export interface CreateReviewRequest {
   userId: string;
@@ -105,7 +106,7 @@ export class ReviewService {
     totalReviews: number;
   }> {
     try {
-      const offset = (page - 1) * limit;
+      const offset = calculateOffset(page, limit);
 
       // Get reviews with user info
       const reviewsList = await db
@@ -160,18 +161,10 @@ export class ReviewService {
       }));
 
       const totalReviews = totalCount || 0;
-      const totalPages = Math.ceil(totalReviews / limit);
 
       return {
         reviews: reviewsResponse,
-        pagination: {
-          page,
-          limit,
-          total: totalReviews,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
-        },
+        pagination: calculatePagination(page, limit, totalReviews),
         averageRating: Math.round(averageRating * 100) / 100,
         totalReviews,
       };

@@ -3,7 +3,8 @@ import { db } from '../config/database';
 import { users, roles } from '../schema';
 import { LoginRequest, RegisterRequest, GoogleLoginRequest, UserRole } from '../core/types';
 import { generateToken } from '../middleware/jwt.handler';
-import { createError, InternalServerError } from '../middleware/error.handler';
+import { createError } from '../middleware/error.handler';
+import { getUserWithRoleByEmail, getUserWithRoleById } from './utils/auth.utils';
 // Services should return raw data, not formatted responses
 import bcrypt from 'bcryptjs';
 
@@ -74,29 +75,20 @@ export class AuthService {
 
   async login(loginData: LoginRequest) {
     // Find user by email with role details
-      const userWithRole = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          password: users.password,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          isGoogle: users.isGoogle,
-          isActive: users.isActive,
-          roleName: roles.name,
-          onboardingStep: users.onboardingStep,
-          isOnboardingComplete: users.isOnboardingComplete
-        })
-        .from(users)
-        .innerJoin(roles, eq(users.roleId, roles.id))
-        .where(eq(users.email, loginData.email))
-        .limit(1);
+      const userWithRole = await getUserWithRoleByEmail(loginData.email);
 
-      if (userWithRole.length === 0) {
+      if (!userWithRole) {
         throw createError("Invalid email or password", 401);
       }
 
-      const user = userWithRole[0];
+      // Get password separately since it's not in the utility
+      const userWithPassword = await db
+        .select({ password: users.password })
+        .from(users)
+        .where(eq(users.id, userWithRole.id))
+        .limit(1);
+
+      const user = { ...userWithRole, password: userWithPassword[0]?.password || null };
 
       // Check if user is active
       if (!user.isActive) {
@@ -137,24 +129,7 @@ export class AuthService {
 
   async googleLogin(loginData: GoogleLoginRequest) {
     // Find user by email with role details; if missing, create as Google user
-      const userWithRole = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          isGoogle: users.isGoogle,
-          isActive: users.isActive,
-          roleName: roles.name,
-          onboardingStep: users.onboardingStep,
-          isOnboardingComplete: users.isOnboardingComplete
-        })
-        .from(users)
-        .innerJoin(roles, eq(users.roleId, roles.id))
-        .where(eq(users.email, loginData.email))
-        .limit(1);
-      
-      let user = userWithRole[0];
+      let user = await getUserWithRoleByEmail(loginData.email);
       
       // If no existing account, auto-provision a Google account (default role: PATIENT)
       if (!user) {
@@ -189,24 +164,11 @@ export class AuthService {
         const created = inserted[0];
 
         // Re-select with role join for consistent shape
-        const createdWithRole = await db
-          .select({
-            id: users.id,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            isGoogle: users.isGoogle,
-            isActive: users.isActive,
-            roleName: roles.name,
-            onboardingStep: users.onboardingStep,
-            isOnboardingComplete: users.isOnboardingComplete
-          })
-          .from(users)
-          .innerJoin(roles, eq(users.roleId, roles.id))
-          .where(eq(users.id, created.id))
-          .limit(1);
-
-        user = createdWithRole[0];
+        user = await getUserWithRoleById(created.id);
+        
+        if (!user) {
+          throw createError("Failed to retrieve created user", 500);
+        }
       }
 
       // Check if user is active
@@ -242,22 +204,7 @@ export class AuthService {
   }
 
   async getUserById(userId: string): Promise<any | null> {
-    const userWithRole = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        isGoogle: users.isGoogle,
-        isActive: users.isActive,
-        roleName: roles.name
-      })
-      .from(users)
-      .innerJoin(roles, eq(users.roleId, roles.id))
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    return userWithRole.length > 0 ? userWithRole[0] : null;
+    return await getUserWithRoleById(userId);
   }
 
   async updateUserProfile(userId: string, updateData: Partial<typeof users.$inferInsert>): Promise<any> {

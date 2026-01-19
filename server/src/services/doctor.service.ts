@@ -5,84 +5,61 @@ import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
 import { eq, and, or, ilike, sql, inArray } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
+import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
+import { buildSearchConditions } from "./utils/search.utils";
+import { 
+  getBaseDoctorSelect, 
+  mapSpecializationsToDoctors, 
+  buildSpecializationFilter,
+  transformDoctorWithDetails 
+} from "./utils/doctor.utils";
 // Services should return raw data, not formatted responses
 
 export class DoctorService {
   // Get all specializations
 
   async getAllDoctors(page: number, limit: number, specializationIds: string[], search: string) {
-    const offset = (page - 1) * limit;
+    const offset = calculateOffset(page, limit);
         
       // Build conditions array
       const conditions = [];
       
       // Add specialization filter if provided
       if (specializationIds && specializationIds.length > 0) {
-        // Convert string IDs to numbers for JSON contains check
-        const numericSpecializationIds = specializationIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-        console.log('Numeric specialization IDs:', numericSpecializationIds);
+        const numericSpecializationIds = specializationIds
+          .map(id => parseInt(id))
+          .filter(id => !isNaN(id));
+        
         if (numericSpecializationIds.length > 0) {
-          // Use JSON contains operator to check if any of the specialization IDs exist in the JSON array
-          const jsonbCondition = numericSpecializationIds.map(id => 
-            sql`${doctors.specializationIds} @> ${JSON.stringify([id])}`
-          ).reduce((acc, condition) => acc ? sql`${acc} OR ${condition}` : condition);
-          
-          conditions.push(jsonbCondition);
+          const specializationFilter = buildSpecializationFilter(numericSpecializationIds);
+          if (specializationFilter) {
+            conditions.push(specializationFilter);
+          }
         }
       }
       
       // Add search filter if provided
-      if (search && search.trim()) {
-        const searchTerm = `%${search.trim()}%`;
-        conditions.push(
-          or(
-            ilike(users.firstName, searchTerm),
-            ilike(users.lastName, searchTerm),
-            ilike(sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`, searchTerm)
-          )
-        );
+      const searchCondition = buildSearchConditions(search, [
+        users.firstName,
+        users.lastName,
+        sql`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+      ]);
+      if (searchCondition) {
+        conditions.push(searchCondition);
       }
       
       // Add active doctors filter
       conditions.push(eq(doctors.isActive, true));
       
       // Build the query with hospital information
+      const whereClause = and(...conditions);
+      
       let query = db
-        .select({
-          id: doctors.id,
-          userId: doctors.userId,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-          gender: doctors.gender,
-          mobile: doctors.mobile,
-          specializationIds: doctors.specializationIds,
-          qualifications: doctors.qualifications,
-          experienceYears: doctors.experienceYears,
-          patientSatisfactionRate: doctors.patientSatisfactionRate,
-          hospitalId: doctors.hospitalId,
-          address: doctors.address,
-          image: doctors.image,
-          feePkr: doctors.feePkr,
-          consultationModes: doctors.consultationModes,
-          openingTime: doctors.openingTime,
-          closingTime: doctors.closingTime,
-          availableDays: doctors.availableDays,
-          createdAt: doctors.createdAt,
-          updatedAt: doctors.updatedAt,
-          // Hospital information
-          hospitalName: hospitals.hospitalName,
-          hospitalAddress: hospitals.hospitalAddress,
-          hospitalContactNo: hospitals.hospitalContactNo,
-          hospitalEmail: hospitals.hospitalEmail,
-          hospitalWebsite: hospitals.websiteHospital,
-          hospitalLicenseNo: hospitals.licenseNo,
-          hospitalAdminName: hospitals.adminName,
-        })
+        .select(getBaseDoctorSelect())
         .from(doctors)
         .innerJoin(users, eq(doctors.userId, users.id))
         .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
-        .where(and(...conditions))
+        .where(whereClause)
         .orderBy(doctors.patientSatisfactionRate, doctors.experienceYears);
       
       // Get total count for pagination
@@ -91,7 +68,7 @@ export class DoctorService {
         .from(doctors)
         .innerJoin(users, eq(doctors.userId, users.id))
         .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
-        .where(and(...conditions));
+        .where(whereClause);
       
       // Execute queries
       const [doctorsResult, countResult] = await Promise.all([
@@ -112,48 +89,15 @@ export class DoctorService {
       );
       
       // Transform doctors to include specialization and hospital details
-      const doctorsWithSpecializations = doctorsResult.map(doctor => {
-        const doctorSpecializations = (doctor.specializationIds as number[]).map((id: number) => 
-          specializationMap.get(id)
-        ).filter(Boolean);
-        
-        // Build hospital information if doctor is associated with a hospital
-        const hospitalInfo = doctor.hospitalId ? {
-          id: doctor.hospitalId,
-          name: doctor.hospitalName,
-          address: doctor.hospitalAddress,
-          contactNo: doctor.hospitalContactNo,
-          email: doctor.hospitalEmail,
-          website: doctor.hospitalWebsite,
-          licenseNo: doctor.hospitalLicenseNo,
-          adminName: doctor.hospitalAdminName,
-        } : null;
-        
-        return {
-          ...doctor,
-          specializations: doctorSpecializations,
-          // Keep the primary specialization for backward compatibility
-          primarySpecialization: doctorSpecializations[0] || null,
-          // Add hospital information
-          hospital: hospitalInfo,
-          // Ensure qualifications are properly formatted
-          qualifications: (doctor.qualifications as string[]) || [],
-        };
-      });
+      const doctorsWithSpecializations = doctorsResult.map(doctor => 
+        transformDoctorWithDetails(doctor, specializationMap)
+      );
       
       const totalCount = countResult[0]?.count || 0;
      
-      
       return {
         doctors: doctorsWithSpecializations,
-        pagination: {
-          page,
-          limit,
-          total: totalCount,
-          totalPages: Math.ceil(totalCount / limit),
-          hasNextPage: page < Math.ceil(totalCount / limit),
-          hasPrevPage: page > 1
-        }
+        pagination: calculatePagination(page, limit, totalCount)
       };
   }
   

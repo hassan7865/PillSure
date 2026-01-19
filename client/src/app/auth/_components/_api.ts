@@ -1,20 +1,21 @@
 import api from '@/lib/interceptor';
 import { AuthResponseData, GoogleAuthRequest, GoogleLoginRequest, LoginRequest, SignUpRequest } from './_types';
+import { extractApiData } from '@/lib/api-utils';
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponseData> => {
     const response = await api.post('/auth/login', data);
-    return response.data.data;
+    return extractApiData(response);
   },
 
   signup: async (data: SignUpRequest): Promise<AuthResponseData> => {
     const response = await api.post('/auth/register', data);
-    return response.data.data;
+    return extractApiData(response);
   },
 
   googleLogin: async (data: GoogleLoginRequest): Promise<AuthResponseData> => {
     const response = await api.post('/auth/google-login', data);
-    return response.data.data;
+    return extractApiData(response);
   },
 
   googleSignup: async (data: GoogleAuthRequest): Promise<AuthResponseData> => {
@@ -26,7 +27,7 @@ export const authApi = {
       role: data.role,
       isGoogle: true,
     });
-    return response.data.data;
+    return extractApiData(response);
   },
 
   logout: async (): Promise<void> => {
@@ -35,7 +36,7 @@ export const authApi = {
 
   refreshToken: async (): Promise<{ token: string }> => {
     const response = await api.post('/auth/refresh');
-    return response.data.data;
+    return extractApiData(response);
   },
 };
 

@@ -16,6 +16,8 @@ export interface RAGRecommendationResponse {
   latency_ms: number;
 }
 
+import { extractApiData } from '@/lib/api-utils';
+
 export const ragApi = {
   getRecommendations: async (query: string): Promise<RAGRecommendationResponse> => {
     if (!query || query.trim().length === 0) {
@@ -31,13 +33,7 @@ export const ragApi = {
       }
     );
 
-    const data = response.data.data;
-
-    if (!data) {
-      throw new Error("Failed to get recommendations");
-    }
-
-    return data;
+    return extractApiData(response);
   },
 };
 

@@ -30,10 +30,12 @@ const transformDoctor = (doctor: any): Doctor => {
   };
 };
 
+import { extractApiData, extractApiDataWithFallback, buildQueryParams } from '@/lib/api-utils';
+
 export const doctorApi = {
   getSpecializations: async (): Promise<Specialization[]> => {
     const response = await api.get<ApiResponse<Specialization[]>>('/doctor/specializations');
-    return response.data.data || [];
+    return extractApiDataWithFallback(response, []);
   },
 
   getDoctors: async (
@@ -42,18 +44,18 @@ export const doctorApi = {
     specializationIds: string[] = [],
     search: string = ''
   ): Promise<{ doctors: Doctor[]; pagination: any }> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(search && { search }),
-      ...(specializationIds.length > 0 && { specializationIds: specializationIds.join(',') })
+    const params = buildQueryParams({
+      page,
+      limit,
+      search: search || undefined,
+      specializationIds: specializationIds.length > 0 ? specializationIds : undefined,
     });
     
     const response = await api.get<ApiResponse<{ doctors: any[]; pagination: any }>>(
       `/doctor/search-doctors?${params}`
     );
     
-    const rawData = response.data.data || { doctors: [], pagination: {} };
+    const rawData = extractApiDataWithFallback(response, { doctors: [], pagination: {} });
     
     // Transform the raw doctor data to match our UI expectations
     const transformedDoctors: Doctor[] = rawData.doctors.map((doctor: any) => transformDoctor(doctor));
@@ -66,12 +68,7 @@ export const doctorApi = {
 
   getDoctorById: async (doctorId: string): Promise<Doctor> => {
     const response = await api.get<ApiResponse<any>>(`/doctor/${doctorId}`);
-    const doctor = response.data.data;
-    
-    if (!doctor) {
-      throw new Error("Doctor not found");
-    }
-
+    const doctor = extractApiData(response);
     return transformDoctor(doctor);
   },
 };
@@ -112,18 +109,15 @@ export interface ReviewsResponse {
 export const reviewApi = {
   createReview: async (doctorId: string, data: CreateReviewRequest): Promise<Review> => {
     const response = await api.post<ApiResponse<Review>>(`/doctor/${doctorId}/reviews`, data);
-    return response.data.data!;
+    return extractApiData(response);
   },
 
   getReviews: async (doctorId: string, page: number = 1, limit: number = 10): Promise<ReviewsResponse> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-    });
+    const params = buildQueryParams({ page, limit });
     const response = await api.get<ApiResponse<ReviewsResponse>>(
       `/doctor/${doctorId}/reviews?${params.toString()}`
     );
-    return response.data.data!;
+    return extractApiData(response);
   },
 };
 
