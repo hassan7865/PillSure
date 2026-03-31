@@ -16,8 +16,10 @@ import {
   Sparkles
 } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 const HeroSection: React.FC = () => {
+  const router = useRouter();
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
@@ -127,6 +129,7 @@ const HeroSection: React.FC = () => {
                           <Button 
                             size="lg" 
                             variant="outline" 
+                            onClick={() => router.push("/search-doctor")}
                             className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base font-semibold rounded-xl border-primary/20 text-primary hover:bg-primary/5 backdrop-blur-sm"
                           >
                             <span className="flex items-center justify-center gap-2">

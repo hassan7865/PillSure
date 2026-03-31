@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useCurrentDoctorYearlyStats } from '@/app/appointments/use-appointments';
 import { Badge } from "@/components/ui/badge";
 import { CardAction } from "@/components/ui/card";
-import { IconTrendingUp, IconTrendingDown, IconCalendar } from "@tabler/icons-react";
+import { IconCalendar } from "@tabler/icons-react";
 
 interface AppointmentYearlyTotalCardProps {
   doctorId?: string;
@@ -49,10 +49,6 @@ const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({
 
   const yearly = (yearlyStats as any)?.yearly || {};
   const totalYear = yearly?.total || 0;
-  // Placeholder for percentage change (could be calculated if previous year data is available)
-  const percentageChange = Math.floor(Math.random() * 20) - 10;
-  const isPositive = percentageChange >= 0;
-
   const statusBreakdown = yearly?.statusBreakdown || [];
   const confirmedCount = statusBreakdown?.find((s: any) => s.status === 'confirmed')?.count || 0;
   const pendingCount = statusBreakdown?.find((s: any) => s.status === 'pending')?.count || 0;
@@ -66,10 +62,7 @@ const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({
           {totalYear}
         </CardTitle>
         <CardAction>
-          <Badge variant="outline" className={isPositive ? "text-green-600" : "text-red-600"}>
-            {isPositive ? <IconTrendingUp className="size-4" /> : <IconTrendingDown className="size-4" />}
-            {isPositive ? '+' : ''}{percentageChange}%
-          </Badge>
+          <Badge variant="outline">{year}</Badge>
         </CardAction>
       </CardHeader>
       <div className="px-6 pb-4 flex flex-col gap-1.5 text-sm">

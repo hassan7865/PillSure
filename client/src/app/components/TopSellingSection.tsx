@@ -15,6 +15,11 @@ import {
   ArrowRight
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import cartApi from "@/app/cart/_api";
+import { useCustomToast } from "@/hooks/use-custom-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 
 const topSellingProducts = [
   {
@@ -107,6 +112,9 @@ const topSellingProducts = [
 ];
 
 const TopSellingSection: React.FC = () => {
+  const router = useRouter();
+  const { showSuccess, showError, showInfo } = useCustomToast();
+  const [addingId, setAddingId] = useState<number | null>(null);
   const renderStars = (rating: number) => {
     const stars = [];
     for (let i = 0; i < 5; i++) {
@@ -137,6 +145,23 @@ const TopSellingSection: React.FC = () => {
         return "bg-accent/80 text-accent-foreground";
       default:
         return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const handleAddToCart = async (product: any) => {
+    if (product.prescriptionRequired) {
+      showInfo("Prescription required", "Please consult doctor and order from your prescription.");
+      router.push("/appointments");
+      return;
+    }
+    try {
+      setAddingId(product.id);
+      await cartApi.addItem({ medicineId: product.id, quantity: 1, sourceType: "direct" });
+      showSuccess("Added to cart", `${product.name} was added to cart.`);
+    } catch (err) {
+      showError("Failed to add to cart", getErrorMessage(err));
+    } finally {
+      setAddingId(null);
     }
   };
 
@@ -242,11 +267,11 @@ const TopSellingSection: React.FC = () => {
                       <div className="flex items-center gap-1 sm:gap-2">
                         {product.originalPrice && (
                           <span className="text-xs sm:text-sm text-muted-foreground line-through">
-                            ${product.originalPrice.toFixed(2)}
+                            PKR {product.originalPrice.toFixed(2)}
                           </span>
                         )}
                         <span className="text-lg sm:text-xl font-bold text-card-foreground">
-                          ${product.price.toFixed(2)}
+                          PKR {product.price.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -258,9 +283,11 @@ const TopSellingSection: React.FC = () => {
                     {/* Action Button */}
                     <Button 
                       className="w-full text-xs sm:text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                      disabled={addingId === product.id}
+                      onClick={() => handleAddToCart(product)}
                     >
                       <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      {product.prescriptionRequired ? "Get Prescription" : "Add to Cart"}
+                      {addingId === product.id ? "Adding..." : (product.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
                     </Button>
                   </div>
                 </CardContent>
@@ -332,11 +359,11 @@ const TopSellingSection: React.FC = () => {
                       <div className="flex items-center gap-1 sm:gap-2">
                         {product.originalPrice && (
                           <span className="text-xs text-muted-foreground line-through">
-                            ${product.originalPrice.toFixed(2)}
+                            PKR {product.originalPrice.toFixed(2)}
                           </span>
                         )}
                         <span className="text-base sm:text-lg font-bold text-card-foreground">
-                          ${product.price.toFixed(2)}
+                          PKR {product.price.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -345,9 +372,11 @@ const TopSellingSection: React.FC = () => {
                     <Button 
                       size="sm"
                       className="w-full text-xs py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                      disabled={addingId === product.id}
+                      onClick={() => handleAddToCart(product)}
                     >
                       <ShoppingCart className="h-3 w-3 mr-1" />
-                      {product.prescriptionRequired ? "Get Prescription" : "Add to Cart"}
+                      {addingId === product.id ? "Adding..." : (product.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
                     </Button>
                   </div>
                 </CardContent>

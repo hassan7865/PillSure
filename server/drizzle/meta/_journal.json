@@ -64,6 +64,20 @@
       "when": 1768761010060,
       "tag": "0008_yielding_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774958283110,
+      "tag": "0009_dusty_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774963839482,
+      "tag": "0010_tense_preak",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,46 @@ export interface AdminStats {
     total: number;
     byStatus: Record<string, number>;
   };
+  orders: {
+    total: number;
+    byStatus: Record<string, number>;
+    paidRevenue: string;
+  };
+}
+
+export type OrderStatus = "pending" | "shipped" | "delivered" | "returned";
+
+export interface AdminOrder {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientEmail: string;
+  status: OrderStatus;
+  paymentMethod: string;
+  paymentStatus: string;
+  subtotal: string;
+  total: string;
+  currency: string;
+  shippingAddress: string | null;
+  contactNo: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedOrders {
+  orders: AdminOrder[];
+  pagination: PaginationInfo;
+}
+
+export interface AdminMonthlyRevenue {
+  year: number;
+  currency: string;
+  totalRevenue: number;
+  revenueByMonth: Array<{
+    month: number;
+    label: string;
+    revenue: number;
+  }>;
 }
 
 export interface Doctor {

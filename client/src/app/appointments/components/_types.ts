@@ -12,6 +12,30 @@ export interface ApiResponse<T = any> {
     consultationMode: 'inperson' | 'online';
     patientNotes?: string;
   }
+
+export interface CheckoutSessionResponse {
+  checkoutUrl: string;
+  sessionId: string;
+}
+
+export interface DoctorDashboardStats {
+  totalAppointments: number;
+  byStatus: Record<string, number>;
+  totalEarned: number;
+  currency: string;
+  isHospitalAffiliated: boolean;
+  doctorId: string;
+  hospitalId: string | null;
+}
+
+export interface HospitalDashboardStats {
+  hospitalId: string;
+  hospitalName: string;
+  totalAppointments: number;
+  byStatus: Record<string, number>;
+  totalEarned: number;
+  currency: string;
+}
   
   export interface UpdateAppointmentStatusRequest {
     status: string;

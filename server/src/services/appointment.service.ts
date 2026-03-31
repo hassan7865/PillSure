@@ -4,25 +4,29 @@ import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { patients } from "../schema/patient";
 import { hospitals } from "../schema/hospitals";
+import { orders } from "../schema/orders";
+import { orderItems } from "../schema/orderItems";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { doctorService } from "./doctor.service";
 import { alias } from "drizzle-orm/pg-core";
 
 export class AppointmentService {
-  async createAppointment(patientId: string, data: any) {
+  async assertSlotAvailable(doctorId: string, appointmentDate: string, appointmentTime: string) {
     const existingAppointment = await db
       .select()
       .from(appointments)
       .where(
         and(
-          eq(appointments.doctorId, data.doctorId),
-          eq(appointments.appointmentDate, data.appointmentDate),
-          eq(appointments.appointmentTime, data.appointmentTime),
+          eq(appointments.doctorId, doctorId),
+          eq(appointments.appointmentDate, appointmentDate),
+          eq(appointments.appointmentTime, appointmentTime),
           eq(appointments.isActive, true),
           or(
             eq(appointments.status, "pending"),
-            eq(appointments.status, "confirmed")
+            eq(appointments.status, "confirmed"),
+            eq(appointments.status, "completed"),
+            eq(appointments.status, "in_progress")
           )
         )
       )
@@ -31,17 +35,52 @@ export class AppointmentService {
     if (existingAppointment.length > 0) {
       throw createError("This time slot is already booked", 400);
     }
+  }
 
+  async getDoctorFeeAndName(doctorId: string) {
+    const doctor = await db
+      .select({
+        feePkr: doctors.feePkr,
+        doctorName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+      })
+      .from(doctors)
+      .innerJoin(users, eq(doctors.userId, users.id))
+      .where(eq(doctors.id, doctorId))
+      .limit(1);
+
+    if (!doctor.length) {
+      throw createError("Doctor not found", 404);
+    }
+
+    const feeRaw = doctor[0].feePkr;
+    const feePkr = feeRaw ? Number(feeRaw) : 0;
+    if (!Number.isFinite(feePkr) || feePkr <= 0) {
+      throw createError("Doctor consultation fee is not configured", 400);
+    }
+
+    return {
+      feePkr,
+      doctorName: doctor[0].doctorName.trim(),
+    };
+  }
+
+  private generateMeetingId(consultationMode: string) {
     // Generate unique meeting ID for online appointments
     let meetingId: string | null = null;
-    if (data.consultationMode?.toLowerCase() === 'online') {
-      // Generate a simple numeric meeting ID (10-12 digits)
-      // Format: timestamp + random to ensure uniqueness
-      const timestamp = Date.now().toString().slice(-8); // Last 8 digits of timestamp
-      const random = Math.floor(1000 + Math.random() * 9000).toString(); // 4 random digits
+    if (consultationMode?.toLowerCase() === "online") {
+      const timestamp = Date.now().toString().slice(-8);
+      const random = Math.floor(1000 + Math.random() * 9000).toString();
       meetingId = `${timestamp}${random}`;
     }
-    
+
+    return meetingId;
+  }
+
+  async createAppointment(patientId: string, data: any) {
+    await this.assertSlotAvailable(data.doctorId, data.appointmentDate, data.appointmentTime);
+
+    const meetingId = this.generateMeetingId(data.consultationMode);
+
     const newAppointment = await db
       .insert(appointments)
       .values({
@@ -53,10 +92,61 @@ export class AppointmentService {
         patientNotes: data.patientNotes || null,
         meetingId: meetingId,
         status: "pending",
+        paymentProvider: null,
+        paymentStatus: "unpaid",
+        stripeSessionId: null,
+        amountPaid: null,
+        currency: null,
       })
       .returning();
 
     return newAppointment[0];
+  }
+
+  async createAppointmentFromStripeSession(params: {
+    stripeSessionId: string;
+    patientId: string;
+    doctorId: string;
+    appointmentDate: string;
+    appointmentTime: string;
+    consultationMode: "inperson" | "online";
+    patientNotes?: string;
+    amountPaid: number;
+    currency: string;
+  }) {
+    const existingBySession = await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.stripeSessionId, params.stripeSessionId))
+      .limit(1);
+
+    if (existingBySession.length) {
+      return existingBySession[0];
+    }
+
+    await this.assertSlotAvailable(params.doctorId, params.appointmentDate, params.appointmentTime);
+    const meetingId = this.generateMeetingId(params.consultationMode);
+
+    const created = await db
+      .insert(appointments)
+      .values({
+        patientId: params.patientId,
+        doctorId: params.doctorId,
+        appointmentDate: params.appointmentDate,
+        appointmentTime: params.appointmentTime,
+        consultationMode: params.consultationMode,
+        patientNotes: params.patientNotes || null,
+        meetingId,
+        status: "pending",
+        paymentProvider: "stripe",
+        paymentStatus: "paid",
+        stripeSessionId: params.stripeSessionId,
+        amountPaid: params.amountPaid.toFixed(2),
+        currency: params.currency.toLowerCase(),
+      })
+      .returning();
+
+    return created[0];
   }
 
   async getAppointmentsByPatient(patientId: string, status?: string) {
@@ -87,6 +177,22 @@ export class AppointmentService {
         doctorSpecializations: doctors.specializationIds,
         doctorFee: doctors.feePkr,
         doctorMobile: doctors.mobile,
+        hasMedicineOrder: sql<boolean>`exists(
+          select 1
+          from ${orderItems} oi
+          inner join ${orders} o on o.id = oi.order_id
+          where oi.appointment_id = ${appointments.id}
+            and o.patient_id = ${appointments.patientId}
+        )`,
+        medicineOrderId: sql<string | null>`(
+          select o.id
+          from ${orderItems} oi
+          inner join ${orders} o on o.id = oi.order_id
+          where oi.appointment_id = ${appointments.id}
+            and o.patient_id = ${appointments.patientId}
+          order by o.created_at desc
+          limit 1
+        )`,
       })
       .from(appointments)
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
@@ -520,6 +626,97 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
   async getYearlyAppointmentStatsByUserId(userId: string, year?: number) {
     const doctor = await doctorService.getDoctorByUserId(userId);
     return this.getYearlyAppointmentStats(doctor.id, year);
+  }
+
+  async getDoctorDashboardStatsByUserId(userId: string) {
+    const doctor = await doctorService.getDoctorByUserId(userId);
+
+    const statusCounts = await db
+      .select({
+        status: appointments.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(appointments)
+      .where(and(eq(appointments.doctorId, doctor.id), eq(appointments.isActive, true)))
+      .groupBy(appointments.status);
+
+    const byStatus: Record<string, number> = {};
+    statusCounts.forEach((row) => {
+      byStatus[row.status] = Number(row.count) || 0;
+    });
+
+    const totalAppointments = Object.values(byStatus).reduce((sum, v) => sum + v, 0);
+    const completedCount = byStatus.completed || 0;
+    const doctorFee = doctor.feePkr ? Number(doctor.feePkr) : 0;
+    const isHospitalAffiliated = !!doctor.hospitalId;
+    const totalEarned = isHospitalAffiliated ? 0 : Number((completedCount * doctorFee).toFixed(2));
+
+    return {
+      totalAppointments,
+      byStatus,
+      totalEarned,
+      currency: "pkr",
+      isHospitalAffiliated,
+      doctorId: doctor.id,
+      hospitalId: doctor.hospitalId || null,
+    };
+  }
+
+  async getHospitalDashboardStatsByUserId(userId: string) {
+    const hospital = await db
+      .select({
+        id: hospitals.id,
+        hospitalName: hospitals.hospitalName,
+      })
+      .from(hospitals)
+      .where(eq(hospitals.userId, userId))
+      .limit(1);
+
+    if (!hospital.length) {
+      throw createError("Hospital profile not found", 404);
+    }
+
+    const hospitalId = hospital[0].id;
+
+    const statusCounts = await db
+      .select({
+        status: appointments.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(appointments)
+      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .where(and(eq(doctors.hospitalId, hospitalId), eq(appointments.isActive, true)))
+      .groupBy(appointments.status);
+
+    const byStatus: Record<string, number> = {};
+    statusCounts.forEach((row) => {
+      byStatus[row.status] = Number(row.count) || 0;
+    });
+    const totalAppointments = Object.values(byStatus).reduce((sum, v) => sum + v, 0);
+
+    // Hospital revenue = completed appointments fee totals for affiliated doctors.
+    const revenueResult = await db
+      .select({
+        total: sql<string>`coalesce(sum(cast(${doctors.feePkr} as numeric)), 0)::text`,
+      })
+      .from(appointments)
+      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .where(
+        and(
+          eq(doctors.hospitalId, hospitalId),
+          eq(appointments.isActive, true),
+          eq(appointments.status, "completed")
+        )
+      );
+
+    return {
+      hospitalId,
+      hospitalName: hospital[0].hospitalName,
+      totalAppointments,
+      byStatus,
+      totalEarned: Number(revenueResult[0]?.total || 0),
+      currency: "pkr",
+    };
   }
 
   async getPrescriptionByAppointmentId(appointmentId: string) {

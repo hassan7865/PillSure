@@ -30,17 +30,11 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import {
-  Bell,
   ChevronRight,
   CreditCard,
   LayoutDashboard,
-  Users,
-  Settings,
-  BarChart3,
-  Files,
   LogOut,
   Pill,
-  UserCircle,
   CalendarClock,
   Stethoscope,
   Building2
@@ -55,13 +49,15 @@ const company = {
 };
 import { useAuth } from '@/contexts/auth-context';
 import type { User as AuthUser } from '@/lib/types';
+import { getDashboardHomeByRole, normalizeRole } from '@/lib/role-routing';
 function getNavItems(user: AuthUser | null) {
-  // If user is a doctor, only show Dashboard and Appointments
-  if (user?.role === 'doctor') {
+  const role = normalizeRole(user?.role);
+
+  if (role === 'doctor') {
     return [
       {
         title: 'Dashboard',
-        url: '/dashboard',
+        url: getDashboardHomeByRole(role),
         icon: LayoutDashboard,
         isActive: true
       },
@@ -73,41 +69,56 @@ function getNavItems(user: AuthUser | null) {
     ];
   }
 
-  // For other roles (admin, etc.), show all items
-  const items = [
+  if (role === 'hospital') {
+    return [
+      {
+        title: 'Dashboard',
+        url: getDashboardHomeByRole(role),
+        icon: LayoutDashboard,
+        isActive: true
+      }
+    ];
+  }
+
+  if (role === 'admin') {
+    return [
+      {
+        title: 'Dashboard',
+        url: getDashboardHomeByRole(role),
+        icon: LayoutDashboard,
+        isActive: true
+      },
+      {
+        title: 'Doctors',
+        url: '/dashboard/admin/doctors',
+        icon: Stethoscope
+      },
+      {
+        title: 'Hospitals',
+        url: '/dashboard/admin/hospitals',
+        icon: Building2
+      },
+      {
+        title: 'Medicines',
+        url: '/dashboard/admin/medicines',
+        icon: Pill
+      },
+      {
+        title: 'Orders',
+        url: '/dashboard/admin/orders',
+        icon: CreditCard
+      }
+    ];
+  }
+
+  return [
     {
       title: 'Dashboard',
       url: '/dashboard',
       icon: LayoutDashboard,
       isActive: true
-    },
-    {
-      title: 'Doctors',
-      url: '/dashboard/admin/doctors',
-      icon: Stethoscope
-    },
-    {
-      title: 'Hospitals',
-      url: '/dashboard/admin/hospitals',
-      icon: Building2
-    },
-    {
-      title: 'Medicines',
-      url: '/dashboard/admin/medicines',
-      icon: Pill
-    },
-    {
-      title: 'Users',
-      url: '/users',
-      icon: Users
-    },
-    {
-      title: 'Settings',
-      url: '/settings',
-      icon: Settings
     }
   ];
-  return items;
 }
 
 // Types
@@ -170,10 +181,17 @@ export default function AppSidebar() {
       };
 
   const navItems = getNavItems(user);
+  const normalizedPath = pathname ? pathname.replace(/\/+$/, '') || '/' : '/';
+  const activeUrl =
+    navItems
+      .map((item) => item.url.replace(/\/+$/, '') || '/')
+      .filter((url) => normalizedPath === url || normalizedPath.startsWith(`${url}/`))
+      .sort((a, b) => b.length - a.length)[0] || null;
+
   return (
     <Sidebar collapsible='icon'>
       <SidebarHeader>
-        <div className="flex items-center gap-2 sm:gap-3 p-2 cursor-pointer" onClick={() => router.push('/dashboard')}>
+        <div className="flex items-center gap-2 sm:gap-3 p-2 cursor-pointer" onClick={() => router.push(getDashboardHomeByRole(user?.role))}>
           <div className="relative w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
             <Pill className="h-4 w-4 text-white" />
           </div>
@@ -193,7 +211,8 @@ export default function AppSidebar() {
           <SidebarMenu>
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.url || (item.url !== '/dashboard' && pathname?.startsWith(item.url));
+              const itemUrl = item.url.replace(/\/+$/, '') || '/';
+              const isActive = activeUrl === itemUrl;
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton

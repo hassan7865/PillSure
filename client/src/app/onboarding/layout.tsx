@@ -56,9 +56,9 @@ const OnboardingLayoutContent: React.FC<OnboardingLayoutProps> = ({ children }) 
   const config = getOnboardingConfig();
 
   return (
-    <div className="h-screen flex flex-col md:flex-row bg-background font-sans overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row bg-background font-sans overflow-x-hidden md:overflow-hidden">
       {/* Sidebar */}
-      <div className="hidden md:flex md:w-1/4 min-w-[280px] bg-primary text-primary-foreground p-6 flex-col">
+      <div className="hidden md:flex md:w-1/4 min-w-[240px] lg:min-w-[280px] bg-primary text-primary-foreground p-6 flex-col">
         <div className="flex-grow">
           {/* Header */}
           <div className="flex items-center mb-6 md:mb-10">
@@ -114,7 +114,7 @@ const OnboardingLayoutContent: React.FC<OnboardingLayoutProps> = ({ children }) 
       </div>
 
       {/* Main Content */}
-      <div className="w-full md:w-3/4 flex flex-col">
+      <div className="w-full md:w-3/4 flex flex-col min-h-screen md:min-h-0">
         {children}
       </div>
     </div>
@@ -124,7 +124,7 @@ const OnboardingLayoutContent: React.FC<OnboardingLayoutProps> = ({ children }) 
 const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({ children }) => {
   return (
     <Suspense fallback={
-      <div className="h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader 
           title="Loading Onboarding"
           description="Setting up your onboarding experience..."

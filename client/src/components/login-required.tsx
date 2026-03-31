@@ -2,6 +2,7 @@
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
+import { normalizeRole } from '@/lib/role-routing';
 
 interface LoginRequiredProps {
   children: (handleAction: () => void) => ReactNode;
@@ -33,7 +34,7 @@ export default function LoginRequired({
 
     // Check if patient role is required
     if (requirePatient) {
-      const userRole = user.role?.toLowerCase() || '';
+      const userRole = normalizeRole(user.role);
       if (userRole !== 'patient') {
         const returnUrl = `${pathname}${window.location.search}`;
         sessionStorage.setItem('returnUrl', returnUrl);

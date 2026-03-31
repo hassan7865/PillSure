@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { IconTrendingUp, IconTrendingDown, IconCalendar } from "@tabler/icons-react";
+import { IconCalendar } from "@tabler/icons-react";
 import { useCurrentDoctorYearlyStats } from '@/app/appointments/use-appointments';
 
-const AppointmentStatsCard: React.FC<AppointmentStatsCardProps> = () => {
+const AppointmentStatsCard: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const { data: yearlyStats, isLoading: statsLoading, error } = useCurrentDoctorYearlyStats(currentYear);
 
@@ -49,10 +49,6 @@ const AppointmentStatsCard: React.FC<AppointmentStatsCardProps> = () => {
   const monthlyTotal = monthObj?.total || 0;
   const statusBreakdown = monthObj?.statusBreakdown || [];
 
-  // Calculate percentage change (placeholder for now)
-  const percentageChange = Math.floor(Math.random() * 20) - 10;
-  const isPositive = percentageChange >= 0;
-
   // Get confirmed, pending, completed counts for the current month
   const confirmedCount = statusBreakdown?.find((s: any) => s.status === 'confirmed')?.count || 0;
   const pendingCount = statusBreakdown?.find((s: any) => s.status === 'pending')?.count || 0;
@@ -66,9 +62,9 @@ const AppointmentStatsCard: React.FC<AppointmentStatsCardProps> = () => {
           {monthlyTotal}
         </CardTitle>
         <CardAction>
-          <Badge variant="outline" className={isPositive ? "text-green-600" : "text-red-600"}>
-            {isPositive ? <IconTrendingUp className="size-4" /> : <IconTrendingDown className="size-4" />}
-            {isPositive ? '+' : ''}{percentageChange}%
+          <Badge variant="outline" className="text-muted-foreground">
+            <IconCalendar className="size-4" />
+            Current month
           </Badge>
         </CardAction>
       </CardHeader>

@@ -26,6 +26,9 @@ import PublicLayout from "@/layout/PublicLayout";
 import { medicineApi, Medicine } from "@/app/medicine/_api";
 import { motion } from "framer-motion";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import cartApi from "@/app/cart/_api";
+import { useCustomToast } from "@/hooks/use-custom-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export default function MedicineProductPage() {
   const params = useParams();
@@ -37,6 +40,8 @@ export default function MedicineProductPage() {
   const [error, setError] = useState<Error | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [openFaqs, setOpenFaqs] = useState<Record<string, boolean>>({});
+  const [adding, setAdding] = useState(false);
+  const { showSuccess, showError, showInfo } = useCustomToast();
 
   useEffect(() => {
     if (!medicineId || isNaN(medicineId)) {
@@ -119,6 +124,23 @@ export default function MedicineProductPage() {
   const discountPct = medicine.discount ? parseFloat(medicine.discount) : 0;
   const originalPrice = discountPct > 0 ? priceNum / (1 - discountPct / 100) : undefined;
   const inStock = (medicine.stock ?? 0) > 0;
+  const handleAddToCart = async () => {
+    if (!medicine || !medicineId) return;
+    if (medicine.prescriptionRequired) {
+      showInfo("Prescription required", "Please consult doctor and order from your prescription.");
+      router.push("/appointments");
+      return;
+    }
+    try {
+      setAdding(true);
+      await cartApi.addItem({ medicineId, quantity: 1, sourceType: "direct" });
+      showSuccess("Added to cart", `${medicine.medicineName} was added to cart.`);
+    } catch (error) {
+      showError("Failed to add to cart", getErrorMessage(error));
+    } finally {
+      setAdding(false);
+    }
+  };
 
   // Parse drugDescription (plain text field)
   const drugDescription = medicine.drugDescription;
@@ -266,10 +288,11 @@ export default function MedicineProductPage() {
               <Button
                 size="lg"
                 className="flex-1"
-                disabled={!inStock}
+                disabled={!inStock || adding}
+                onClick={handleAddToCart}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
-                {medicine.prescriptionRequired ? "Consult Doctor" : "Add to Cart"}
+                {adding ? "Adding..." : (medicine.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
               </Button>
               <Button
                 size="lg"

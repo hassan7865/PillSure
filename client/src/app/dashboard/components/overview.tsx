@@ -1,30 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-  CardAction,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AreaGraph } from "./area-graph";
-import { BarGraph } from "./bar-graph";
-import { PieGraph } from "./pie-graph";
-import { RecentSales } from "./recent-sales";
-import { IconTrendingUp } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
 import { adminApi } from "@/app/dashboard/admin/_components/_api";
-import { AdminStats } from "@/app/dashboard/admin/_components/_types";
+import { AdminMonthlyRevenue, AdminStats } from "@/app/dashboard/admin/_components/_types";
 import Loader from "@/components/ui/loader";
-import { Users, Pill, Stethoscope, Building2, CalendarClock } from "lucide-react";
-import AppointmentBarChart from "./appointment-bar-chart";
+import { Users, Stethoscope, Building2, CalendarClock, Package } from "lucide-react";
+import AdminStatsCard from "./admin-stats-card";
+import { Bar, BarChart, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function OverViewPage() {
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 8 }, (_, i) => currentYear - i);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [monthlyRevenue, setMonthlyRevenue] = useState<AdminMonthlyRevenue | null>(null);
+  const [monthlyRevenueLoading, setMonthlyRevenueLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -57,6 +56,32 @@ export default function OverViewPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRevenue = async () => {
+      try {
+        setMonthlyRevenueLoading(true);
+        const result = await adminApi.getMonthlyRevenue(selectedYear);
+        if (isMounted) {
+          setMonthlyRevenue(result);
+        }
+      } catch {
+        if (isMounted) {
+          setMonthlyRevenue(null);
+        }
+      } finally {
+        if (isMounted) {
+          setMonthlyRevenueLoading(false);
+        }
+      }
+    };
+
+    fetchRevenue();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedYear]);
+
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col space-y-2">
@@ -83,181 +108,218 @@ export default function OverViewPage() {
     );
   }
 
+  const orderStatusData = Object.entries(stats.orders.byStatus || {}).map(([status, value]) => ({
+    name: status,
+    value: Number(value || 0),
+  }));
+
+  const appointmentStatusData = Object.entries(stats.appointments.byStatus || {}).map(([status, value]) => ({
+    name: status,
+    value: Number(value || 0),
+  }));
+
+  const STATUS_COLORS = [
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
+    "var(--primary)",
+  ];
+  const orderChartConfig = {
+    value: { label: "Orders" },
+  } satisfies ChartConfig;
+  const appointmentChartConfig = {
+    value: { label: "Appointments" },
+  } satisfies ChartConfig;
+  const revenueChartConfig = {
+    revenue: { label: "Revenue", color: "var(--primary)" },
+  } satisfies ChartConfig;
+
   return (
     <div className="flex flex-1 flex-col space-y-2">
-     
-          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6">
-            {/* Total Revenue - Keep as is since not implemented yet */}
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription>Total Revenue</CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  $1,250.00
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    +12.5%
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  Trending up this month <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  Visitors for the last 6 months
-                </div>
-              </CardFooter>
-            </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Total Users
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.users.total.toLocaleString()}</CardTitle>
+            <Badge variant="outline">{stats.users.active} active</Badge>
+          </CardHeader>
+        </Card>
 
-            {/* Total Users */}
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Total Users
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stats.users.total.toLocaleString()}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    {stats.users.active} active
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stats.users.active} active users <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  {stats.users.total - stats.users.active} inactive
-                </div>
-              </CardFooter>
-            </Card>
+        <AdminStatsCard stats={stats} isLoading={false} />
 
-            {/* Total Medicines */}
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <Pill className="h-4 w-4" />
-                  Total Medicines
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stats.medicines.total.toLocaleString()}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    {stats.medicines.inStock} in stock
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stats.medicines.inStock} medicines available <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  {stats.medicines.total - stats.medicines.inStock} out of stock
-                </div>
-              </CardFooter>
-            </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Total Orders
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.orders.total.toLocaleString()}</CardTitle>
+            <Badge variant="outline">{stats.orders.byStatus.pending || 0} pending</Badge>
+          </CardHeader>
+        </Card>
 
-            {/* Total Doctors */}
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <Stethoscope className="h-4 w-4" />
-                  Total Doctors
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stats.doctors.total.toLocaleString()}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    {stats.doctors.active} active
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stats.doctors.active} active doctors <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  {stats.doctors.total - stats.doctors.active} inactive
-                </div>
-              </CardFooter>
-            </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4" />
+              Paid Revenue (Medicines)
+            </CardDescription>
+            <CardTitle className="text-2xl">PKR {Number(stats.orders.paidRevenue || 0).toFixed(2)}</CardTitle>
+            <Badge variant="outline">{stats.orders.byStatus.delivered || 0} delivered</Badge>
+          </CardHeader>
+        </Card>
 
-            {/* Total Hospitals */}
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Total Hospitals
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stats.hospitals.total.toLocaleString()}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    {stats.hospitals.active} active
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stats.hospitals.active} active hospitals <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  {stats.hospitals.total - stats.hospitals.active} inactive
-                </div>
-              </CardFooter>
-            </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <Stethoscope className="h-4 w-4" />
+              Doctors
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.doctors.total.toLocaleString()}</CardTitle>
+            <Badge variant="outline">{stats.doctors.active} active</Badge>
+          </CardHeader>
+        </Card>
 
-            {/* Total Appointments */}
-            <Card className="@container/card">
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4" />
-                  Total Appointments
-                </CardDescription>
-                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                  {stats.appointments.total.toLocaleString()}
-                </CardTitle>
-                <CardAction>
-                  <Badge variant="outline">
-                    <IconTrendingUp />
-                    {stats.appointments.byStatus?.pending || 0} pending
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                <div className="line-clamp-1 flex gap-2 font-medium">
-                  {stats.appointments.byStatus?.completed || 0} completed <IconTrendingUp className="size-4" />
-                </div>
-                <div className="text-muted-foreground">
-                  {stats.appointments.byStatus?.pending || 0} pending, {stats.appointments.byStatus?.cancelled || 0} cancelled
-                </div>
-              </CardFooter>
-            </Card>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <AppointmentBarChart />
-            <Card className="col-span-4 md:col-span-3">
-              <RecentSales />
-            </Card>
-            <div className="col-span-4">
-              <AreaGraph />
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Hospitals
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.hospitals.total.toLocaleString()}</CardTitle>
+            <Badge variant="outline">{stats.hospitals.active} active</Badge>
+          </CardHeader>
+        </Card>
+
+        <Card className="sm:col-span-2">
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4" />
+              Appointments
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.appointments.total.toLocaleString()}</CardTitle>
+            <div className="flex gap-2 flex-wrap">
+              <Badge variant="outline">Pending: {stats.appointments.byStatus?.pending || 0}</Badge>
+              <Badge variant="outline">Completed: {stats.appointments.byStatus?.completed || 0}</Badge>
+              <Badge variant="outline">Cancelled: {stats.appointments.byStatus?.cancelled || 0}</Badge>
             </div>
-            <div className="col-span-4 md:col-span-3">
-              <PieGraph />
-            </div>
+          </CardHeader>
+        </Card>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 lg:px-6 pt-2">
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Order Status Distribution
+            </CardDescription>
+            <CardTitle className="text-xl">Orders by Status</CardTitle>
+          </CardHeader>
+          <div className="h-[280px] px-2 pb-4">
+            {orderStatusData.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-4">No order status data available.</p>
+            ) : (
+              <ChartContainer config={orderChartConfig} className="h-full w-full">
+                <PieChart>
+                  <Pie data={orderStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
+                    {orderStatusData.map((entry, index) => (
+                      <Cell key={`order-cell-${entry.name}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+            )}
           </div>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardDescription className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4" />
+              Appointment Status Distribution
+            </CardDescription>
+            <CardTitle className="text-xl">Appointments by Status</CardTitle>
+          </CardHeader>
+          <div className="h-[280px] px-2 pb-4">
+            {appointmentStatusData.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-4">No appointment status data available.</p>
+            ) : (
+              <ChartContainer config={appointmentChartConfig} className="h-full w-full">
+                <BarChart data={appointmentStatusData} margin={{ left: 8, right: 8 }}>
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {appointmentStatusData.map((entry, index) => (
+                      <Cell key={`appointment-cell-${entry.name}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+      <div className="px-4 lg:px-6 pt-2">
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardDescription className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" />
+                Monthly Paid Revenue (Medicines)
+              </CardDescription>
+              <CardTitle className="text-xl">
+                PKR {Number(monthlyRevenue?.totalRevenue || 0).toFixed(2)}
+              </CardTitle>
+            </div>
+            <div className="w-full sm:w-[180px]">
+              <Select value={String(selectedYear)} onValueChange={(value) => setSelectedYear(Number(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <div className="h-[320px] px-2 pb-4">
+            {monthlyRevenueLoading ? (
+              <p className="text-sm text-muted-foreground px-4">Loading monthly revenue...</p>
+            ) : !monthlyRevenue?.revenueByMonth?.length ? (
+              <p className="text-sm text-muted-foreground px-4">No revenue data available for selected year.</p>
+            ) : (
+              <ChartContainer config={revenueChartConfig} className="h-full w-full">
+                <BarChart data={monthlyRevenue.revenueByMonth} margin={{ left: 8, right: 8 }}>
+                  <XAxis dataKey="label" />
+                  <YAxis
+                    allowDecimals={false}
+                    tickFormatter={(value) => `${Number(value).toLocaleString()}`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => [`PKR ${Number(value).toFixed(2)}`, "Revenue"]}
+                      />
+                    }
+                  />
+                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

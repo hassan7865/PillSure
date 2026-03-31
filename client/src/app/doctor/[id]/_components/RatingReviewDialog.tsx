@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { reviewApi } from "@/app/search-doctor/_api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
+import { normalizeRole } from "@/lib/role-routing";
 
 interface RatingReviewDialogProps {
   open: boolean;
@@ -65,7 +66,7 @@ export default function RatingReviewDialog({
     }
 
     // Verify user is a patient
-    const userRole = user.role?.toLowerCase() || '';
+    const userRole = normalizeRole(user.role);
     if (userRole !== 'patient') {
       showError(
         "Access Restricted",

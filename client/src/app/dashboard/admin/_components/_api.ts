@@ -1,12 +1,27 @@
 import api from '@/lib/interceptor';
 import { ApiResponse } from '@/lib/types';
-import { AdminStats, PaginatedDoctors, PaginatedHospitals, PaginatedMedicines, Medicine, UpdateMedicineRequest } from './_types';
+import {
+  AdminStats,
+  PaginatedDoctors,
+  PaginatedHospitals,
+  PaginatedMedicines,
+  Medicine,
+  UpdateMedicineRequest,
+  PaginatedOrders,
+  OrderStatus,
+  AdminMonthlyRevenue,
+} from './_types';
 
 import { extractApiData, buildQueryParams } from '@/lib/api-utils';
 
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     const response = await api.get<ApiResponse<AdminStats>>('/admin/stats');
+    return extractApiData(response);
+  },
+  getMonthlyRevenue: async (year?: number): Promise<AdminMonthlyRevenue> => {
+    const query = buildQueryParams({ year: year || undefined });
+    const response = await api.get<ApiResponse<AdminMonthlyRevenue>>(`/admin/revenue/monthly?${query}`);
     return extractApiData(response);
   },
 
@@ -25,6 +40,31 @@ export const adminApi = {
   getMedicines: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedMedicines> => {
     const params = buildQueryParams({ page, limit, search: search || undefined });
     const response = await api.get<ApiResponse<PaginatedMedicines>>(`/admin/medicines?${params}`);
+    return extractApiData(response);
+  },
+
+  getOrders: async (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: OrderStatus | '';
+    dateFrom?: string;
+    dateTo?: string;
+  } = {}): Promise<PaginatedOrders> => {
+    const query = buildQueryParams({
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+      search: params.search || undefined,
+      status: params.status || undefined,
+      dateFrom: params.dateFrom || undefined,
+      dateTo: params.dateTo || undefined,
+    });
+    const response = await api.get<ApiResponse<PaginatedOrders>>(`/admin/orders?${query}`);
+    return extractApiData(response);
+  },
+
+  updateOrderStatus: async (orderId: string, status: OrderStatus) => {
+    const response = await api.patch<ApiResponse<any>>(`/admin/orders/${orderId}/status`, { status });
     return extractApiData(response);
   },
 

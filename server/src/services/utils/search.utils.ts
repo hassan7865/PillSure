@@ -1,7 +1,7 @@
 /**
  * Utility functions for search/filter operations
  */
-import { or, ilike, SQL, AnyColumn } from "drizzle-orm";
+import { or, ilike, sql, SQL, AnyColumn } from "drizzle-orm";
 
 /**
  * Build search conditions for text fields

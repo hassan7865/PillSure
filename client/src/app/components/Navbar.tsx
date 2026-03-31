@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import cartApi from "@/app/cart/_api";
+import orderApi from "@/app/orders/_api";
+import { useCustomToast } from "@/hooks/use-custom-toast";
+import { getErrorMessage } from "@/lib/error-utils";
+import { getDashboardHomeByRole, normalizeRole } from "@/lib/role-routing";
 import { 
   User, 
   LogOut, 
@@ -18,7 +23,9 @@ import {
   Phone,
   Search,
   ChevronDown,
-  CalendarClock
+  CalendarClock,
+  Trash2,
+  ShoppingBag
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,11 +35,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
+  const { showError, showSuccess } = useCustomToast();
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
+  const [cartData, setCartData] = useState<any>(null);
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [contactNo, setContactNo] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState<"cod" | "online" | null>(null);
+  const isCheckoutInfoValid = shippingAddress.trim().length > 0 && contactNo.trim().length > 0;
 
   const handleJoinAsDoctor = () => {
     router.push('/auth?role=doctor&mode=signup');
@@ -50,6 +76,76 @@ const Navbar: React.FC = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const loadCart = async () => {
+    if (!user || normalizeRole(user.role) !== "patient") {
+      setCartCount(0);
+      setCartData(null);
+      return;
+    }
+
+    try {
+      setCartLoading(true);
+      const data: any = await cartApi.getCart();
+      setCartData(data);
+      const count = Array.isArray(data?.items)
+        ? data.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0)
+        : 0;
+      setCartCount(count);
+    } catch {
+      setCartCount(0);
+      setCartData(null);
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCart();
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    const onCartUpdate = () => {
+      loadCart();
+    };
+    window.addEventListener("cart:updated", onCartUpdate);
+    return () => window.removeEventListener("cart:updated", onCartUpdate);
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    if (cartOpen) {
+      loadCart();
+    }
+  }, [cartOpen]);
+
+  const handleCheckout = async (paymentMethod: "cod" | "online") => {
+    try {
+      if (!isCheckoutInfoValid) {
+        showError("Missing details", "Shipping address and contact number are required.");
+        return;
+      }
+      setCheckoutLoading(paymentMethod);
+      const data: any = await orderApi.checkout({
+        paymentMethod,
+        shippingAddress: shippingAddress.trim(),
+        contactNo: contactNo.trim(),
+      });
+
+      if (paymentMethod === "online" && data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      showSuccess("Order placed", "Your cash on delivery order has been placed.");
+      setCartOpen(false);
+      await loadCart();
+      router.push("/orders");
+    } catch (error) {
+      showError("Checkout failed", getErrorMessage(error));
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
   
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -79,17 +175,99 @@ const Navbar: React.FC = () => {
             </Button>
 
             {/* Cart Icon */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200"
-              onClick={() => router.push('/cart')}
-            >
-              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-medium">
-                0
-              </span>
-            </Button>
+            <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200"
+                >
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {normalizeRole(user?.role) === "patient" && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 min-w-4 px-1 sm:h-5 sm:min-w-5 flex items-center justify-center font-medium">
+                      {cartCount}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-md">
+                <SheetHeader>
+                  <SheetTitle>Your Cart</SheetTitle>
+                  <SheetDescription>Quick cart preview from anywhere.</SheetDescription>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto px-4 pb-4">
+                  {cartLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading cart...</p>
+                  ) : !cartData?.items?.length ? (
+                    <div className="rounded-xl border border-dashed p-6 text-center">
+                      <ShoppingBag className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">Your cart is empty</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Add medicines to see them here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {cartData.items.map((item: any) => (
+                        <div key={item.id} className="rounded-xl border bg-card p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium">{item.medicineName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Qty: {item.quantity} x PKR {item.unitPrice}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                await cartApi.removeItem(item.id);
+                                await loadCart();
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm font-semibold">
+                        Subtotal: PKR {Number(cartData.total || 0).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!!cartData?.items?.length && (
+                  <SheetFooter className="grid grid-cols-1 gap-2 p-4">
+                    <Input
+                      placeholder="Shipping address"
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      required
+                    />
+                    <Input
+                      placeholder="Contact number"
+                      value={contactNo}
+                      onChange={(e) => setContactNo(e.target.value)}
+                      required
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={checkoutLoading !== null || !isCheckoutInfoValid}
+                      onClick={() => handleCheckout("cod")}
+                    >
+                      {checkoutLoading === "cod" ? "Placing..." : "Cash on Delivery"}
+                    </Button>
+                    <Button
+                      disabled={checkoutLoading !== null || !isCheckoutInfoValid}
+                      onClick={() => handleCheckout("online")}
+                    >
+                      {checkoutLoading === "online" ? "Redirecting..." : "Pay Online"}
+                    </Button>
+                  </SheetFooter>
+                )}
+              </SheetContent>
+            </Sheet>
 
             {/* Profile Dropdown - Shows different content based on login status */}
             <DropdownMenu>
@@ -127,9 +305,9 @@ const Navbar: React.FC = () => {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {user?.role === 'doctor' ? (
+                    {normalizeRole(user?.role) === 'doctor' ? (
                       <DropdownMenuItem 
-                        onClick={() => router.push('/dashboard/doctor')} 
+                        onClick={() => router.push(getDashboardHomeByRole(user?.role))}
                         className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
                       >
                         <Grid3X3 className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
@@ -144,7 +322,7 @@ const Navbar: React.FC = () => {
                           <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
                           <span className="text-sm sm:text-base">My Profile</span>
                         </DropdownMenuItem>
-                        {user?.role === 'patient' && (
+                        {normalizeRole(user?.role) === 'patient' && (
                           <DropdownMenuItem 
                             onClick={() => router.push('/appointments')} 
                             className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"

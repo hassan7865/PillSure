@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { appointmentService } from '../services/appointment.service';
 import { doctorService } from '../services/doctor.service';
+import { stripeService } from '../services/stripe.service';
 import { verifyToken } from '../middleware/jwt.handler';
 import { BadRequestError } from '../middleware/error.handler';
 import { ApiResponse } from '../core/api-response';
@@ -15,13 +16,16 @@ export class AppointmentRoute {
 
   private initializeRoutes() {
     this.router.post('/', verifyToken, this.createAppointment);
+    this.router.post('/checkout-session', verifyToken, this.createCheckoutSession);
     this.router.get('/patient', verifyToken, this.getPatientAppointments);
     this.router.get('/patient/:patientId/completed', verifyToken, this.getCompletedAppointmentsByPatientId);
     this.router.get('/patient/status/stream', verifyToken, this.streamPatientAppointmentStatus);
     // Endpoints for current doctor (uses JWT userId)
     this.router.get('/doctor/appointments', verifyToken, this.getCurrentDoctorAppointments);
     this.router.get('/doctor/stats', verifyToken, this.getCurrentDoctorAppointmentStats);
+    this.router.get('/doctor/dashboard-stats', verifyToken, this.getCurrentDoctorDashboardStats);
     this.router.get('/doctor/yearly-stats', verifyToken, this.getCurrentDoctorYearlyStats);
+    this.router.get('/hospital/dashboard-stats', verifyToken, this.getCurrentHospitalDashboardStats);
     this.router.get('/booked-slots/:doctorId/:date', this.getBookedSlots);
     this.router.get('/:id', verifyToken, this.getAppointmentById);
     this.router.put('/:id/status', verifyToken, this.updateAppointmentStatus);
@@ -41,6 +45,45 @@ export class AppointmentRoute {
 
       const result = await appointmentService.createAppointment(patientId, data);
       res.status(201).json(ApiResponse(result, "Appointment created successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private createCheckoutSession = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const patientId = (req as any).user.userId;
+      const data = req.body;
+
+      if (!data.doctorId || !data.appointmentDate || !data.appointmentTime || !data.consultationMode) {
+        return next(BadRequestError("Missing required fields"));
+      }
+
+      await appointmentService.assertSlotAvailable(data.doctorId, data.appointmentDate, data.appointmentTime);
+      const doctor = await appointmentService.getDoctorFeeAndName(data.doctorId);
+
+      const session = await stripeService.createAppointmentCheckoutSession({
+        amountPkr: doctor.feePkr,
+        doctorName: doctor.doctorName || "Doctor",
+        metadata: {
+          patientId,
+          doctorId: data.doctorId,
+          appointmentDate: data.appointmentDate,
+          appointmentTime: data.appointmentTime,
+          consultationMode: data.consultationMode,
+          patientNotes: data.patientNotes || "",
+        },
+      });
+
+      res.status(200).json(
+        ApiResponse(
+          {
+            checkoutUrl: session.url,
+            sessionId: session.id,
+          },
+          "Checkout session created successfully"
+        )
+      );
     } catch (error) {
       next(error);
     }
@@ -118,6 +161,38 @@ export class AppointmentRoute {
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
       const result = await appointmentService.getYearlyAppointmentStatsByUserId(userId, year);
       res.status(200).json(ApiResponse(result, "Yearly appointment statistics retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getCurrentDoctorDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).user.userId;
+      const userRole = (req as any).user.role;
+
+      if (userRole !== 'doctor') {
+        return next(BadRequestError("This endpoint is only available for doctors"));
+      }
+
+      const result = await appointmentService.getDoctorDashboardStatsByUserId(userId);
+      res.status(200).json(ApiResponse(result, "Doctor dashboard statistics retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getCurrentHospitalDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).user.userId;
+      const userRole = (req as any).user.role;
+
+      if (userRole !== 'hospital') {
+        return next(BadRequestError("This endpoint is only available for hospitals"));
+      }
+
+      const result = await appointmentService.getHospitalDashboardStatsByUserId(userId);
+      res.status(200).json(ApiResponse(result, "Hospital dashboard statistics retrieved successfully"));
     } catch (error) {
       next(error);
     }

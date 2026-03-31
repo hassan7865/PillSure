@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,50 @@ import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import PublicLayout from "@/layout/PublicLayout";
 import { getStatusBadge, getConsultationModeIcon } from "@/lib/component-utils";
+import { useCustomToast } from "@/hooks/use-custom-toast";
+import cartApi from "@/app/cart/_api";
 
 export default function PatientAppointmentsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { showSuccess, showError } = useCustomToast();
+  const handledPaymentToastKeysRef = useRef<Set<string>>(new Set());
   const { user, token } = useAuth();
   const [selected, setSelected] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'prescription'>('details');
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [appointmentsList, setAppointmentsList] = useState<any[]>([]);
   const [prescription, setPrescription] = useState<any>(null);
+  const [showOrderPrescriptionDialog, setShowOrderPrescriptionDialog] = useState(false);
+  const [selectedPrescriptionItems, setSelectedPrescriptionItems] = useState<Record<number, boolean>>({});
+  const [orderingPrescription, setOrderingPrescription] = useState(false);
+
+  useEffect(() => {
+    const paymentState = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id") || "";
+
+    if (!paymentState) return;
+
+    const toastKey = `${paymentState}:${sessionId}`;
+    if (handledPaymentToastKeysRef.current.has(toastKey)) {
+      return;
+    }
+    handledPaymentToastKeysRef.current.add(toastKey);
+
+    if (paymentState === "success") {
+      showSuccess("Payment successful", "Your appointment booking is confirmed.");
+    }
+    if (paymentState === "cancelled") {
+      showError("Payment cancelled", "Your appointment was not booked.");
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("payment");
+    nextParams.delete("session_id");
+    const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [searchParams, showSuccess, showError, pathname, router]);
 
   // Fetch patient appointments
   const { data: appointments, isLoading: apptLoading } = usePatientAppointments(undefined);
@@ -53,7 +90,8 @@ export default function PatientAppointmentsPage() {
   useEffect(() => {
     if (!token || !user) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) return;
     let eventSource: EventSource | null = null;
     let reconnectTimeout: NodeJS.Timeout;
 
@@ -117,7 +155,8 @@ export default function PatientAppointmentsPage() {
 
   useEffect(() => {
     if (activeTab === 'prescription' && selected?.id) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) return;
       fetch(`${apiUrl}/api/appointments/${selected.id}/prescription`, {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -128,6 +167,43 @@ export default function PatientAppointmentsPage() {
         .catch(() => setPrescription([]));
     }
   }, [activeTab, selected?.id, token]);
+
+  const handleOpenPrescriptionOrder = () => {
+    const initial: Record<number, boolean> = {};
+    (prescription || []).forEach((item: any, idx: number) => {
+      initial[idx] = true;
+    });
+    setSelectedPrescriptionItems(initial);
+    setShowOrderPrescriptionDialog(true);
+  };
+
+  const handleAddPrescriptionToCart = async () => {
+    if (!selected?.id || !Array.isArray(prescription)) return;
+    const chosen = prescription.filter((_: any, idx: number) => selectedPrescriptionItems[idx]);
+    if (!chosen.length) {
+      showError("No medicine selected", "Please select at least one prescribed medicine.");
+      return;
+    }
+
+    try {
+      setOrderingPrescription(true);
+      for (const item of chosen) {
+        if (!item?.medicineId) continue;
+        await cartApi.addItem({
+          medicineId: Number(item.medicineId),
+          quantity: Number(item.quantity) || 1,
+          sourceType: "prescription",
+          appointmentId: selected.id,
+        });
+      }
+      showSuccess("Added to cart", "Selected prescribed medicines were added to your cart.");
+      setShowOrderPrescriptionDialog(false);
+    } catch (error: any) {
+      showError("Failed to add prescribed medicines", error?.response?.data?.error || "Please try again.");
+    } finally {
+      setOrderingPrescription(false);
+    }
+  };
 
   return (
     <PublicLayout>
@@ -141,7 +217,7 @@ export default function PatientAppointmentsPage() {
 
         <div className="flex flex-col lg:flex-row flex-1 gap-4 lg:gap-6 min-h-0">
           {/* Left: Appointment List */}
-          <Card className="w-full lg:w-[400px] lg:min-w-[360px] lg:max-w-md flex flex-col h-full">
+          <Card className="w-full lg:w-[360px] xl:w-[400px] lg:min-w-[320px] xl:min-w-[360px] lg:max-w-md flex flex-col h-full">
             <CardHeader className="border-b">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
@@ -151,7 +227,7 @@ export default function PatientAppointmentsPage() {
                 {appointmentsList?.length || 0} appointment{appointmentsList?.length !== 1 ? 's' : ''} found
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-0 min-h-[400px] max-h-[600px]">
+            <CardContent className="flex-1 overflow-y-auto p-0 min-h-[320px] sm:min-h-[400px] max-h-[70vh] lg:max-h-[600px]">
               {apptLoading ? (
                 <div className="flex items-center justify-center h-full py-8">
                   <Loader 
@@ -210,7 +286,7 @@ export default function PatientAppointmentsPage() {
           {/* Right: Tabbed Details/Prescription */}
           <Card className="flex-1 flex flex-col h-full">
             {!selected ? (
-              <CardContent className="flex-1 flex items-center justify-center min-h-[400px]">
+              <CardContent className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[400px]">
                 <div className="flex flex-col items-center justify-center text-center p-6">
                   <AlertCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
                   <p className="text-lg font-medium text-foreground mb-2">No appointment selected</p>
@@ -220,12 +296,12 @@ export default function PatientAppointmentsPage() {
             ) : (
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'prescription')} className="flex flex-col h-full">
                 <CardHeader className="border-b">
-                  <TabsList className="w-fit">
-                    <TabsTrigger value="details" className="flex items-center gap-2">
+                  <TabsList className="w-full sm:w-fit">
+                    <TabsTrigger value="details" className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm">
                       <FileText className="h-4 w-4" />
-                      Appointment Details
+                      <span className="hidden sm:inline">Appointment </span>Details
                     </TabsTrigger>
-                    <TabsTrigger value="prescription" className="flex items-center gap-2">
+                    <TabsTrigger value="prescription" className="flex items-center gap-2 flex-1 sm:flex-initial text-xs sm:text-sm">
                       <Stethoscope className="h-4 w-4" />
                       Prescription
                     </TabsTrigger>
@@ -331,7 +407,7 @@ export default function PatientAppointmentsPage() {
                       </h2>
                       {/* Only show prescription for current appointment. */}
                       {prescription && prescription.length > 0 ? (
-                        <div className="rounded-lg border bg-primary/5 p-6">
+                        <div className="rounded-lg border bg-primary/5 p-6 space-y-4">
                           <ul className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
                             {prescription.map((item: any, idx: number) => (
                               <li key={idx}>
@@ -339,6 +415,17 @@ export default function PatientAppointmentsPage() {
                               </li>
                             ))}
                           </ul>
+                          {selected?.hasMedicineOrder ? (
+                            <div className="rounded-lg border bg-background p-3">
+                              <p className="text-sm font-medium text-foreground">Already ordered</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                This prescription has already been ordered.
+                                {selected?.medicineOrderId ? ` Order ref: #${String(selected.medicineOrderId).slice(0, 8)}` : ""}
+                              </p>
+                            </div>
+                          ) : (
+                            <Button onClick={handleOpenPrescriptionOrder}>Order Medicines</Button>
+                          )}
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center h-full py-12 text-center rounded-lg border border-dashed">
@@ -384,6 +471,34 @@ export default function PatientAppointmentsPage() {
             )}
           </DialogContent>
         </Dialog>
+
+        <Dialog open={showOrderPrescriptionDialog} onOpenChange={setShowOrderPrescriptionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Select Medicines To Add To Cart</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {(prescription || []).map((item: any, idx: number) => (
+                <label key={idx} className="flex items-center justify-between border rounded px-3 py-2">
+                  <div>
+                    <p className="font-medium">{item.medicineName}</p>
+                    <p className="text-sm text-muted-foreground">Qty: {item.quantity} {item.dose ? `| Dose: ${item.dose}` : ""}</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!selectedPrescriptionItems[idx]}
+                    onChange={(e) =>
+                      setSelectedPrescriptionItems((prev) => ({ ...prev, [idx]: e.target.checked }))
+                    }
+                  />
+                </label>
+              ))}
+              <Button disabled={orderingPrescription} onClick={handleAddPrescriptionToCart} className="w-full">
+                {orderingPrescription ? "Adding..." : "Add Selected To Cart"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </PublicLayout>
   );
@@ -398,7 +513,7 @@ interface DetailRowProps {
 function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-2">
-      <span className="font-medium text-muted-foreground min-w-[140px] text-sm">{label}:</span>
+      <span className="font-medium text-muted-foreground sm:min-w-[140px] text-sm">{label}:</span>
       <div className="flex-1 text-foreground text-sm break-words">
         {typeof value === 'string' ? (
           <span className={value === 'N/A' ? 'text-muted-foreground italic' : ''}>{value}</span>

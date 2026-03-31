@@ -182,13 +182,28 @@ export default function PrescriptionDiagnosis({
     if (onSave) onSave();
   };
 
-  // Filter completed appointments for history (same patient)
-  const historyAppointments = allAppointments.filter(
-    (apt) =>
-      apt.patientId === appointment?.patientId &&
-      apt.id !== appointment?.id &&
-      apt.status?.toLowerCase() === "completed"
-  );
+  const handleUseHistoryPrescription = (apt: any) => {
+    const nextPrescription = Array.isArray(apt?.prescription) ? apt.prescription : [];
+    const nextDiagnosis = Array.isArray(apt?.diagnosis) ? apt.diagnosis : [];
+    setPrescriptionItems(nextPrescription);
+    setDiagnosisTags(nextDiagnosis);
+    setSelectedMedicineIds([]);
+  };
+
+  // Build history robustly for both sources:
+  // - doctor appointment list (mixed statuses)
+  // - pre-filtered completed appointments list for selected patient
+  const historyAppointments = allAppointments
+    .filter((apt) => apt?.id !== appointment?.id)
+    .filter((apt) => {
+      if (!appointment?.patientId || !apt?.patientId) return true;
+      return apt.patientId === appointment.patientId;
+    })
+    .filter((apt) => {
+      if (!apt?.status) return true;
+      return String(apt.status).toLowerCase() === "completed";
+    });
+
 
   return (
     <div className="h-full flex flex-col">
@@ -339,8 +354,8 @@ export default function PrescriptionDiagnosis({
           <div className="rounded-lg border bg-muted/30 p-3 mb-3">
             <div className="flex flex-wrap gap-4 items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-xs">Visits:</span>
-                <Badge variant="secondary" className="text-xs">{historyAppointments.length + 1}</Badge>
+                <span className="font-semibold text-xs">Previous Visits:</span>
+                <Badge variant="secondary" className="text-xs">{historyAppointments.length}</Badge>
               </div>
               {appointment.hospitalName && (
                 <div className="flex items-center gap-2">
@@ -366,7 +381,7 @@ export default function PrescriptionDiagnosis({
           {historyAppointments.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">
-                No previous completed appointments found for this patient.
+                No previous completed appointments found for this patient yet.
               </p>
             </div>
           ) : (
@@ -407,7 +422,18 @@ export default function PrescriptionDiagnosis({
                   <>
                     <Separator />
                     <div>
-                      <h4 className="text-xs font-semibold mb-1">Prescription:</h4>
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-xs font-semibold">Prescription:</h4>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => handleUseHistoryPrescription(apt)}
+                        >
+                          Use This Prescription
+                        </Button>
+                      </div>
                       <div className="space-y-1">
                         {apt.prescription.map((item: PrescriptionItem, idx: number) => (
                           <div key={idx} className="text-xs text-muted-foreground">

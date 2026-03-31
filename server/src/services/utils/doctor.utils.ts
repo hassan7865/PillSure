@@ -6,7 +6,7 @@ import { doctors } from "../../schema/doctor";
 import { users } from "../../schema/users";
 import { hospitals } from "../../schema/hospitals";
 import { specializations } from "../../schema/specialization";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, SQL } from "drizzle-orm";
 
 export interface DoctorSelectFields {
   id: typeof doctors.id;

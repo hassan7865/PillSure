@@ -1,10 +1,23 @@
 import api from '@/lib/interceptor';
-import { CreateAppointmentRequest, UpdateAppointmentStatusRequest, UpdateAppointmentNotesRequest ,ApiResponse} from './_types';
+import {
+  CreateAppointmentRequest,
+  UpdateAppointmentStatusRequest,
+  UpdateAppointmentNotesRequest,
+  ApiResponse,
+  CheckoutSessionResponse,
+  DoctorDashboardStats,
+  HospitalDashboardStats,
+} from './_types';
 import { extractApiData, buildStatusParam, buildQueryString } from '@/lib/api-utils';
 
 export const appointmentApi = {
   createAppointment: async (data: CreateAppointmentRequest): Promise<ApiResponse> => {
     const response = await api.post('/appointments', data);
+    return extractApiData(response);
+  },
+
+  createCheckoutSession: async (data: CreateAppointmentRequest): Promise<CheckoutSessionResponse> => {
+    const response = await api.post('/appointments/checkout-session', data);
     return extractApiData(response);
   },
 
@@ -50,6 +63,16 @@ export const appointmentApi = {
 
   getCurrentDoctorYearlyStats: async (year?: number): Promise<ApiResponse> => {
     const response = await api.get(`/appointments/doctor/yearly-stats${buildQueryString({ year })}`);
+    return extractApiData(response);
+  },
+
+  getCurrentDoctorDashboardStats: async (): Promise<DoctorDashboardStats> => {
+    const response = await api.get(`/appointments/doctor/dashboard-stats`);
+    return extractApiData(response);
+  },
+
+  getCurrentHospitalDashboardStats: async (): Promise<HospitalDashboardStats> => {
+    const response = await api.get(`/appointments/hospital/dashboard-stats`);
     return extractApiData(response);
   },
 

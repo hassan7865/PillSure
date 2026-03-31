@@ -8,18 +8,27 @@ import { AppointmentRoute } from "./src/routes/appointment.route";
 import { AdminRoute } from "./src/routes/admin.route";
 import LiveKitRoute from "./src/routes/livekit.route";
 import { RAGRoute } from "./src/routes/rag.route";
+import PaymentsRoute from "./src/routes/payments.route";
+import CartRoute from "./src/routes/cart.route";
+import OrderRoute from "./src/routes/order.route";
 import { AuthService } from "./src/services/auth.service";
 import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
+import { requestLogger } from "./src/middleware/request.logger";
 import { db } from "./src/config/database";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = Number(process.env.PORT) || 7154;
+const paymentsRoutes = new PaymentsRoute();
+
+// Stripe webhook must receive raw body before JSON parser.
+app.use("/api/payments", express.raw({ type: "application/json" }), paymentsRoutes.getRouter());
 
 // Middleware
+app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -51,6 +60,8 @@ const initializeApp = async () => {
     const doctorRoutes = new DoctorRoute();
     const medicineRoutes = new MedicineRoute();
     const appointmentRoutes = new AppointmentRoute();
+    const cartRoutes = new CartRoute();
+    const orderRoutes = new OrderRoute();
     const adminRoutes = new AdminRoute();
     const livekitRoutes = new LiveKitRoute();
     const ragRoutes = new RAGRoute();
@@ -61,6 +72,8 @@ const initializeApp = async () => {
     app.use("/api/doctor", doctorRoutes.getRouter());
     app.use("/api/medicine", medicineRoutes.getRouter());
     app.use("/api/appointments", appointmentRoutes.getRouter());
+    app.use("/api/cart", cartRoutes.getRouter());
+    app.use("/api/orders", orderRoutes.getRouter());
     app.use("/api/admin", adminRoutes.getRouter());
     app.use("/api/livekit", livekitRoutes.getRouter());
     app.use("/api/rag", ragRoutes.getRouter());

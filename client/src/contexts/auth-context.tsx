@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/error-utils';
 import { AuthContextType } from '@/app/auth/_components/_types';
 import { User } from '@/lib/types';
 import { authApi } from '@/app/auth/_components/_api';
+import { getPostAuthHomeByRole, normalizeRole } from '@/lib/role-routing';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -21,7 +22,7 @@ export const useAuth = () => {
 
 // Helper function to get onboarding path based on role
 const getOnboardingPath = (role: string | undefined): string | null => {
-  switch (role?.toLowerCase()) {
+  switch (normalizeRole(role)) {
     case 'patient':
       return '/onboarding/patient';
     case 'doctor':
@@ -48,16 +49,7 @@ const getPostOnboardingPath = (role: string | undefined): string => {
     }
   }
   
-  switch (role?.toLowerCase()) {
-    case 'patient':
-      return '/';
-    case 'doctor':
-      return '/dashboard/doctor';
-    case 'hospital':
-      return '/dashboard/hospital';
-    default:
-      return '/';
-  }
+  return getPostAuthHomeByRole(role);
 };
 
 
@@ -246,6 +238,7 @@ const AuthProviderContent: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('user');
     } finally {
       setLoading(false);
+      router.replace('/auth');
     }
   };
 

@@ -4,6 +4,7 @@ import { medicines } from "../schema/medicine";
 import { doctors } from "../schema/doctor";
 import { hospitals } from "../schema/hospitals";
 import { appointments } from "../schema/appointments";
+import { orders } from "../schema/orders";
 import { roles } from "../schema/roles";
 import { eq, sql, count, and, or, ilike, desc } from "drizzle-orm";
 import { s3Service } from "./s3.service";
@@ -17,6 +18,50 @@ import {
 } from "./utils/image.utils";
 
 export class AdminService {
+  async getMonthlyRevenueByYear(year?: number) {
+    const currentYear = new Date().getFullYear();
+    const targetYear = Number.isFinite(year) ? Number(year) : currentYear;
+
+    const rows = await db
+      .select({
+        month: sql<number>`extract(month from ${orders.createdAt})::int`,
+        revenue: sql<string>`coalesce(sum(${orders.total})::text, '0')`,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.paymentStatus, "paid"),
+          sql`extract(year from ${orders.createdAt})::int = ${targetYear}`
+        )
+      )
+      .groupBy(sql`extract(month from ${orders.createdAt})`)
+      .orderBy(sql`extract(month from ${orders.createdAt})`);
+
+    const monthlyMap = new Map<number, number>();
+    rows.forEach((row) => {
+      monthlyMap.set(Number(row.month), Number(row.revenue || 0));
+    });
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const revenueByMonth = months.map((label, index) => {
+      const month = index + 1;
+      return {
+        month,
+        label,
+        revenue: Number((monthlyMap.get(month) || 0).toFixed(2)),
+      };
+    });
+
+    return {
+      year: targetYear,
+      currency: "PKR",
+      revenueByMonth,
+      totalRevenue: Number(
+        revenueByMonth.reduce((sum, item) => sum + Number(item.revenue || 0), 0).toFixed(2)
+      ),
+    };
+  }
+
   async getStats() {
     try {
       // Get total users by role
@@ -82,6 +127,27 @@ export class AdminService {
         .from(hospitals)
         .where(eq(hospitals.isActive, true));
 
+      // Orders and paid revenue for admin dashboard
+      const totalOrders = await db.select({ count: count() }).from(orders);
+      const ordersByStatus = await db
+        .select({
+          status: orders.status,
+          count: sql<number>`count(${orders.id})::int`,
+        })
+        .from(orders)
+        .groupBy(orders.status);
+      const ordersByStatusMap: Record<string, number> = {};
+      ordersByStatus.forEach((item) => {
+        ordersByStatusMap[item.status] = item.count;
+      });
+
+      const paidRevenue = await db
+        .select({
+          total: sql<string>`coalesce(sum(${orders.total})::text, '0')`,
+        })
+        .from(orders)
+        .where(eq(orders.paymentStatus, "paid"));
+
       return {
         users: {
           total: totalUsers[0]?.count || 0,
@@ -104,11 +170,113 @@ export class AdminService {
           total: totalAppointments[0]?.count || 0,
           byStatus: appointmentsByStatusMap,
         },
+        orders: {
+          total: totalOrders[0]?.count || 0,
+          byStatus: ordersByStatusMap,
+          paidRevenue: paidRevenue[0]?.total || "0",
+        },
       };
     } catch (error) {
       console.error("Error fetching admin stats:", error);
       throw error;
     }
+  }
+
+  async getOrders(params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    const page = params.page || 1;
+    const limit = params.limit || 10;
+    const offset = calculateOffset(page, limit);
+
+    const conditions: any[] = [];
+
+    if (params.search?.trim()) {
+      const term = `%${params.search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(users.firstName, term),
+          ilike(users.lastName, term),
+          ilike(users.email, term),
+          ilike(sql`cast(${orders.id} as text)`, term)
+        )
+      );
+    }
+
+    if (params.status?.trim()) {
+      const requested = params.status.trim();
+      if (requested === "pending") {
+        // Backward compatibility for old rows saved as "placed"
+        conditions.push(or(eq(orders.status, "pending"), eq(orders.status, "placed")));
+      } else {
+        conditions.push(eq(orders.status, requested));
+      }
+    }
+
+    if (params.dateFrom) {
+      conditions.push(sql`${orders.createdAt} >= ${params.dateFrom}::timestamp`);
+    }
+    if (params.dateTo) {
+      conditions.push(sql`${orders.createdAt} <= (${params.dateTo}::date + interval '1 day')`);
+    }
+
+    const whereClause = conditions.length ? and(...conditions) : undefined;
+
+    const query = db
+      .select({
+        id: orders.id,
+        patientId: orders.patientId,
+        patientName: sql<string>`concat(${users.firstName}, ' ', ${users.lastName})`,
+        patientEmail: users.email,
+        status: sql<string>`case when ${orders.status} = 'placed' then 'pending' else ${orders.status} end`,
+        paymentMethod: orders.paymentMethod,
+        paymentStatus: orders.paymentStatus,
+        subtotal: orders.subtotal,
+        total: orders.total,
+        currency: orders.currency,
+        shippingAddress: orders.shippingAddress,
+        contactNo: orders.contactNo,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+      })
+      .from(orders)
+      .innerJoin(users, eq(orders.patientId, users.id))
+      .where(whereClause)
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const countQuery = db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(orders)
+      .innerJoin(users, eq(orders.patientId, users.id))
+      .where(whereClause);
+
+    const [ordersList, countResult] = await Promise.all([query, countQuery]);
+    const totalCount = countResult[0]?.count || 0;
+
+    return {
+      orders: ordersList,
+      pagination: calculatePagination(page, limit, totalCount),
+    };
+  }
+
+  async updateOrderStatus(orderId: string, status: "pending" | "shipped" | "delivered" | "returned") {
+    const updated = await db
+      .update(orders)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    if (!updated.length) {
+      throw new Error("Order not found");
+    }
+    return updated[0];
   }
 
   async getDoctors(page: number = 1, limit: number = 10, search: string = '') {

@@ -8,6 +8,8 @@ import {
   boolean,
   index,
   jsonb,
+  uniqueIndex,
+  numeric,
 } from "drizzle-orm/pg-core";
   import { users } from "./users";
   import { doctors } from "./doctor";
@@ -46,6 +48,11 @@ import {
       // Diagnosis as JSONB array of strings (chips)
       diagnosis: jsonb("diagnosis").$type<string[]>(),
       cancellationReason: text("cancellation_reason"),
+      paymentProvider: varchar("payment_provider", { length: 20 }),
+      paymentStatus: varchar("payment_status", { length: 20 }).notNull().default("unpaid"),
+      stripeSessionId: varchar("stripe_session_id", { length: 255 }),
+      amountPaid: numeric("amount_paid", { precision: 10, scale: 2 }),
+      currency: varchar("currency", { length: 10 }),
   
       isActive: boolean("is_active").notNull().default(true),
       createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -58,19 +65,7 @@ import {
         idxAppointmentDate: index("idx_appointments_date").on(table.appointmentDate),
         idxStatus: index("idx_appointments_status").on(table.status),
         idxCreatedAt: index("idx_appointments_created_at").on(table.createdAt),
+        uqStripeSessionId: uniqueIndex("uq_appointments_stripe_session_id").on(table.stripeSessionId),
       };
     }
   );
-  
-  // Utility function to fetch prescription for a specific appointment
-  import { db } from '../config/database';
-
-  export async function getPrescriptionByAppointmentId(appointmentId: string) {
-    const appointment = await db.query.appointments.findFirst({
-      where: (appt, { eq }) => eq(appt.id, appointmentId),
-      columns: {
-        prescription: true,
-      },
-    });
-    return appointment?.prescription || [];
-  }

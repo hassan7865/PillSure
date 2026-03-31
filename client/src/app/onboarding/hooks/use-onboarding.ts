@@ -4,6 +4,7 @@ import { PatientOnboardingRequest, DoctorOnboardingRequest, HospitalOnboardingRe
 import { useCustomToast } from '@/hooks/use-custom-toast';
 import { useRouter } from 'next/navigation';
 import { getErrorMessage } from '@/lib/error-utils';
+import { getPostAuthHomeByRole } from '@/lib/role-routing';
 
 
 const handleRedirectResponse = (
@@ -53,7 +54,7 @@ export const usePatientOnboarding = () => {
     setError(null);
     try {
       const response = await onboardingApi.savePatientOnboarding(data);
-      handleRedirect(response, '/', 'Patient onboarding completed');
+      handleRedirect(response, getPostAuthHomeByRole('patient'), 'Patient onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -86,7 +87,7 @@ export const useDoctorOnboarding = () => {
     setError(null);
     try {
       const response = await onboardingApi.saveDoctorOnboarding(data);
-      handleRedirect(response, '/dashboard/doctor', 'Doctor onboarding completed');
+      handleRedirect(response, getPostAuthHomeByRole('doctor'), 'Doctor onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
@@ -119,7 +120,7 @@ export const useHospitalOnboarding = () => {
     setError(null);
     try {
       const response = await onboardingApi.saveHospitalOnboarding(data);
-      handleRedirect(response, '/dashboard/hospital', 'Hospital onboarding completed');
+      handleRedirect(response, getPostAuthHomeByRole('hospital'), 'Hospital onboarding completed');
       return response;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);

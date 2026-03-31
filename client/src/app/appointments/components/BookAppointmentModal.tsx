@@ -127,8 +127,8 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
     };
 
     try {
-      await createAppointmentMutation.mutateAsync(appointmentData);
-      handleClose();
+      const checkoutUrl = await createAppointmentMutation.mutateAsync(appointmentData);
+      window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Booking error:', error);
     }
@@ -432,12 +432,12 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                   {createAppointmentMutation.isLoading ? (
                     <>
                       <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      Booking...
+                      Redirecting...
                     </>
                   ) : (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
-                      Confirm Booking
+                      Continue to Payment
                     </>
                   )}
                 </Button>

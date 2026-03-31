@@ -19,6 +19,9 @@ import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/interceptor";
 import { ApiResponse } from "@/lib/types";
 import Loader from "@/components/ui/loader";
+import cartApi from "@/app/cart/_api";
+import { useCustomToast } from "@/hooks/use-custom-toast";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type Medicine = {
   id: number;
@@ -50,9 +53,11 @@ type UIProduct = {
 
 const FeaturedProductsSection: React.FC = () => {
   const router = useRouter();
+  const { showSuccess, showError, showInfo } = useCustomToast();
   const [items, setItems] = useState<UIProduct[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -105,6 +110,23 @@ const FeaturedProductsSection: React.FC = () => {
   }, []);
 
   const products = useMemo(() => items || [], [items]);
+
+  const handleAddToCart = async (product: UIProduct) => {
+    if (product.prescriptionRequired) {
+      showInfo("Prescription required", "Please consult doctor and order from your prescription.");
+      router.push("/appointments");
+      return;
+    }
+    try {
+      setAddingId(product.id);
+      await cartApi.addItem({ medicineId: product.id, quantity: 1, sourceType: "direct" });
+      showSuccess("Added to cart", `${product.name} was added to cart.`);
+    } catch (err) {
+      showError("Failed to add to cart", getErrorMessage(err));
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -230,11 +252,11 @@ const FeaturedProductsSection: React.FC = () => {
                       <div className="flex items-baseline gap-1 sm:gap-2">
                         {product.originalPrice && product.originalPrice > product.price && (
                           <span className="text-xs sm:text-sm text-muted-foreground line-through">
-                            ${product.originalPrice.toFixed(2)}
+                            PKR {product.originalPrice.toFixed(2)}
                           </span>
                         )}
                         <span className="text-lg sm:text-xl font-bold text-card-foreground">
-                          ${product.price.toFixed(2)}
+                          PKR {product.price.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-1.5">
@@ -255,14 +277,14 @@ const FeaturedProductsSection: React.FC = () => {
                     {/* Actions */}
                     <Button 
                       className="w-full h-8 sm:h-9 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:text-muted-foreground" 
-                      disabled={!product.inStock}
+                      disabled={!product.inStock || addingId === product.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/medicine/${product.id}`);
+                        handleAddToCart(product);
                       }}
                     >
                       <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      {product.prescriptionRequired ? "View Details" : "View Details"}
+                      {addingId === product.id ? "Adding..." : (product.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
                     </Button>
                   </div>
                 </CardContent>

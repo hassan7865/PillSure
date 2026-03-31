@@ -22,6 +22,8 @@ export default function AppointmentsPage() {
   const [selected, setSelected] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'prescription'>('details');
   const [showVideoCall, setShowVideoCall] = useState(false);
+  const [isMarkingCompleted, setIsMarkingCompleted] = useState(false);
+  const [isJoiningCall, setIsJoiningCall] = useState(false);
 
   const { mutateAsync: updateStatus } = useUpdateAppointmentStatus();
 
@@ -72,7 +74,7 @@ export default function AppointmentsPage() {
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4 p-4 lg:p-6 bg-background">
       {/* Left: Appointment List */}
-      <Card className="w-full lg:w-[400px] lg:min-w-[360px] lg:max-w-md flex flex-col h-full lg:h-[calc(100vh-8rem)]">
+      <Card className="w-full lg:w-[360px] xl:w-[400px] lg:min-w-[320px] xl:min-w-[360px] lg:max-w-md flex flex-col h-full lg:h-[calc(100vh-8rem)]">
         <CardHeader className="border-b">
           <CardTitle className="text-xl font-bold flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-primary" />
@@ -166,19 +168,25 @@ export default function AppointmentsPage() {
                   <Button
                     onClick={async () => {
                       if (!selected?.id) return;
-                      await updateStatus({
-                        id: selected.id,
-                        data: { status: "completed" },
-                      });
-                      setSelected((prev: any) =>
-                        prev ? { ...prev, status: "completed" } : prev
-                      );
+                      try {
+                        setIsMarkingCompleted(true);
+                        await updateStatus({
+                          id: selected.id,
+                          data: { status: "completed" },
+                        });
+                        setSelected((prev: any) =>
+                          prev ? { ...prev, status: "completed" } : prev
+                        );
+                      } finally {
+                        setIsMarkingCompleted(false);
+                      }
                     }}
                     variant="default"
+                    disabled={isMarkingCompleted || isJoiningCall}
                     className="gap-2 w-full sm:w-auto text-xs sm:text-sm whitespace-nowrap"
                   >
                     <CalendarClock className="h-4 w-4" />
-                    Mark Completed
+                    {isMarkingCompleted ? "Marking..." : "Mark Completed"}
                   </Button>
                 )}
               </div>
@@ -257,23 +265,28 @@ export default function AppointmentsPage() {
                           <Button
                             onClick={async () => {
                               if (!selected?.id) return;
-                              const previousStatus = selected.status || 'confirmed';
-                              if (selected.status?.toLowerCase() !== "in_progress") {
-                                await updateStatus({
-                                  id: selected.id,
-                                  data: { status: "in_progress" },
-                                });
-                                setSelected((prev: any) =>
-                                  prev ? { ...prev, status: "in_progress" } : prev
-                                );
+                              try {
+                                setIsJoiningCall(true);
+                                if (selected.status?.toLowerCase() !== "in_progress") {
+                                  await updateStatus({
+                                    id: selected.id,
+                                    data: { status: "in_progress" },
+                                  });
+                                  setSelected((prev: any) =>
+                                    prev ? { ...prev, status: "in_progress" } : prev
+                                  );
+                                }
+                                setShowVideoCall(true);
+                              } finally {
+                                setIsJoiningCall(false);
                               }
-                              setShowVideoCall(true);
                             }}
+                            disabled={isJoiningCall || isMarkingCompleted}
                             className="gap-2"
                             variant="default"
                           >
                             <Video className="h-4 w-4" />
-                            Join Video Call
+                            {isJoiningCall ? "Joining..." : "Join Video Call"}
                           </Button>
                         </div>
                       </>
@@ -370,35 +383,13 @@ export default function AppointmentsPage() {
                     <Stethoscope className="h-5 w-5 text-primary" />
                     Prescription
                   </h2>
-                  {/* Match Prescription & Diagnosis section exactly */}
-                  {Array.isArray(selected.prescription) && selected.prescription.length > 0 ? (
-                    <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-                      <div>
-                        <h3 className="text-sm font-semibold mb-2">Prescription:</h3>
-                        <div className="space-y-2">
-                          {selected.prescription.map((item: any, idx: number) => (
-                            <div key={idx} className="text-sm">
-                              <span className="font-medium">{item.medicineName}</span>
-                              {item.quantity && (
-                                <span className="text-muted-foreground"> - Qty: {item.quantity}</span>
-                              )}
-                              {item.dose && (
-                                <span className="text-muted-foreground">, Dose: {item.dose}</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full py-12 text-center rounded-lg border border-dashed">
-                      <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground font-medium">No prescription available</p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        This appointment does not have a prescription yet.
-                      </p>
-                    </div>
-                  )}
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <PrescriptionDiagnosis
+                      appointment={selected}
+                      allAppointments={completedAppointmentsArray || []}
+                      onSave={handlePrescriptionSave}
+                    />
+                  </div>
                 </div>
               </TabsContent>
             </CardContent>
@@ -459,7 +450,7 @@ interface DetailRowProps {
 function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-start gap-2">
-      <span className="font-medium text-muted-foreground min-w-[140px] text-sm">{label}:</span>
+      <span className="font-medium text-muted-foreground sm:min-w-[140px] text-sm">{label}:</span>
       <div className="flex-1 text-foreground text-sm break-words">
         {typeof value === 'string' ? (
           <span className={value === 'N/A' ? 'text-muted-foreground italic' : ''}>{value}</span>

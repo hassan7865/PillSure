@@ -144,7 +144,7 @@ export default function FindDoctorPage() {
     <PublicLayout>
       <div className="min-h-screen bg-background">
         {/* Responsive Header */}
-        <div className="border-b border-border/50 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="border-b border-border/50 bg-white/50 backdrop-blur-sm sticky top-16 sm:top-20 z-10">
           <div className="max-w-6xl mx-auto px-4 py-4 md:py-6">
             {/* Mobile: Stacked layout, Desktop: Side by side */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6 mb-4 md:mb-6">

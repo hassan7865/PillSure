@@ -5,7 +5,7 @@ import { useCustomToast } from '@/hooks/use-custom-toast';
 import { getErrorMessage } from '@/lib/error-utils';
 
 export const useCreateAppointment = () => {
-  const { showSuccess, showError } = useCustomToast();
+  const { showError } = useCustomToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -13,9 +13,11 @@ export const useCreateAppointment = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await appointmentApi.createAppointment(data);
-      showSuccess('Appointment booked successfully!', 'Your appointment has been confirmed.');
-      return true;
+      const session = await appointmentApi.createCheckoutSession(data);
+      if (!session.checkoutUrl) {
+        throw new Error('Unable to start Stripe checkout');
+      }
+      return session.checkoutUrl;
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
       setError(err instanceof Error ? err : new Error(errorMsg));
@@ -24,7 +26,7 @@ export const useCreateAppointment = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showSuccess, showError]);
+  }, [showError]);
 
   return { mutate, mutateAsync: mutate, isLoading, error };
 };
@@ -373,6 +375,62 @@ export const useCurrentDoctorYearlyStats = (year?: number) => {
       isMounted = false;
     };
   }, [year]);
+
+  return { data, isLoading, error };
+};
+
+export const useCurrentDoctorDashboardStats = () => {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const result = await appointmentApi.getCurrentDoctorDashboardStats();
+        if (isMounted) setData(result);
+      } catch (err) {
+        if (isMounted) setError(err instanceof Error ? err : new Error('Failed to fetch doctor dashboard stats'));
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchStats();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return { data, isLoading, error };
+};
+
+export const useCurrentHospitalDashboardStats = () => {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const result = await appointmentApi.getCurrentHospitalDashboardStats();
+        if (isMounted) setData(result);
+      } catch (err) {
+        if (isMounted) setError(err instanceof Error ? err : new Error('Failed to fetch hospital dashboard stats'));
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchStats();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return { data, isLoading, error };
 };
