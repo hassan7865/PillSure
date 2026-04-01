@@ -51,7 +51,7 @@ const AppointmentYearlyTotalCard: React.FC<AppointmentYearlyTotalCardProps> = ({
   const totalYear = yearly?.total || 0;
   const statusBreakdown = yearly?.statusBreakdown || [];
   const confirmedCount = statusBreakdown?.find((s: any) => s.status === 'confirmed')?.count || 0;
-  const pendingCount = statusBreakdown?.find((s: any) => s.status === 'pending')?.count || 0;
+  const pendingCount = statusBreakdown?.find((s: any) => s.status === 'in_progress')?.count || 0;
   const completedCount = statusBreakdown?.find((s: any) => s.status === 'completed')?.count || 0;
 
   return (

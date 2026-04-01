@@ -46,7 +46,7 @@ const DoctorDashboardPage = () => {
         <Card>
           <CardHeader>
             <CardDescription className="flex items-center gap-2"><Clock3 className="h-4 w-4" />Pending</CardDescription>
-            <CardTitle className="text-2xl">{stats.byStatus?.pending || 0}</CardTitle>
+            <CardTitle className="text-2xl">{stats.byStatus?.in_progress || 0}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
