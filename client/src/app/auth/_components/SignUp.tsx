@@ -17,7 +17,7 @@ const validateEmail = (email: string): boolean => {
 };
 
 const validatePassword = (password: string): boolean => {
-  return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password);
+  return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password);
 };
 
 // Main App component for the signup form
