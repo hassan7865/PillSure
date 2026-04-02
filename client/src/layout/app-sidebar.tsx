@@ -50,6 +50,7 @@ const company = {
 import { useAuth } from '@/contexts/auth-context';
 import type { User as AuthUser } from '@/lib/types';
 import { getDashboardHomeByRole, normalizeRole } from '@/lib/role-routing';
+import { cn } from '@/lib/utils';
 function getNavItems(user: AuthUser | null) {
   const role = normalizeRole(user?.role);
 
@@ -134,17 +135,21 @@ interface UserAvatarProfileProps {
   showInfo?: boolean;
 }
 
-// Simple User Avatar Component
+// Avatar + text for sidebar footer (do not put fixed h/w on the root — it clips name/email).
 const UserAvatarProfile = ({ user, className, showInfo }: UserAvatarProfileProps) => {
   return (
-    <div className={`flex min-w-0 items-center gap-2 ${className}`}>
-      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white text-sm font-medium shadow-lg shrink-0">
+    <div className={cn('flex min-w-0 flex-1 items-center gap-2', className)}>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-sm font-medium text-white shadow-lg">
         {user.name.charAt(0).toUpperCase()}
       </div>
       {showInfo && (
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-medium">{user.name}</span>
-          <span className="truncate text-[10px] text-current opacity-70">{user.email}</span>
+        <div className="group-data-[collapsible=icon]:hidden flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden text-left">
+          <span className="truncate text-sm font-medium text-sidebar-foreground">{user.name}</span>
+          {user.email ? (
+            <span className="truncate text-xs text-muted-foreground" title={user.email}>
+              {user.email}
+            </span>
+          ) : null}
         </div>
       )}
     </div>
@@ -237,14 +242,31 @@ export default function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size='lg'
-                  className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
+                  tooltip={
+                    state === 'collapsed'
+                      ? {
+                          children: (
+                            <div className="flex max-w-[240px] flex-col gap-0.5 text-left">
+                              <span className="font-medium leading-tight">{displayUser.name}</span>
+                              {displayUser.email ? (
+                                <span className="break-all text-xs text-muted-foreground">{displayUser.email}</span>
+                              ) : null}
+                            </div>
+                          ),
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    'gap-1',
+                    // Neutral hover/open — avoid full sidebar-accent (purple) fill
+                    'hover:bg-muted/80 hover:text-sidebar-foreground',
+                    'active:bg-muted/90 dark:hover:bg-white/10 dark:active:bg-white/[0.12]',
+                    'data-[state=open]:bg-muted/80 data-[state=open]:text-sidebar-foreground',
+                    'dark:data-[state=open]:bg-white/10'
+                  )}
                 >
-                  <UserAvatarProfile
-                    className='h-8 w-8 rounded-lg'
-                    showInfo
-                    user={displayUser}
-                  />
-                  <ChevronRight className='ml-auto size-4' />
+                  <UserAvatarProfile showInfo user={displayUser} />
+                  <ChevronRight className="group-data-[collapsible=icon]:hidden ml-auto size-4 shrink-0 opacity-70" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -255,11 +277,7 @@ export default function AppSidebar() {
               >
                 <DropdownMenuLabel className='p-0 font-normal'>
                   <div className='px-1 py-1.5'>
-                    <UserAvatarProfile
-                      className='h-8 w-8 rounded-lg'
-                      showInfo
-                      user={displayUser}
-                    />
+                    <UserAvatarProfile showInfo user={displayUser} />
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

@@ -1,12 +1,11 @@
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '../config/database';
 import { users, roles } from '../schema';
 import { LoginRequest, RegisterRequest, GoogleLoginRequest, UserRole } from '../core/types';
 import { generateToken } from '../middleware/jwt.handler';
 import { createError } from '../middleware/error.handler';
 import { getUserWithRoleByEmail, getUserWithRoleById } from './utils/auth.utils';
-// Services should return raw data, not formatted responses
-import bcrypt from 'bcryptjs';
+import { hashPassword, isBcryptHash, verifyPassword } from '../utils/password.util';
 
 export class AuthService {
   async register(userData: RegisterRequest) {
@@ -32,10 +31,10 @@ export class AuthService {
         throw createError("Invalid role specified", 400);
       }
 
-      // Hash password for non-Google users
+      // Hash password for non-Google users (bcrypt)
       let hashedPassword = null;
       if (!userData.isGoogle && userData.password) {
-        hashedPassword = await bcrypt.hash(userData.password, 10);
+        hashedPassword = await hashPassword(userData.password);
       }
 
       // Create new user
@@ -100,19 +99,17 @@ export class AuthService {
         throw createError("This account is registered with Google. Please use 'Continue with Google' to login.", 400);
       }
 
-      // Validate password for non-Google users.
-      // Most records are bcrypt hashes, but keep a legacy fallback for old plain-text rows.
+      // Validate password: bcrypt hashes, with legacy plain-text fallback.
       let isPasswordValid = false;
       if (user.password) {
-        const isBcryptHash =
-          user.password.startsWith("$2a$") ||
-          user.password.startsWith("$2b$") ||
-          user.password.startsWith("$2y$");
-
-        if (isBcryptHash) {
-          isPasswordValid = await bcrypt.compare(loginData.password, user.password);
-        } else {
-          isPasswordValid = user.password === loginData.password;
+        isPasswordValid = await verifyPassword(loginData.password, user.password);
+        // Upgrade legacy plaintext to bcrypt on successful login
+        if (isPasswordValid && !isBcryptHash(user.password)) {
+          const upgraded = await hashPassword(loginData.password);
+          await db
+            .update(users)
+            .set({ password: upgraded, updatedAt: new Date() })
+            .where(eq(users.id, user.id));
         }
       }
 
