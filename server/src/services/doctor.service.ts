@@ -3,7 +3,7 @@ import { specializations } from "../schema/specialization";
 import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
-import { eq, and, or, ilike, sql, inArray } from "drizzle-orm";
+import { eq, and, or, ilike, sql, inArray, desc } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
 import { buildSearchConditions } from "./utils/search.utils";
@@ -60,7 +60,11 @@ export class DoctorService {
         .innerJoin(users, eq(doctors.userId, users.id))
         .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
         .where(whereClause)
-        .orderBy(doctors.patientSatisfactionRate, doctors.experienceYears);
+        .orderBy(
+          desc(doctors.patientSatisfactionRate),
+          desc(doctors.experienceYears),
+          desc(doctors.createdAt)
+        );
       
       // Get total count for pagination
       const countQuery = db

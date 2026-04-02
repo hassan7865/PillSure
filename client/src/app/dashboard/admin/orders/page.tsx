@@ -118,7 +118,7 @@ export default function AdminOrdersPage() {
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div>
                       <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground break-words">
                         {order.patientName} ({order.patientEmail}) | PKR {Number(order.total).toFixed(2)}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -134,13 +134,13 @@ export default function AdminOrdersPage() {
                         Shipping Address: {order.shippingAddress || "N/A"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full md:w-auto items-center gap-2">
                       <Select
                         value={normalizeStatus(order.status)}
                         onValueChange={(value: OrderStatus) => updateStatus(order.id, value)}
                         disabled={updatingId === order.id}
                       >
-                        <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full md:w-[160px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map((item) => (
                             <SelectItem key={item} value={item}>{item}</SelectItem>
@@ -155,7 +155,7 @@ export default function AdminOrdersPage() {
           )}
 
           {pagination && (
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
               <p className="text-xs text-muted-foreground">
                 Page {pagination.page} of {pagination.totalPages}
               </p>

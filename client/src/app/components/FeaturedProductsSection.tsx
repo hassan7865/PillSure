@@ -7,10 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   ShoppingCart, 
   Heart, 
-  Star, 
   CheckCircle,
   XCircle,
-  AlertCircle,
   ArrowRight,
   Shield
 } from "lucide-react";
@@ -22,6 +20,7 @@ import Loader from "@/components/ui/loader";
 import cartApi from "@/app/cart/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
+import { PrescriptionMedicineBadge } from "@/components/medicine/PrescriptionMedicineBadge";
 
 type Medicine = {
   id: number;
@@ -45,8 +44,6 @@ type UIProduct = {
   price: number;
   originalPrice?: number;
   imageUrl: string;
-  rating: number;
-  reviews: number;
   inStock: boolean;
   prescriptionRequired: boolean;
 };
@@ -93,8 +90,6 @@ const FeaturedProductsSection: React.FC = () => {
             price: priceNum,
             originalPrice,
             imageUrl,
-            rating: 4.6, // placeholder until ratings exist
-            reviews: 0, // placeholder until ratings exist
             inStock: (m.stock ?? 0) > 0,
             prescriptionRequired: Boolean(m.prescriptionRequired),
           };
@@ -126,23 +121,6 @@ const FeaturedProductsSection: React.FC = () => {
     } finally {
       setAddingId(null);
     }
-  };
-
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(<Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />);
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(<Star key={i} className="h-3.5 w-3.5 fill-amber-400/50 text-amber-400" />);
-      } else {
-        stars.push(<Star key={i} className="h-3.5 w-3.5 text-slate-300" />);
-      }
-    }
-    return stars;
   };
 
   return (
@@ -206,17 +184,14 @@ const FeaturedProductsSection: React.FC = () => {
                     />
                     
                     {/* Status Indicators */}
-                    <div className="absolute top-3 left-3 flex flex-col gap-2">
+                    <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-col items-start gap-2">
                       {product.originalPrice && product.originalPrice > product.price && (
-                        <div className="bg-destructive text-white text-xs font-semibold px-2.5 py-1 rounded-md">
+                        <div className="shrink-0 rounded-md bg-destructive px-2.5 py-1 text-xs font-semibold text-white">
                           -{Math.round((1 - product.price / product.originalPrice) * 100)}%
                         </div>
                       )}
                       {product.prescriptionRequired && (
-                        <div className="bg-accent text-accent-foreground text-xs font-medium px-2.5 py-1 rounded-md flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Rx
-                        </div>
+                        <PrescriptionMedicineBadge className="shrink-0" />
                       )}
                     </div>
                     
@@ -235,16 +210,6 @@ const FeaturedProductsSection: React.FC = () => {
                       <h3 className="font-semibold text-card-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors text-sm sm:text-base">
                         {product.name}
                       </h3>
-                    </div>
-                    
-                    {/* Rating */}
-                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                      <div className="flex items-center">
-                        {renderStars(product.rating)}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {product.rating} ({product.reviews})
-                      </span>
                     </div>
 
                     {/* Price & Stock */}
@@ -304,6 +269,7 @@ const FeaturedProductsSection: React.FC = () => {
             variant="outline"
             size="lg"
             className="px-4 sm:px-6 h-10 sm:h-11 font-medium border-primary/30 text-primary hover:bg-primary/5 hover:text-primary text-sm sm:text-base"
+            onClick={() => router.push("/medicine")}
           >
             View All Products
             <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />

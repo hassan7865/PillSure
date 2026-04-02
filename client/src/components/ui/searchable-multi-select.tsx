@@ -25,6 +25,7 @@ const customStyles: StylesConfig<Option, false> = {
     ...provided,
     minHeight: "36px",
     fontSize: "0.75rem",
+    cursor: "pointer",
   }),
   menu: (provided) => ({
     ...provided,

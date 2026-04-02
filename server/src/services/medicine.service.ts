@@ -1,4 +1,4 @@
-import { desc, eq, sql, ilike, or } from "drizzle-orm";
+import { desc, eq, sql, ilike, or, and, inArray } from "drizzle-orm";
 import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
 import { s3Service } from "./s3.service";
@@ -64,6 +64,113 @@ export class MedicineService {
             .where(sql`${latestInCategory.rn} = 1`)
             .orderBy(desc(latestInCategory.createdAt))
             .limit(safeLimit);
+    }
+
+    async getCatalogMedicines({
+        category,
+        search,
+        perCategoryLimit = 12,
+        categoryPage = 1,
+        categoriesPerPage = 6,
+    }: {
+        category?: string;
+        search?: string;
+        perCategoryLimit?: number;
+        categoryPage?: number;
+        categoriesPerPage?: number;
+    }) {
+        const safePerCategoryLimit = Math.max(1, Math.min(24, perCategoryLimit));
+        const safeCategoryPage = Math.max(1, categoryPage);
+        const safeCategoriesPerPage = Math.max(1, Math.min(20, categoriesPerPage));
+        const filters = [
+            sql`${medicines.drugCategory} IS NOT NULL`,
+            sql`${medicines.stock} > 0`,
+        ];
+
+        const trimmedCategory = category?.trim();
+        if (trimmedCategory) {
+            filters.push(eq(medicines.drugCategory, trimmedCategory));
+        }
+
+        const trimmedSearch = search?.trim();
+        if (trimmedSearch) {
+            const searchTerm = `%${trimmedSearch}%`;
+            filters.push(ilike(medicines.medicineName, searchTerm));
+        }
+
+        const groupedCategories = await db
+            .select({
+                category: medicines.drugCategory,
+            })
+            .from(medicines)
+            .where(and(...filters))
+            .groupBy(medicines.drugCategory)
+            .orderBy(medicines.drugCategory)
+            .limit(safeCategoriesPerPage)
+            .offset((safeCategoryPage - 1) * safeCategoriesPerPage);
+
+        const categoryNames = groupedCategories
+            .map((c) => c.category)
+            .filter((c): c is string => Boolean(c));
+
+        if (categoryNames.length === 0) {
+            return {
+                categories: [],
+                pagination: {
+                    categoryPage: safeCategoryPage,
+                    categoriesPerPage: safeCategoriesPerPage,
+                    hasMoreCategories: false,
+                },
+            };
+        }
+
+        const rows = await db
+            .select({
+                id: medicines.id,
+                medicineName: medicines.medicineName,
+                medicineUrl: medicines.medicineUrl,
+                price: medicines.price,
+                discount: medicines.discount,
+                stock: medicines.stock,
+                images: medicines.images,
+                prescriptionRequired: medicines.prescriptionRequired,
+                createdAt: medicines.createdAt,
+                drugCategory: medicines.drugCategory,
+                drugVarient: medicines.drugVarient,
+                drugDescription: medicines.drugDescription,
+                faqs: medicines.faqs,
+            })
+            .from(medicines)
+            .where(and(...filters, inArray(medicines.drugCategory, categoryNames)))
+            .orderBy(desc(medicines.stock), desc(medicines.createdAt));
+
+        const grouped = new Map<string, typeof rows>();
+        for (const row of rows) {
+            if (!row.drugCategory) continue;
+            const existing = grouped.get(row.drugCategory) ?? [];
+            if (existing.length < safePerCategoryLimit) {
+                existing.push(row);
+                grouped.set(row.drugCategory, existing);
+            }
+        }
+
+        const categories = Array.from(grouped.entries())
+            .map(([categoryName, items]) => ({
+                category: categoryName,
+                items,
+            }))
+            .sort((a, b) => a.category.localeCompare(b.category));
+
+        const hasMoreCategories = groupedCategories.length === safeCategoriesPerPage;
+
+        return {
+            categories,
+            pagination: {
+                categoryPage: safeCategoryPage,
+                categoriesPerPage: safeCategoriesPerPage,
+                hasMoreCategories,
+            },
+        };
     }
 
     /**
@@ -171,6 +278,7 @@ export class MedicineService {
                     ilike(medicines.drugCategory, searchTerm)
                 )
             )
+            .orderBy(desc(medicines.createdAt))
             .limit(safeLimit);
 
         return results;

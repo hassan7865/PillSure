@@ -315,13 +315,6 @@ const Navbar: React.FC = () => {
                       </DropdownMenuItem>
                     ) : (
                       <>
-                        <DropdownMenuItem 
-                          onClick={() => router.push('/profile')} 
-                          className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
-                        >
-                          <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
-                          <span className="text-sm sm:text-base">My Profile</span>
-                        </DropdownMenuItem>
                         {normalizeRole(user?.role) === 'patient' && (
                           <DropdownMenuItem 
                             onClick={() => router.push('/appointments')} 

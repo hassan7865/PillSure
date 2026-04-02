@@ -142,6 +142,26 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Pointer affordance for interactive controls (native + common patterns) */
+  a[href]:not([href=""]),
+  button:not(:disabled):not([aria-disabled="true"]),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"]:is(button),
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+  label[for] {
+    cursor: pointer;
+  }
 }
 
 /* React Select Styles */

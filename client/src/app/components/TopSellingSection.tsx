@@ -5,129 +5,96 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   ShoppingCart, 
-  Heart, 
-  Star, 
   CheckCircle,
-  XCircle,
-  Pill,
   TrendingUp,
-  Award,
   ArrowRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import cartApi from "@/app/cart/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
+import { PrescriptionMedicineBadge } from "@/components/medicine/PrescriptionMedicineBadge";
+import medicineApi, { Medicine } from "@/app/medicine/_api";
+import Loader from "@/components/ui/loader";
 
-const topSellingProducts = [
-  {
-    id: 1,
-    name: "Nordic Naturals Arctic-D Cod Liver Oil",
-    category: "Supplements",
-    price: 37.45,
-    originalPrice: 42.95,
-    imageUrl: "/Bonas.webp",
-    rating: 4.9,
-    reviews: 200,
-    inStock: true,
-    prescriptionRequired: false,
-    salesRank: 1,
-    description: "Premium cod liver oil with vitamin D",
-    badge: "Best Seller"
-  },
-  {
-    id: 2,
-    name: "Henry Blooms One Night Collagen",
-    category: "Herbs",
-    price: 39.00,
-    originalPrice: 44.00,
-    imageUrl: "/cos.png",
-    rating: 4.7,
-    reviews: 150,
-    inStock: true,
-    prescriptionRequired: false,
-    salesRank: 2,
-    description: "Premium collagen supplement for skin health",
-    badge: "Trending"
-  },
-  {
-    id: 3,
-    name: "Insulin Lispro Kwikpen",
-    category: "Diabetes Care",
-    price: 32.88,
-    imageUrl: "/wf2.png",
-    rating: 4.8,
-    reviews: 85,
-    inStock: true,
-    prescriptionRequired: true,
-    salesRank: 3,
-    description: "Fast-acting insulin for diabetes management",
-    badge: "Popular"
-  },
-  {
-    id: 4,
-    name: "Spring Leaf Kids Fish Oil 750mg",
-    category: "Kids Health",
-    price: 24.95,
-    imageUrl: "/pills.png",
-    rating: 4.6,
-    reviews: 90,
-    inStock: true,
-    prescriptionRequired: false,
-    salesRank: 4,
-    description: "Omega-3 supplement specially formulated for children",
-    badge: "Top Rated"
-  },
-  {
-    id: 5,
-    name: "Vitamin C 500mg Sugarless",
-    category: "Vitamins",
-    price: 16.00,
-    originalPrice: 20.00,
-    imageUrl: "/wf.png",
-    rating: 4.5,
-    reviews: 120,
-    inStock: true,
-    prescriptionRequired: false,
-    salesRank: 5,
-    description: "High potency Vitamin C supplement for immune support",
-    badge: "Sale"
-  },
-  {
-    id: 6,
-    name: "Buscopan Forte Tab 20mg X 10",
-    category: "Pain Relief",
-    price: 8.95,
-    imageUrl: "/p1.png",
-    rating: 4.3,
-    reviews: 110,
-    inStock: true,
-    prescriptionRequired: false,
-    salesRank: 6,
-    description: "Effective pain relief for stomach cramps",
-    badge: "Fast Moving"
-  }
-];
+type UITopProduct = {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl: string;
+  inStock: boolean;
+  prescriptionRequired: boolean;
+  description: string;
+  badge: string;
+  discountPercent: number;
+};
 
 const TopSellingSection: React.FC = () => {
   const router = useRouter();
   const { showSuccess, showError, showInfo } = useCustomToast();
+  const [items, setItems] = useState<UITopProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [addingId, setAddingId] = useState<number | null>(null);
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 0; i < 5; i++) {
-      if (rating - i >= 1) {
-        stars.push(<Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />);
-      } else if (rating - i > 0) {
-        stars.push(<Star key={i} className="h-4 w-4 fill-amber-400/50 text-amber-400/50" />);
-      } else {
-        stars.push(<Star key={i} className="h-4 w-4 text-muted-foreground/30" />);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await medicineApi.getCatalogMedicines({
+          categoriesPerPage: 5,
+          categoryPage: 1,
+          perCategoryLimit: 6,
+        });
+
+        if (!isMounted) return;
+        const flattened = response.categories.flatMap((c) => c.items);
+        const mapped = flattened.map((m: Medicine): UITopProduct => {
+          const priceNum = m.price ? parseFloat(m.price) : 0;
+          const discountPct = m.discount ? parseFloat(m.discount) : 0;
+          const originalPrice = discountPct > 0 ? priceNum / (1 - discountPct / 100) : undefined;
+          const firstImage = Array.isArray(m.images) && m.images.length > 0 ? m.images[0] : m.medicineUrl;
+
+          return {
+            id: m.id,
+            name: m.medicineName,
+            category: m.drugCategory || "General",
+            price: priceNum,
+            originalPrice,
+            imageUrl: typeof firstImage === "string" ? firstImage : "/pills.png",
+            inStock: (m.stock ?? 0) > 0,
+            prescriptionRequired: Boolean(m.prescriptionRequired),
+            description: (m.drugVarient || "Trusted medicine from verified suppliers").slice(0, 60),
+            badge: discountPct >= 10 ? "Sale" : "Popular",
+            discountPercent: discountPct,
+          };
+        });
+
+        const top = mapped
+          .filter((m) => m.inStock)
+          .sort((a, b) => (b.discountPercent - a.discountPercent) || (b.price - a.price))
+          .slice(0, 6);
+
+        setItems(top);
+      } catch (err) {
+        if (!isMounted) return;
+        setError(getErrorMessage(err) || "Failed to load top products");
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    }
-    return stars;
-  };
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const topSellingProducts = useMemo(() => items, [items]);
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -148,7 +115,7 @@ const TopSellingSection: React.FC = () => {
     }
   };
 
-  const handleAddToCart = async (product: any) => {
+  const handleAddToCart = async (product: UITopProduct) => {
     if (product.prescriptionRequired) {
       showInfo("Prescription required", "Please consult doctor and order from your prescription.");
       router.push("/appointments");
@@ -200,6 +167,13 @@ const TopSellingSection: React.FC = () => {
         </motion.div>
 
         {/* Top 3 Products - Featured */}
+        {loading && (
+          <div className="py-12 flex justify-center">
+            <Loader title="Loading top products" description="Fetching best choices from the catalog..." />
+          </div>
+        )}
+        {!loading && error && <div className="text-sm text-destructive mb-8">{error}</div>}
+        {!loading && !error && topSellingProducts.length > 0 && (
         <motion.div 
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16"
           initial={{ opacity: 0, y: 30 }}
@@ -233,9 +207,8 @@ const TopSellingSection: React.FC = () => {
                     </div>
                     
                     {product.prescriptionRequired && (
-                      <div className="absolute top-3 right-3 bg-accent text-accent-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-accent-foreground/50" />
-                        Rx
+                      <div className="absolute top-3 right-3">
+                        <PrescriptionMedicineBadge size="compact" />
                       </div>
                     )}
                   </div>
@@ -253,14 +226,6 @@ const TopSellingSection: React.FC = () => {
                     <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 line-clamp-2">
                       {product.description}
                     </p>
-
-                    {/* Rating */}
-                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                      <div className="flex items-center gap-1">
-                        {renderStars(product.rating)}
-                      </div>
-                      <span className="text-xs sm:text-sm text-muted-foreground">({product.reviews})</span>
-                    </div>
 
                     {/* Price */}
                     <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -295,8 +260,10 @@ const TopSellingSection: React.FC = () => {
             </motion.div>
           ))}
         </motion.div>
+        )}
 
         {/* Remaining Products Grid */}
+        {!loading && !error && topSellingProducts.length > 3 && (
         <motion.div 
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
           initial={{ opacity: 0, y: 30 }}
@@ -330,9 +297,8 @@ const TopSellingSection: React.FC = () => {
                     </div>
                     
                     {product.prescriptionRequired && (
-                      <div className="absolute top-2 right-2 bg-accent text-accent-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-accent-foreground/50" />
-                        Rx
+                      <div className="absolute top-2 right-2">
+                        <PrescriptionMedicineBadge size="compact" />
                       </div>
                     )}
                   </div>
@@ -345,14 +311,6 @@ const TopSellingSection: React.FC = () => {
                     <h3 className="text-sm sm:text-base font-semibold text-card-foreground mb-1 sm:mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2">
                       {product.name}
                     </h3>
-                    
-                    {/* Rating */}
-                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                      <div className="flex items-center gap-1">
-                        {renderStars(product.rating)}
-                      </div>
-                      <span className="text-xs text-muted-foreground">({product.reviews})</span>
-                    </div>
 
                     {/* Price */}
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -384,6 +342,10 @@ const TopSellingSection: React.FC = () => {
             </motion.div>
           ))}
         </motion.div>
+        )}
+        {!loading && !error && topSellingProducts.length === 0 && (
+          <div className="text-sm text-muted-foreground mb-10">No products available right now.</div>
+        )}
 
         {/* View All Button */}
         <motion.div 
@@ -396,6 +358,7 @@ const TopSellingSection: React.FC = () => {
             size="lg" 
             variant="outline"
             className="px-6 sm:px-8 py-3 text-sm sm:text-base font-semibold rounded-xl border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => router.push("/medicine")}
           >
             <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             View All Top Sellers

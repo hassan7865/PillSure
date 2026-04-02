@@ -79,7 +79,7 @@ export class StripeService {
         },
       ],
       success_url: `${this.frontendBaseUrl}/orders?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${this.frontendBaseUrl}/cart?payment=cancelled`,
+      cancel_url: `${this.frontendBaseUrl}/orders?payment=cancelled`,
       metadata,
     });
 

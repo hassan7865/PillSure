@@ -78,6 +78,20 @@
       "when": 1774963839482,
       "tag": "0010_tense_preak",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775131200000,
+      "tag": "0011_tan_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775200000000,
+      "tag": "0012_rag_queries_meta_data",
+      "breakpoints": true
     }
   ]
 }

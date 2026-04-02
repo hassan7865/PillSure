@@ -124,7 +124,7 @@ const TestimonialsSection: React.FC = () => {
   const visibleTestimonials = getVisibleTestimonials();
 
   return (
-    <section className="py-20 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+    <section className="py-20 overflow-x-hidden bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Section Header */}
         <motion.div 
@@ -152,7 +152,7 @@ const TestimonialsSection: React.FC = () => {
           {/* Navigation Buttons */}
           <button
             onClick={prevSlide}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 sm:-translate-x-4 z-20 w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 shadow-lg rounded-full flex items-center justify-center hover:bg-purple-50 dark:hover:bg-slate-700 transition-all duration-300 hover:scale-110 border border-slate-200 dark:border-slate-700"
+            className="absolute left-0 top-1/2 -translate-y-1/2 sm:-translate-x-4 z-20 w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 shadow-lg rounded-full flex items-center justify-center hover:bg-purple-50 dark:hover:bg-slate-700 transition-all duration-300 hover:scale-110 border border-slate-200 dark:border-slate-700"
             aria-label="Previous testimonial"
           >
             <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6 text-slate-700 dark:text-slate-300" />
@@ -160,7 +160,7 @@ const TestimonialsSection: React.FC = () => {
           
           <button
             onClick={nextSlide}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 sm:translate-x-4 z-20 w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 shadow-lg rounded-full flex items-center justify-center hover:bg-purple-50 dark:hover:bg-slate-700 transition-all duration-300 hover:scale-110 border border-slate-200 dark:border-slate-700"
+            className="absolute right-0 top-1/2 -translate-y-1/2 sm:translate-x-4 z-20 w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 shadow-lg rounded-full flex items-center justify-center hover:bg-purple-50 dark:hover:bg-slate-700 transition-all duration-300 hover:scale-110 border border-slate-200 dark:border-slate-700"
             aria-label="Next testimonial"
           >
             <ChevronRight className="h-4 w-4 sm:h-6 sm:w-6 text-slate-700 dark:text-slate-300" />

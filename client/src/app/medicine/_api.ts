@@ -18,6 +18,20 @@ export interface Medicine {
   faqs?: Array<{ question: string; answer: string }> | null; // FAQs array
 }
 
+export interface CatalogCategory {
+  category: string;
+  items: Medicine[];
+}
+
+export interface CatalogResponse {
+  categories: CatalogCategory[];
+  pagination: {
+    categoryPage: number;
+    categoriesPerPage: number;
+    hasMoreCategories: boolean;
+  };
+}
+
 export const medicineApi = {
   getMedicineById: async (medicineId: number): Promise<Medicine> => {
     const response = await api.get<ApiResponse<Medicine>>(`/medicine/${medicineId}`);
@@ -51,6 +65,32 @@ export const medicineApi = {
 
     const response = await api.get<ApiResponse<Medicine[]>>(`/medicine/search${queryString}`);
     return extractApiDataWithFallback(response, []);
+  },
+
+  getCatalogMedicines: async (params?: {
+    category?: string;
+    search?: string;
+    perCategoryLimit?: number;
+    categoryPage?: number;
+    categoriesPerPage?: number;
+  }): Promise<CatalogResponse> => {
+    const queryString = buildQueryString({
+      category: params?.category,
+      search: params?.search,
+      perCategoryLimit: params?.perCategoryLimit,
+      categoryPage: params?.categoryPage,
+      categoriesPerPage: params?.categoriesPerPage,
+    });
+
+    const response = await api.get<ApiResponse<CatalogResponse>>(`/medicine/catalog${queryString}`);
+    return extractApiDataWithFallback(response, {
+      categories: [],
+      pagination: {
+        categoryPage: params?.categoryPage || 1,
+        categoriesPerPage: params?.categoriesPerPage || 6,
+        hasMoreCategories: false,
+      },
+    });
   },
 };
 

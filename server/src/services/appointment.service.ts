@@ -476,7 +476,8 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
           eq(appointments.isActive, true),
           sql`${appointments.status} NOT IN ('cancelled', 'rejected')`
         )
-      );
+      )
+      .orderBy(appointments.appointmentTime);
 
     return bookedAppointments.map(apt => apt.appointmentTime);
   }

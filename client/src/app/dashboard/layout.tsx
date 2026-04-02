@@ -44,7 +44,7 @@ export default function DashboardLayout({
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <Header />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          <main className="flex-1 overflow-x-auto overflow-y-auto">
             {children}
           </main>
         </div>

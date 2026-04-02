@@ -15,6 +15,9 @@ export class MedicineRoute {
     // GET /api/medicine/featured?limit=6&category=Vitamins&uniqueCategories=true
     this.router.get("/featured", this.getFeatured);
 
+    // GET /api/medicine/catalog?category=Vitamins&search=paracetamol&perCategoryLimit=12
+    this.router.get("/catalog", this.getCatalogMedicines);
+
     // GET /api/medicine/search?q=paracetamol&limit=20 - Search medicines
     this.router.get("/search", this.searchMedicines);
 
@@ -41,6 +44,54 @@ export class MedicineRoute {
 
       const data = await medicineService.getFeaturedMedicines({ limit, category, uniqueCategories });
       res.status(200).json(ApiResponse(data, "Featured medicines retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getCatalogMedicines = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const category = (req.query.category as string | undefined) || undefined;
+      const search = (req.query.search as string | undefined) || undefined;
+      const perCategoryLimitParam = req.query.perCategoryLimit as string | undefined;
+      const categoryPageParam = req.query.categoryPage as string | undefined;
+      const categoriesPerPageParam = req.query.categoriesPerPage as string | undefined;
+
+      let perCategoryLimit: number | undefined = undefined;
+      if (perCategoryLimitParam !== undefined) {
+        const parsed = parseInt(perCategoryLimitParam, 10);
+        if (isNaN(parsed) || parsed < 1 || parsed > 24) {
+          return next(BadRequestError("perCategoryLimit must be an integer between 1 and 24"));
+        }
+        perCategoryLimit = parsed;
+      }
+
+      let categoryPage: number | undefined = undefined;
+      if (categoryPageParam !== undefined) {
+        const parsed = parseInt(categoryPageParam, 10);
+        if (isNaN(parsed) || parsed < 1) {
+          return next(BadRequestError("categoryPage must be an integer greater than 0"));
+        }
+        categoryPage = parsed;
+      }
+
+      let categoriesPerPage: number | undefined = undefined;
+      if (categoriesPerPageParam !== undefined) {
+        const parsed = parseInt(categoriesPerPageParam, 10);
+        if (isNaN(parsed) || parsed < 1 || parsed > 20) {
+          return next(BadRequestError("categoriesPerPage must be an integer between 1 and 20"));
+        }
+        categoriesPerPage = parsed;
+      }
+
+      const data = await medicineService.getCatalogMedicines({
+        category,
+        search,
+        perCategoryLimit,
+        categoryPage,
+        categoriesPerPage,
+      });
+      res.status(200).json(ApiResponse(data, "Catalog medicines retrieved successfully"));
     } catch (error) {
       next(error);
     }

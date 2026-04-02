@@ -1,24 +1,80 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PublicLayout from "@/layout/PublicLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Loader from "@/components/ui/loader";
 import orderApi from "./_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
-import { CalendarDays, Package, CreditCard, ChevronDown } from "lucide-react";
+import { CalendarDays, Package, CreditCard, ChevronDown, History } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function OrdersPage() {
-  const { showError } = useCustomToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { showError, showSuccess, showInfo } = useCustomToast();
+  const handledPaymentToastKeysRef = useRef<Set<string>>(new Set());
   const [orders, setOrders] = useState<any[]>([]);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const [orderDetailsById, setOrderDetailsById] = useState<Record<string, any>>({});
   const [loadingDetailsById, setLoadingDetailsById] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [orderScope, setOrderScope] = useState<"active" | "history">("active");
+
+  const { activeOrders, historyOrders, activeCount, historyCount } = useMemo(() => {
+    const list = Array.isArray(orders) ? orders : [];
+    const active: typeof list = [];
+    const history: typeof list = [];
+    for (const o of list) {
+      if (orderIsHistoryStatus(o?.status)) history.push(o);
+      else active.push(o);
+    }
+    return {
+      activeOrders: active,
+      historyOrders: history,
+      activeCount: active.length,
+      historyCount: history.length,
+    };
+  }, [orders]);
+
+  const visibleOrders = orderScope === "history" ? historyOrders : activeOrders;
+
+  useEffect(() => {
+    if (openOrderId && !visibleOrders.some((o) => o.id === openOrderId)) {
+      setOpenOrderId(null);
+    }
+  }, [orderScope, visibleOrders, openOrderId]);
+
+  useEffect(() => {
+    const paymentState = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id") || "";
+
+    if (!paymentState) return;
+
+    const toastKey = `${paymentState}:${sessionId}`;
+    if (handledPaymentToastKeysRef.current.has(toastKey)) {
+      return;
+    }
+    handledPaymentToastKeysRef.current.add(toastKey);
+
+    if (paymentState === "success") {
+      showSuccess("Order successful", "Your payment was received and your order is confirmed.");
+    } else if (paymentState === "cancelled") {
+      showInfo("Payment cancelled", "Your order was not completed. You can try again when ready.");
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("payment");
+    nextParams.delete("session_id");
+    const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [searchParams, showSuccess, showInfo, pathname, router]);
 
   useEffect(() => {
     const run = async () => {
@@ -97,10 +153,133 @@ export default function OrdersPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {orders.map((order) => (
-                  <Collapsible
-                    key={order.id}
+              <Tabs
+                value={orderScope}
+                onValueChange={(v) => setOrderScope(v as "active" | "history")}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1 sm:inline-flex sm:w-full sm:max-w-md">
+                  <TabsTrigger value="active" className="gap-2 py-2.5 text-xs sm:text-sm">
+                    <Package className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Active</span>
+                    {activeCount > 0 ? (
+                      <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px] sm:text-xs">
+                        {activeCount}
+                      </Badge>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="gap-2 py-2.5 text-xs sm:text-sm">
+                    <History className="h-4 w-4 shrink-0" />
+                    <span className="truncate">History</span>
+                    {historyCount > 0 ? (
+                      <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px] sm:text-xs">
+                        {historyCount}
+                      </Badge>
+                    ) : null}
+                  </TabsTrigger>
+                </TabsList>
+                <p className="text-xs text-muted-foreground mt-2 mb-4">
+                  {orderScope === "active"
+                    ? "Orders still being prepared or on the way."
+                    : "Delivered orders and returns."}
+                </p>
+                <TabsContent value="active" className="mt-0 space-y-4 focus-visible:outline-none">
+                  {activeOrders.length === 0 ? (
+                    <OrderTabEmpty
+                      title="No active orders"
+                      description="When you place an order, it will show here until it is delivered."
+                    />
+                  ) : (
+                    activeOrders.map((order) => (
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        openOrderId={openOrderId}
+                        setOpenOrderId={setOpenOrderId}
+                        loadOrderDetails={loadOrderDetails}
+                        orderDetailsById={orderDetailsById}
+                        loadingDetailsById={loadingDetailsById}
+                        formatDate={formatDate}
+                        getPaymentBadgeVariant={getPaymentBadgeVariant}
+                        extractFirstImage={extractFirstImage}
+                      />
+                    ))
+                  )}
+                </TabsContent>
+                <TabsContent value="history" className="mt-0 space-y-4 focus-visible:outline-none">
+                  {historyOrders.length === 0 ? (
+                    <OrderTabEmpty
+                      title="No order history yet"
+                      description="Completed deliveries and returns will appear here."
+                    />
+                  ) : (
+                    historyOrders.map((order) => (
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        openOrderId={openOrderId}
+                        setOpenOrderId={setOpenOrderId}
+                        loadOrderDetails={loadOrderDetails}
+                        orderDetailsById={orderDetailsById}
+                        loadingDetailsById={loadingDetailsById}
+                        formatDate={formatDate}
+                        getPaymentBadgeVariant={getPaymentBadgeVariant}
+                        extractFirstImage={extractFirstImage}
+                      />
+                    ))
+                  )}
+                </TabsContent>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </PublicLayout>
+  );
+}
+
+function orderIsHistoryStatus(status: unknown): boolean {
+  const s = String(status ?? "")
+    .toLowerCase()
+    .trim();
+  return s === "delivered" || s === "returned";
+}
+
+function OrderTabEmpty({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border border-dashed p-8 text-center">
+      <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+      <p className="font-medium">{title}</p>
+      <p className="text-sm text-muted-foreground mt-1">{description}</p>
+    </div>
+  );
+}
+
+type OrderCardProps = {
+  order: any;
+  openOrderId: string | null;
+  setOpenOrderId: (id: string | null) => void;
+  loadOrderDetails: (orderId: string) => void;
+  orderDetailsById: Record<string, any>;
+  loadingDetailsById: Record<string, boolean>;
+  formatDate: (value: string) => string;
+  getPaymentBadgeVariant: (status?: string) => "default" | "secondary" | "outline";
+  extractFirstImage: (images: any) => string | null;
+};
+
+function OrderCard({
+  order,
+  openOrderId,
+  setOpenOrderId,
+  loadOrderDetails,
+  orderDetailsById,
+  loadingDetailsById,
+  formatDate,
+  getPaymentBadgeVariant,
+  extractFirstImage,
+}: OrderCardProps) {
+  return (
+    <Collapsible
                     open={openOrderId === order.id}
                     onOpenChange={(open) => {
                       setOpenOrderId(open ? order.id : null);
@@ -113,7 +292,7 @@ export default function OrdersPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground break-all">
                           ID: {order.id}
                         </p>
                       </div>
@@ -195,13 +374,6 @@ export default function OrdersPage() {
                         )}
                       </div>
                     </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </PublicLayout>
+    </Collapsible>
   );
 }

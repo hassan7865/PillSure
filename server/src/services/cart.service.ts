@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../config/database";
 import { carts } from "../schema/carts";
 import { cartItems } from "../schema/cartItems";
@@ -75,7 +75,8 @@ export class CartService {
       })
       .from(cartItems)
       .innerJoin(medicines, eq(cartItems.medicineId, medicines.id))
-      .where(eq(cartItems.cartId, cart.id));
+      .where(eq(cartItems.cartId, cart.id))
+      .orderBy(desc(cartItems.updatedAt), desc(cartItems.createdAt));
 
     const subtotal = items.reduce((sum, item) => sum + Number(item.unitPrice) * Number(item.quantity), 0);
     return { cartId: cart.id, items, subtotal, total: subtotal, currency: "pkr" };

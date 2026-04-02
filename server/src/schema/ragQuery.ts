@@ -14,11 +14,11 @@ export const ragQueries = pgTable(
   {
     id: serial("id").primaryKey(),
     query: text("query").notNull(),
-    embeddingCost: numeric("embedding_cost", { precision: 10, scale: 6 }),
+    embeddingCost: numeric("embedding_cost", { precision: 18, scale: 10 }),
     rewrittenQuery: text("rewritten_query"),
-    rewrittenQueryCost: numeric("rewritten_query_cost", { precision: 10, scale: 6 }),
-    totalCost: numeric("total_cost", { precision: 10, scale: 6 }),
-    retrievedDocuments: jsonb("retrieved_documents"),
+    rewrittenQueryCost: numeric("rewritten_query_cost", { precision: 18, scale: 10 }),
+    totalCost: numeric("total_cost", { precision: 18, scale: 10 }),
+    metaData: jsonb("meta_data"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => {

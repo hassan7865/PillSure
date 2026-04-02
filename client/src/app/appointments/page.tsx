@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { usePatientAppointments } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
-import { CalendarClock, Clock, Video, Stethoscope, FileText, AlertCircle } from "lucide-react";
+import { CalendarClock, Clock, Video, Stethoscope, FileText, AlertCircle, History } from "lucide-react";
 import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import PublicLayout from "@/layout/PublicLayout";
@@ -34,6 +34,7 @@ export default function PatientAppointmentsPage() {
   const [showOrderPrescriptionDialog, setShowOrderPrescriptionDialog] = useState(false);
   const [selectedPrescriptionItems, setSelectedPrescriptionItems] = useState<Record<number, boolean>>({});
   const [orderingPrescription, setOrderingPrescription] = useState(false);
+  const [listScope, setListScope] = useState<"active" | "history">("active");
 
   useEffect(() => {
     const paymentState = searchParams.get("payment");
@@ -48,7 +49,7 @@ export default function PatientAppointmentsPage() {
     handledPaymentToastKeysRef.current.add(toastKey);
 
     if (paymentState === "success") {
-      showSuccess("Payment successful", "Your appointment booking is confirmed.");
+      showSuccess("Booking successful", "Your appointment is confirmed.");
     }
     if (paymentState === "cancelled") {
       showError("Payment cancelled", "Your appointment was not booked.");
@@ -72,20 +73,32 @@ export default function PatientAppointmentsPage() {
   useEffect(() => {
     if (apptArray) {
       setAppointmentsList(apptArray);
-      if (!selected && apptArray.length > 0) {
-        setSelected(apptArray[0]);
-      }
     }
   }, [apptArray]);
 
-  useEffect(() => {
-    if (selected?.id && appointmentsList.length > 0) {
-      const updated = appointmentsList.find((apt: any) => apt.id === selected.id);
-      if (updated && updated.status !== selected.status) {
-        setSelected(updated);
-      }
+  const { activeCount, historyCount, filteredAppointments } = useMemo(() => {
+    let active = 0;
+    let history = 0;
+    for (const a of appointmentsList) {
+      if (appointmentIsCompleted(a?.status)) history += 1;
+      else active += 1;
     }
-  }, [appointmentsList]);
+    const filtered = appointmentsList.filter((a) =>
+      listScope === "history" ? appointmentIsCompleted(a?.status) : !appointmentIsCompleted(a?.status)
+    );
+    return { activeCount: active, historyCount: history, filteredAppointments: filtered };
+  }, [appointmentsList, listScope]);
+
+  useEffect(() => {
+    setSelected((prev: any) => {
+      if (filteredAppointments.length === 0) return null;
+      if (prev?.id) {
+        const next = filteredAppointments.find((x: any) => x.id === prev.id);
+        if (next) return next;
+      }
+      return filteredAppointments[0];
+    });
+  }, [filteredAppointments]);
 
   useEffect(() => {
     if (!token || !user) return;
@@ -218,13 +231,46 @@ export default function PatientAppointmentsPage() {
         <div className="flex flex-col lg:flex-row flex-1 gap-4 lg:gap-6 min-h-0">
           {/* Left: Appointment List */}
           <Card className="w-full lg:w-[360px] xl:w-[400px] lg:min-w-[320px] xl:min-w-[360px] lg:max-w-md flex flex-col h-full">
-            <CardHeader className="border-b">
+            <CardHeader className="border-b space-y-3">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
                 Appointments
               </CardTitle>
-              <CardDescription>
-                {appointmentsList?.length || 0} appointment{appointmentsList?.length !== 1 ? 's' : ''} found
+              <Tabs
+                value={listScope}
+                onValueChange={(v) => setListScope(v as "active" | "history")}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1">
+                  <TabsTrigger value="active" className="gap-1.5 py-2.5 text-xs sm:text-sm">
+                    <span className="truncate">Active</span>
+                    {activeCount > 0 ? (
+                      <Badge variant="secondary" className="px-1.5 py-0 text-[10px] sm:text-xs">
+                        {activeCount}
+                      </Badge>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="gap-1.5 py-2.5 text-xs sm:text-sm">
+                    <History className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
+                    <span className="truncate">History</span>
+                    {historyCount > 0 ? (
+                      <Badge variant="secondary" className="px-1.5 py-0 text-[10px] sm:text-xs">
+                        {historyCount}
+                      </Badge>
+                    ) : null}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <CardDescription className="space-y-1">
+                <span>
+                  {appointmentsList?.length || 0} total
+                  {appointmentsList?.length !== 1 ? " appointments" : " appointment"}
+                </span>
+                <span className="block text-xs">
+                  {listScope === "active"
+                    ? "Everything except completed visits — pending, confirmed, in progress, cancelled, and more."
+                    : "Completed consultations only."}
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-0 min-h-[320px] sm:min-h-[400px] max-h-[70vh] lg:max-h-[600px]">
@@ -242,9 +288,22 @@ export default function PatientAppointmentsPage() {
                   description="Your appointments will appear here"
                   icon={<CalendarClock className="w-12 h-12 text-muted-foreground" />}
                 />
+              ) : filteredAppointments.length === 0 ? (
+                <div className="p-6">
+                  <EmptyState
+                    type="empty"
+                    title={listScope === "active" ? "Nothing in Active" : "No history yet"}
+                    description={
+                      listScope === "active"
+                        ? "You have no upcoming or in-progress appointments. Check History for past visits."
+                        : "Completed appointments will appear here."
+                    }
+                    icon={<CalendarClock className="w-12 h-12 text-muted-foreground" />}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col gap-3 p-4">
-                  {appointmentsList.map((appt: any) => (
+                  {filteredAppointments.map((appt: any) => (
                     <div
                       key={appt.id}
                       className={`transition-all duration-200 cursor-pointer rounded-lg border p-4 hover:shadow-md ${
@@ -502,6 +561,11 @@ export default function PatientAppointmentsPage() {
       </div>
     </PublicLayout>
   );
+}
+
+/** Completed consultations only; all other statuses (incl. cancelled) stay under Active. */
+function appointmentIsCompleted(status: unknown): boolean {
+  return String(status ?? "").toLowerCase().trim() === "completed";
 }
 
 // Helper component for detail rows

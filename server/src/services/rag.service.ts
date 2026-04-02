@@ -31,6 +31,9 @@ interface RAGRecommendationResult {
   embedding_cost?: number;
   rewritten_query_cost?: number;
   total_cost?: number;
+  /** Structured LLM extraction from RAG /recommend (QueryUnderstanding) */
+  query_understanding?: Record<string, unknown> | null;
+  retrieval_meta?: Record<string, unknown> | null;
 }
 
 interface MedicineDetails {
@@ -156,7 +159,8 @@ export class RAGService {
       .from(medicines)
       .where(inArray(medicines.id, uniqueIds));
 
-    return results;
+    const byId = new Map(results.map((row) => [row.id, row]));
+    return uniqueIds.map((id) => byId.get(id)).filter((row): row is MedicineDetails => row != null);
   }
 
   /**
@@ -260,6 +264,13 @@ export class RAGService {
       // Step 4: Randomly shuffle and select doctors
       const shuffled = this.shuffleArray([...doctorsResult]);
       const selectedDoctors = shuffled.slice(0, limit);
+      // Stable display order within the random sample (highest satisfaction / experience first)
+      selectedDoctors.sort((a, b) => {
+        const ra = parseFloat(String(a.patientSatisfactionRate ?? 0));
+        const rb = parseFloat(String(b.patientSatisfactionRate ?? 0));
+        if (rb !== ra) return rb - ra;
+        return b.experienceYears - a.experienceYears;
+      });
 
       // Step 5: Transform doctors to include specializations and formatted data
       const specializationMap = new Map(
@@ -351,11 +362,17 @@ export class RAGService {
     rewrittenQueryCost?: number | null
   ): Promise<void> {
     try {
-      // Prepare retrieved documents
-      const retrievedDocuments: any[] = [];
-      
+      const retrieved: Array<{
+        medicine_id: string;
+        medicine_name: string;
+        score: number;
+        drug_category?: string;
+        prescription_required: boolean;
+        context_used: string;
+      }> = [];
+
       if (ragResults.result) {
-        retrievedDocuments.push({
+        retrieved.push({
           medicine_id: ragResults.result.medicine_id,
           medicine_name: ragResults.result.medicine_name,
           score: ragResults.result.score,
@@ -366,7 +383,7 @@ export class RAGService {
       }
 
       ragResults.suggestions.forEach((suggestion) => {
-        retrievedDocuments.push({
+        retrieved.push({
           medicine_id: suggestion.medicine_id,
           medicine_name: suggestion.medicine_name,
           score: suggestion.score,
@@ -376,18 +393,22 @@ export class RAGService {
         });
       });
 
-      // Calculate total cost
       const totalCost =
         (embeddingCost || 0) + (rewrittenQueryCost || 0);
 
-      // Insert into database
+      const metaData = {
+        retrieved,
+        query_understanding: ragResults.query_understanding ?? null,
+        retrieval_meta: ragResults.retrieval_meta ?? null,
+      };
+
       await db.insert(ragQueries).values({
         query: query.trim(),
         embeddingCost: embeddingCost?.toString() || null,
         rewrittenQuery: ragResults.rewritten_query || null,
         rewrittenQueryCost: rewrittenQueryCost?.toString() || null,
         totalCost: totalCost > 0 ? totalCost.toString() : null,
-        retrievedDocuments: JSON.stringify(retrievedDocuments),
+        metaData,
       });
     } catch (error) {
       // Log error but don't fail the request

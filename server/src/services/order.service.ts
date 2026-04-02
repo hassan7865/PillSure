@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "../config/database";
 import { orders } from "../schema/orders";
 import { orderItems } from "../schema/orderItems";
@@ -32,7 +32,8 @@ export class OrderService {
       })
       .from(cartItems)
       .innerJoin(medicines, eq(cartItems.medicineId, medicines.id))
-      .where(eq(cartItems.cartId, cart.id));
+      .where(eq(cartItems.cartId, cart.id))
+      .orderBy(desc(cartItems.updatedAt), desc(cartItems.createdAt));
 
     if (!items.length) throw createError("Cart is empty", 400);
 
@@ -121,7 +122,8 @@ export class OrderService {
         appointmentId: cartItems.appointmentId,
       })
       .from(cartItems)
-      .where(eq(cartItems.cartId, params.cartId));
+      .where(eq(cartItems.cartId, params.cartId))
+      .orderBy(desc(cartItems.updatedAt), desc(cartItems.createdAt));
 
     if (!items.length) throw createError("Cart is empty for this checkout session", 400);
 
@@ -159,7 +161,11 @@ export class OrderService {
   }
 
   async getPatientOrders(patientId: string) {
-    return db.select().from(orders).where(eq(orders.patientId, patientId));
+    return db
+      .select()
+      .from(orders)
+      .where(eq(orders.patientId, patientId))
+      .orderBy(desc(orders.createdAt));
   }
 
   async getPatientOrderById(patientId: string, orderId: string) {
@@ -182,7 +188,8 @@ export class OrderService {
       })
       .from(orderItems)
       .innerJoin(medicines, eq(orderItems.medicineId, medicines.id))
-      .where(eq(orderItems.orderId, orderId));
+      .where(eq(orderItems.orderId, orderId))
+      .orderBy(asc(orderItems.createdAt), asc(orderItems.id));
 
     return { ...order[0], items };
   }
