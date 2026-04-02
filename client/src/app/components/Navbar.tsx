@@ -169,7 +169,10 @@ const Navbar: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
+              type="button"
               className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200"
+              onClick={() => router.push("/medicine")}
+              aria-label="Search medicines"
             >
               <Search className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>

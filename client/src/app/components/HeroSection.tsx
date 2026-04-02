@@ -116,6 +116,7 @@ const HeroSection: React.FC = () => {
                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                           <Button 
                             size="lg" 
+                            onClick={() => router.push("/medicine")}
                             className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl"
                           >
                             <span className="flex items-center justify-center gap-2">

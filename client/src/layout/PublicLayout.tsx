@@ -1,14 +1,25 @@
- "use client";
+"use client";
 
-import Footer from '@/app/components/Footer'
-import Navbar from '@/app/components/Navbar'
-import React, { useEffect } from 'react'
-import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
-import Loader from '@/components/ui/loader';
-import { canAccessPublicArea, getDashboardHomeByRole } from '@/lib/role-routing';
+import Footer from "@/app/components/Footer";
+import Navbar from "@/app/components/Navbar";
+import React, { useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
+import Loader from "@/components/ui/loader";
+import { canAccessPublicArea, getDashboardHomeByRole } from "@/lib/role-routing";
 
-const PublicLayout = ({children}: {children: React.ReactNode}) => {
+/** Navbar + main + footer without role-based redirects (e.g. legal pages for all users). */
+export function PublicPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="flex-1 pt-16 sm:pt-20">{children}</main>
+      <Footer />
+    </div>
+  );
+}
+
+const PublicLayout = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -36,15 +47,7 @@ const PublicLayout = ({children}: {children: React.ReactNode}) => {
     );
   }
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1 pt-16 sm:pt-20">
-        {children}
-      </main>
-      <Footer />
-    </div>
-  )
-}
+  return <PublicPageShell>{children}</PublicPageShell>;
+};
 
-export default PublicLayout
+export default PublicLayout;

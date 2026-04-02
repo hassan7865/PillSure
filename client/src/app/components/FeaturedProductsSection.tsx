@@ -196,7 +196,15 @@ const FeaturedProductsSection: React.FC = () => {
                     </div>
                     
                     {/* Wishlist */}
-                    <button className="absolute top-3 right-3 p-2 bg-card/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-105">
+                    <button
+                      type="button"
+                      className="absolute top-3 right-3 p-2 bg-card/90 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-105"
+                      aria-label="Save to favorites"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
                       <Heart className="h-4 w-4 text-muted-foreground hover:text-destructive transition-colors" />
                     </button>
                   </div>

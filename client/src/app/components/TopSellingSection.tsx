@@ -188,7 +188,10 @@ const TopSellingSection: React.FC = () => {
               transition={{ duration: 0.6, delay: 0.6 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <Card className="group hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden">
+              <Card
+                className="group cursor-pointer hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden"
+                onClick={() => router.push(`/medicine/${product.id}`)}
+              >
                 <CardContent className="p-0">
                   {/* Product Image */}
                   <div className="relative h-40 sm:h-48 bg-muted/30 overflow-hidden">
@@ -249,7 +252,10 @@ const TopSellingSection: React.FC = () => {
                     <Button 
                       className="w-full text-xs sm:text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                       disabled={addingId === product.id}
-                      onClick={() => handleAddToCart(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
                     >
                       <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       {addingId === product.id ? "Adding..." : (product.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
@@ -278,7 +284,10 @@ const TopSellingSection: React.FC = () => {
               transition={{ duration: 0.6, delay: 1 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <Card className="group hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden">
+              <Card
+                className="group cursor-pointer hover:shadow-purple transition-all duration-300 border-border/50 hover:border-primary/30 bg-card backdrop-blur-sm overflow-hidden"
+                onClick={() => router.push(`/medicine/${product.id}`)}
+              >
                 <CardContent className="p-0">
                   {/* Product Image */}
                   <div className="relative h-40 bg-muted/30 overflow-hidden">
@@ -331,7 +340,10 @@ const TopSellingSection: React.FC = () => {
                       size="sm"
                       className="w-full text-xs py-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                       disabled={addingId === product.id}
-                      onClick={() => handleAddToCart(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
                     >
                       <ShoppingCart className="h-3 w-3 mr-1" />
                       {addingId === product.id ? "Adding..." : (product.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
