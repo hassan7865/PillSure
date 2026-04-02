@@ -100,8 +100,23 @@ export class AuthService {
         throw createError("This account is registered with Google. Please use 'Continue with Google' to login.", 400);
       }
 
-      // Validate password for non-Google users
-      if (!user.password || user.password !== loginData.password) {
+      // Validate password for non-Google users.
+      // Most records are bcrypt hashes, but keep a legacy fallback for old plain-text rows.
+      let isPasswordValid = false;
+      if (user.password) {
+        const isBcryptHash =
+          user.password.startsWith("$2a$") ||
+          user.password.startsWith("$2b$") ||
+          user.password.startsWith("$2y$");
+
+        if (isBcryptHash) {
+          isPasswordValid = await bcrypt.compare(loginData.password, user.password);
+        } else {
+          isPasswordValid = user.password === loginData.password;
+        }
+      }
+
+      if (!isPasswordValid) {
         throw createError("Invalid email or password", 401);
       }
 

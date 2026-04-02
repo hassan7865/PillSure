@@ -1,12 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pill } from "lucide-react";
 import RecommendationDialog from "./RecommendationDialog";
 
 export default function FloatingRecommendationButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Avoid overlapping dashboard table pagination/actions.
+  if (pathname?.startsWith("/dashboard")) {
+    return null;
+  }
 
   return (
     <>
