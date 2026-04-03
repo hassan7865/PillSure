@@ -4,9 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { ShoppingCart, CheckCircle, XCircle, Sparkles } from "lucide-react";
+import { ShoppingCart, CheckCircle, XCircle, Sparkles, Stethoscope } from "lucide-react";
 import { RAGMedicineInfo } from "@/app/medicine/_rag-api";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { buildConsultDoctorUrl } from "@/lib/consult-doctor-url";
 
 interface RecommendationResultCardProps {
   medicine: RAGMedicineInfo;
@@ -17,6 +19,8 @@ export default function RecommendationResultCard({
   medicine,
   onClick,
 }: RecommendationResultCardProps) {
+  const router = useRouter();
+
   // Parse images
   const images: string[] = Array.isArray(medicine.images)
     ? medicine.images
@@ -127,17 +131,33 @@ export default function RecommendationResultCard({
                     )}
                   </div>
                 </div>
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto flex-shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClick();
-                  }}
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  View Details
-                </Button>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  {medicine.prescriptionRequired && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(buildConsultDoctorUrl(medicine));
+                      }}
+                    >
+                      <Stethoscope className="h-4 w-4 mr-2" />
+                      Consult a doctor
+                    </Button>
+                  )}
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto flex-shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClick();
+                    }}
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    View Details
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

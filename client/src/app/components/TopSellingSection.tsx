@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import cartApi from "@/app/cart/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
+import { buildConsultDoctorUrl } from "@/lib/consult-doctor-url";
 import { PrescriptionMedicineBadge } from "@/components/medicine/PrescriptionMedicineBadge";
 import medicineApi, { Medicine } from "@/app/medicine/_api";
 import Loader from "@/components/ui/loader";
@@ -23,6 +24,7 @@ type UITopProduct = {
   id: number;
   name: string;
   category: string;
+  drugCategoryId?: number | null;
   price: number;
   originalPrice?: number;
   imageUrl: string;
@@ -65,6 +67,7 @@ const TopSellingSection: React.FC = () => {
             id: m.id,
             name: m.medicineName,
             category: m.drugCategory || "General",
+            drugCategoryId: m.drugCategoryId,
             price: priceNum,
             originalPrice,
             imageUrl: typeof firstImage === "string" ? firstImage : "/pills.png",
@@ -117,8 +120,13 @@ const TopSellingSection: React.FC = () => {
 
   const handleAddToCart = async (product: UITopProduct) => {
     if (product.prescriptionRequired) {
-      showInfo("Prescription required", "Please consult doctor and order from your prescription.");
-      router.push("/appointments");
+      showInfo("Prescription required", "Find a doctor who can prescribe this medicine.");
+      router.push(
+        buildConsultDoctorUrl({
+          drugCategoryId: product.drugCategoryId,
+          drugCategory: product.category,
+        })
+      );
       return;
     }
     try {

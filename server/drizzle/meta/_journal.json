@@ -92,6 +92,27 @@
       "when": 1775200000000,
       "tag": "0012_rag_queries_meta_data",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775289600000,
+      "tag": "0013_drug_categories_normalize",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775296800000,
+      "tag": "0014_mapping_specialization_fk",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775304000000,
+      "tag": "0015_merge_truncated_drug_category_duplicates",
+      "breakpoints": true
     }
   ]
 }

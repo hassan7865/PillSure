@@ -11,7 +11,8 @@ import {
     timestamp,
     index,
   } from "drizzle-orm/pg-core";
-  
+import { drugCategories } from "./drugCategories";
+
   export const medicines = pgTable(
     "medicines",
     {
@@ -24,14 +25,16 @@ import {
       images: jsonb("images"),
       prescriptionRequired: boolean("prescription_required").default(false),
       createdAt: timestamp("created_at").defaultNow(),
-      drugCategory: text("drug_category"),
+      drugCategoryId: integer("drug_category_id").references(() => drugCategories.id, {
+        onDelete: "set null",
+      }),
       drugVarient: text("drug_varient"),
       drugDescription: text("drug_description"),
       faqs: jsonb("faqs"),
     },
     (table) => {
       return {
-        idxDrugCategory: index("idx_medicines_drug_category").on(table.drugCategory),
+        idxDrugCategory: index("idx_medicines_drug_category_id").on(table.drugCategoryId),
         idxImages: index("idx_medicines_images").using("gin", table.images),
         idxDrugDescription: index("idx_medicines_drug_description").on(table.drugDescription),
         idxFaqs: index("idx_medicines_faqs").using("gin", table.faqs),

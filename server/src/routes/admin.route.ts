@@ -43,6 +43,44 @@ export class AdminRoute {
       this.getHospitals.bind(this)
     );
 
+    // Medicine drug categories CRUD
+    this.router.get(
+      "/drug-categories",
+      verifyToken,
+      this.getDrugCategories.bind(this)
+    );
+    this.router.post(
+      "/drug-categories",
+      verifyToken,
+      this.createDrugCategory.bind(this)
+    );
+    this.router.put(
+      "/drug-categories/:id",
+      verifyToken,
+      this.updateDrugCategory.bind(this)
+    );
+    this.router.delete(
+      "/drug-categories/:id",
+      verifyToken,
+      this.deleteDrugCategory.bind(this)
+    );
+
+    this.router.get(
+      "/specializations",
+      verifyToken,
+      this.getAllSpecializations.bind(this)
+    );
+    this.router.get(
+      "/drug-categories/:id/mappings",
+      verifyToken,
+      this.getDrugCategoryMappings.bind(this)
+    );
+    this.router.put(
+      "/drug-categories/:id/mappings",
+      verifyToken,
+      this.setDrugCategoryMappings.bind(this)
+    );
+
     // Admin medicines endpoint - paginated list
     this.router.get(
       "/medicines",
@@ -185,6 +223,125 @@ export class AdminRoute {
       const result = await this.adminService.getHospitals(page, limit, search);
       res.status(200).json(ApiResponse(result, "Hospitals retrieved successfully"));
     } catch (error) {
+      next(error);
+    }
+  }
+
+  private async getDrugCategories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = (req.query.search as string) || "";
+
+      if (page < 1) {
+        return next(BadRequestError("Page must be greater than 0"));
+      }
+      if (limit < 1 || limit > 100) {
+        return next(BadRequestError("Limit must be between 1 and 100"));
+      }
+
+      const result = await this.adminService.getDrugCategories(page, limit, search);
+      res.status(200).json(ApiResponse(result, "Drug categories retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async createDrugCategory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const name = req.body?.name as string | undefined;
+      const result = await this.adminService.createDrugCategory(name ?? "");
+      res.status(201).json(ApiResponse(result, "Drug category created successfully"));
+    } catch (error: any) {
+      if (error?.message === "Category name is required" || error?.message?.includes("already exists") || error?.message?.includes("200 characters")) {
+        return next(BadRequestError(error.message));
+      }
+      next(error);
+    }
+  }
+
+  private async updateDrugCategory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id) || id < 1) {
+        return next(BadRequestError("Invalid category ID"));
+      }
+      const name = req.body?.name as string | undefined;
+      const result = await this.adminService.updateDrugCategory(id, name ?? "");
+      res.status(200).json(ApiResponse(result, "Drug category updated successfully"));
+    } catch (error: any) {
+      if (error?.message === "Category not found") {
+        return next(BadRequestError("Category not found"));
+      }
+      if (
+        error?.message === "Category name is required" ||
+        error?.message?.includes("already exists") ||
+        error?.message?.includes("200 characters") ||
+        error?.message === "Invalid category id"
+      ) {
+        return next(BadRequestError(error.message));
+      }
+      next(error);
+    }
+  }
+
+  private async getAllSpecializations(req: Request, res: Response, next: NextFunction) {
+    try {
+      const rows = await this.adminService.getAllSpecializations();
+      res.status(200).json(ApiResponse(rows, "Specializations retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async getDrugCategoryMappings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id) || id < 1) {
+        return next(BadRequestError("Invalid category ID"));
+      }
+      const result = await this.adminService.getDrugCategoryMappings(id);
+      res.status(200).json(ApiResponse(result, "Mappings retrieved successfully"));
+    } catch (error: any) {
+      if (error?.message === "Category not found" || error?.message === "Invalid category id") {
+        return next(BadRequestError(error.message === "Category not found" ? "Category not found" : "Invalid category ID"));
+      }
+      next(error);
+    }
+  }
+
+  private async setDrugCategoryMappings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id) || id < 1) {
+        return next(BadRequestError("Invalid category ID"));
+      }
+      const specializationIds = req.body?.specializationIds;
+      const result = await this.adminService.setDrugCategoryMappings(id, specializationIds);
+      res.status(200).json(ApiResponse(result, "Mappings saved successfully"));
+    } catch (error: any) {
+      if (error?.message === "Category not found" || error?.message === "Invalid category id") {
+        return next(BadRequestError(error.message === "Category not found" ? "Category not found" : "Invalid category ID"));
+      }
+      if (error?.message === "Invalid specialization id") {
+        return next(BadRequestError("Invalid specialization id"));
+      }
+      next(error);
+    }
+  }
+
+  private async deleteDrugCategory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id) || id < 1) {
+        return next(BadRequestError("Invalid category ID"));
+      }
+      const result = await this.adminService.deleteDrugCategory(id);
+      res.status(200).json(ApiResponse(result, "Drug category deleted successfully"));
+    } catch (error: any) {
+      if (error?.message === "Category not found" || error?.message === "Invalid category id") {
+        return next(BadRequestError(error.message === "Category not found" ? "Category not found" : "Invalid category ID"));
+      }
       next(error);
     }
   }

@@ -5,8 +5,9 @@ import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
 import { drugCategorySpecializationMapping } from "../schema/drugCategorySpecializationMapping";
+import { drugCategories } from "../schema/drugCategories";
 import { ragQueries } from "../schema/ragQuery";
-import { eq, inArray, sql, and, or, ilike } from "drizzle-orm";
+import { eq, inArray, sql, and, ilike } from "drizzle-orm";
 import { BadRequestError } from "../middleware/error.handler";
 
 interface RAGRecommendationResult {
@@ -46,6 +47,7 @@ interface MedicineDetails {
   images: any;
   prescriptionRequired: boolean | null;
   createdAt: Date | null;
+  drugCategoryId: number | null;
   drugCategory: string | null;
   drugVarient: string | null;
   drugDescription: string | null;
@@ -155,8 +157,24 @@ export class RAGService {
     }
 
     const results = await db
-      .select()
+      .select({
+        id: medicines.id,
+        medicineName: medicines.medicineName,
+        medicineUrl: medicines.medicineUrl,
+        price: medicines.price,
+        discount: medicines.discount,
+        stock: medicines.stock,
+        images: medicines.images,
+        prescriptionRequired: medicines.prescriptionRequired,
+        createdAt: medicines.createdAt,
+        drugCategoryId: medicines.drugCategoryId,
+        drugCategory: drugCategories.name,
+        drugVarient: medicines.drugVarient,
+        drugDescription: medicines.drugDescription,
+        faqs: medicines.faqs,
+      })
       .from(medicines)
+      .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
       .where(inArray(medicines.id, uniqueIds));
 
     const byId = new Map(results.map((row) => [row.id, row]));
@@ -170,47 +188,35 @@ export class RAGService {
    * @returns Array of randomly selected doctors
    */
   async getDoctorsByDrugCategory(
-    drugCategory: string | null,
+    drugCategoryId: number | null,
     limit: number = 10
   ): Promise<DoctorInfo[]> {
-    if (!drugCategory) {
+    if (drugCategoryId == null || drugCategoryId <= 0) {
       return [];
     }
 
     try {
-      // Step 1: Get specializations from mapping table
       const mappings = await db
-        .select()
+        .select({
+          specializationId: drugCategorySpecializationMapping.specializationId,
+        })
         .from(drugCategorySpecializationMapping)
-        .where(eq(drugCategorySpecializationMapping.drugCategory, drugCategory));
+        .where(eq(drugCategorySpecializationMapping.drugCategoryId, drugCategoryId));
 
       if (mappings.length === 0) {
         return [];
       }
 
-      const specializationNames = mappings.map((m) => m.specialization);
-
-      // Step 2: Get specialization IDs by matching names (case-insensitive)
-      if (specializationNames.length === 0) {
-        return [];
-      }
+      const specializationIds = [...new Set(mappings.map((m) => m.specializationId))];
 
       const specializationRecords = await db
         .select()
         .from(specializations)
-        .where(
-          or(
-            ...specializationNames.map((name) =>
-              sql`LOWER(${specializations.name}) = LOWER(${name})`
-            )
-          )
-        );
+        .where(inArray(specializations.id, specializationIds));
 
       if (specializationRecords.length === 0) {
         return [];
       }
-
-      const specializationIds = specializationRecords.map((s) => s.id);
 
       // Step 3: Find doctors with these specialization IDs
       // Doctors have specializationIds as JSONB array, so we need to check if any ID is in the array
@@ -509,8 +515,8 @@ export class RAGService {
       .filter((item): item is MedicineWithRAGData => item !== null && item.ragScore !== undefined);
 
     // Get recommended doctors based on top match medicine's drug category
-    const recommendedDoctors = resultWithDetails?.drugCategory
-      ? await this.getDoctorsByDrugCategory(resultWithDetails.drugCategory, 10)
+    const recommendedDoctors = resultWithDetails?.drugCategoryId
+      ? await this.getDoctorsByDrugCategory(resultWithDetails.drugCategoryId, 10)
       : [];
 
     return {

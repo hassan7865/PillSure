@@ -37,7 +37,8 @@ import {
   Pill,
   CalendarClock,
   Stethoscope,
-  Building2
+  Building2,
+  Layers
 } from 'lucide-react';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -103,6 +104,11 @@ function getNavItems(user: AuthUser | null) {
         title: 'Medicines',
         url: '/dashboard/admin/medicines',
         icon: Pill
+      },
+      {
+        title: 'Categories',
+        url: '/dashboard/admin/categories',
+        icon: Layers
       },
       {
         title: 'Orders',

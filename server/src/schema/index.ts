@@ -3,6 +3,7 @@ export * from './users';
 export * from './doctor';
 export * from './hospitals';
 export * from './specialization';
+export * from './drugCategories';
 export * from './medicine';
 export * from './patient';
 export * from './appointments';

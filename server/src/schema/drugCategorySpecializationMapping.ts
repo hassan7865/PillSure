@@ -1,17 +1,23 @@
-import { pgTable, serial, varchar, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { drugCategories } from "./drugCategories";
+import { specializations } from "./specialization";
 
 export const drugCategorySpecializationMapping = pgTable(
   "drug_category_specialization_mapping",
   {
     id: serial("id").primaryKey(),
-    drugCategory: varchar("drug_category", { length: 100 }).notNull(),
-    specialization: varchar("specialization", { length: 100 }).notNull(),
+    drugCategoryId: integer("drug_category_id")
+      .notNull()
+      .references(() => drugCategories.id, { onDelete: "cascade" }),
+    specializationId: integer("specialization_id")
+      .notNull()
+      .references(() => specializations.id, { onDelete: "cascade" }),
   },
   (table) => {
     return {
-      uniqueMapping: uniqueIndex("unique_mapping").on(
-        table.drugCategory,
-        table.specialization
+      uniqueMapping: uniqueIndex("unique_mapping_category_spec").on(
+        table.drugCategoryId,
+        table.specializationId
       ),
     };
   }

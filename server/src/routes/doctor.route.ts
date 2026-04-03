@@ -16,6 +16,11 @@ export class DoctorRoute {
   private initializeRoutes() {
     // Get all specializations (public endpoint)
     this.router.get('/specializations', this.getSpecializations);
+    // Map medicine drug category → specialization IDs (same logic as RAG doctor recommendations)
+    this.router.get(
+      '/specialization-ids-for-drug-category',
+      this.getSpecializationIdsForDrugCategory
+    );
     // Get all doctors with search and filter (public endpoint)
     this.router.get('/search-doctors', this.getDoctors);
     
@@ -31,6 +36,39 @@ export class DoctorRoute {
     try {
       const result = await doctorService.getAllSpecializations();
       res.status(200).json(ApiResponse(result, "Specializations retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getSpecializationIdsForDrugCategory = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const drugCategoryIdRaw = req.query.drugCategoryId as string | undefined;
+      if (drugCategoryIdRaw !== undefined && drugCategoryIdRaw !== "") {
+        const id = parseInt(drugCategoryIdRaw, 10);
+        if (isNaN(id) || id < 1) {
+          return next(BadRequestError("drugCategoryId must be a positive integer"));
+        }
+        const ids = await doctorService.getSpecializationIdsForDrugCategoryId(id);
+        return res.status(200).json(
+          ApiResponse({ specializationIds: ids }, "Specialization IDs resolved for drug category")
+        );
+      }
+
+      const drugCategory = (req.query.drugCategory as string) || "";
+      if (!drugCategory.trim()) {
+        return next(
+          BadRequestError("drugCategory or drugCategoryId query parameter is required")
+        );
+      }
+      const ids = await doctorService.getSpecializationIdsForDrugCategory(drugCategory);
+      res.status(200).json(
+        ApiResponse({ specializationIds: ids }, "Specialization IDs resolved for drug category")
+      );
     } catch (error) {
       next(error);
     }

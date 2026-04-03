@@ -18,6 +18,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Medicine, UpdateMedicineRequest } from "./_types";
 import { adminApi } from "./_api";
+import { medicineApi } from "@/app/medicine/_api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 import { Camera, X } from "lucide-react";
@@ -44,8 +52,8 @@ interface MedicineFormValues {
   stock: number | null;
   images: ImageItem[];
   prescriptionRequired: boolean;
-  description: any | null;
-  drugCategory: string | null;
+  drugDescription: string | null;
+  drugCategoryId: number | null;
   drugVarient: string | null;
 }
 
@@ -56,6 +64,9 @@ export default function EditMedicineDialog({
   onUpdate,
 }: EditMedicineDialogProps) {
   const { showSuccess, showError } = useCustomToast();
+  const [drugCategoriesList, setDrugCategoriesList] = useState<{ id: number; name: string }[]>(
+    []
+  );
 
   const form = useForm<MedicineFormValues>({
     defaultValues: {
@@ -66,8 +77,8 @@ export default function EditMedicineDialog({
       stock: null,
       images: [],
       prescriptionRequired: false,
-      description: null,
-      drugCategory: null,
+      drugDescription: null,
+      drugCategoryId: null,
       drugVarient: null,
     },
     mode: "onChange",
@@ -95,12 +106,28 @@ export default function EditMedicineDialog({
         stock: medicine.stock || null,
         images: imagesArray,
         prescriptionRequired: medicine.prescriptionRequired || false,
-        description: medicine.description || null,
-        drugCategory: medicine.drugCategory || null,
+        drugDescription: medicine.drugDescription ?? null,
+        drugCategoryId: medicine.drugCategoryId ?? null,
         drugVarient: medicine.drugVarient || null,
       });
     }
   }, [medicine, open, form]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    medicineApi
+      .listDrugCategories()
+      .then((rows) => {
+        if (!cancelled) setDrugCategoriesList(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setDrugCategoriesList([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -226,8 +253,8 @@ export default function EditMedicineDialog({
         discount: data.discount || null,
         stock: data.stock || null,
         prescriptionRequired: data.prescriptionRequired,
-        description: data.description || null,
-        drugCategory: data.drugCategory || null,
+        drugDescription: data.drugDescription?.trim() ? data.drugDescription.trim() : null,
+        drugCategoryId: data.drugCategoryId ?? null,
         drugVarient: data.drugVarient || null,
       };
 
@@ -359,20 +386,34 @@ export default function EditMedicineDialog({
 
                   <FormField
                     control={form.control}
-                    name="drugCategory"
+                    name="drugCategoryId"
                     render={({ field }) => (
                       <FormItem>
-                        <Label htmlFor="drugCategory" className="text-sm font-medium">Category</Label>
-                        <FormControl>
-                          <Input
-                            id="drugCategory"
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                            placeholder="Enter category"
-                            className="w-full"
-                          />
-                        </FormControl>
+                        <Label htmlFor="drugCategoryId" className="text-sm font-medium">
+                          Category
+                        </Label>
+                        <Select
+                          value={
+                            field.value != null ? String(field.value) : "__none__"
+                          }
+                          onValueChange={(v) =>
+                            field.onChange(v === "__none__" ? null : parseInt(v, 10))
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger id="drugCategoryId" className="w-full">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="__none__">No category</SelectItem>
+                            {drugCategoriesList.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -482,30 +523,20 @@ export default function EditMedicineDialog({
 
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="drugDescription"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="description" className="text-sm font-medium">Description (JSON)</Label>
+                      <Label htmlFor="drugDescription" className="text-sm font-medium">Description</Label>
                       <FormControl>
                         <Textarea
-                          id="description"
-                          {...field}
-                          value={field.value ? (typeof field.value === 'string' ? field.value : JSON.stringify(field.value, null, 2)) : ""}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (!value) {
-                              field.onChange(null);
-                            } else {
-                              try {
-                                field.onChange(JSON.parse(value));
-                              } catch {
-                                field.onChange(value);
-                              }
-                            }
-                          }}
+                          id="drugDescription"
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.trim() === "" ? null : e.target.value)
+                          }
                           placeholder="Enter medicine description"
                           rows={4}
-                          className="w-full resize-none"
+                          className="w-full resize-y min-h-[100px]"
                         />
                       </FormControl>
                       <FormMessage />

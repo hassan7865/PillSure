@@ -1,6 +1,7 @@
-import { desc, eq, sql, ilike, or, and, inArray } from "drizzle-orm";
+import { desc, eq, sql, ilike, or, and, inArray, asc } from "drizzle-orm";
 import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
+import { drugCategories } from "../schema/drugCategories";
 import { s3Service } from "./s3.service";
 import { BadRequestError } from "../middleware/error.handler";
 import {
@@ -33,14 +34,14 @@ export class MedicineService {
                     images: medicines.images,
                     prescriptionRequired: medicines.prescriptionRequired,
                     createdAt: medicines.createdAt,
-                    drugCategory: medicines.drugCategory,
+                    drugCategoryId: medicines.drugCategoryId,
                     drugVarient: medicines.drugVarient,
                     drugDescription: medicines.drugDescription,
                     faqs: medicines.faqs,
-                    rn: sql<number>`row_number() over (partition by ${medicines.drugCategory} order by ${medicines.createdAt} desc)`.as('rn'),
+                    rn: sql<number>`row_number() over (partition by ${medicines.drugCategoryId} order by ${medicines.createdAt} desc)`.as('rn'),
                 })
                 .from(medicines)
-                .where(sql`${medicines.stock} > 0 AND ${medicines.drugCategory} IS NOT NULL`)
+                .where(sql`${medicines.stock} > 0 AND ${medicines.drugCategoryId} IS NOT NULL`)
         );
 
         return await db
@@ -55,12 +56,14 @@ export class MedicineService {
                 images: latestInCategory.images,
                 prescriptionRequired: latestInCategory.prescriptionRequired,
                 createdAt: latestInCategory.createdAt,
-                drugCategory: latestInCategory.drugCategory,
+                drugCategoryId: latestInCategory.drugCategoryId,
+                drugCategory: drugCategories.name,
                 drugVarient: latestInCategory.drugVarient,
                 drugDescription: latestInCategory.drugDescription,
                 faqs: latestInCategory.faqs,
             })
             .from(latestInCategory)
+            .leftJoin(drugCategories, eq(latestInCategory.drugCategoryId, drugCategories.id))
             .where(sql`${latestInCategory.rn} = 1`)
             .orderBy(desc(latestInCategory.createdAt))
             .limit(safeLimit);
@@ -82,14 +85,11 @@ export class MedicineService {
         const safePerCategoryLimit = Math.max(1, Math.min(24, perCategoryLimit));
         const safeCategoryPage = Math.max(1, categoryPage);
         const safeCategoriesPerPage = Math.max(1, Math.min(20, categoriesPerPage));
-        const filters = [
-            sql`${medicines.drugCategory} IS NOT NULL`,
-            sql`${medicines.stock} > 0`,
-        ];
+        const filters = [sql`${medicines.stock} > 0`];
 
         const trimmedCategory = category?.trim();
         if (trimmedCategory) {
-            filters.push(eq(medicines.drugCategory, trimmedCategory));
+            filters.push(eq(drugCategories.name, trimmedCategory));
         }
 
         const trimmedSearch = search?.trim();
@@ -100,12 +100,13 @@ export class MedicineService {
 
         const groupedCategories = await db
             .select({
-                category: medicines.drugCategory,
+                category: drugCategories.name,
             })
             .from(medicines)
+            .innerJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
             .where(and(...filters))
-            .groupBy(medicines.drugCategory)
-            .orderBy(medicines.drugCategory)
+            .groupBy(drugCategories.name)
+            .orderBy(asc(drugCategories.name))
             .limit(safeCategoriesPerPage)
             .offset((safeCategoryPage - 1) * safeCategoriesPerPage);
 
@@ -135,13 +136,15 @@ export class MedicineService {
                 images: medicines.images,
                 prescriptionRequired: medicines.prescriptionRequired,
                 createdAt: medicines.createdAt,
-                drugCategory: medicines.drugCategory,
+                drugCategoryId: medicines.drugCategoryId,
+                drugCategory: drugCategories.name,
                 drugVarient: medicines.drugVarient,
                 drugDescription: medicines.drugDescription,
                 faqs: medicines.faqs,
             })
             .from(medicines)
-            .where(and(...filters, inArray(medicines.drugCategory, categoryNames)))
+            .innerJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
+            .where(and(...filters, inArray(drugCategories.name, categoryNames)))
             .orderBy(desc(medicines.stock), desc(medicines.createdAt));
 
         const grouped = new Map<string, typeof rows>();
@@ -218,14 +221,7 @@ export class MedicineService {
             })
             .where(eq(medicines.id, medicineId));
 
-        // Fetch the updated medicine to ensure we get the latest data
-        const updatedMedicine = await db
-            .select()
-            .from(medicines)
-            .where(eq(medicines.id, medicineId))
-            .limit(1);
-
-        return updatedMedicine[0];
+        return this.getMedicineById(medicineId);
     }
 
     /**
@@ -235,8 +231,24 @@ export class MedicineService {
      */
     async getMedicineById(medicineId: number) {
         const medicine = await db
-            .select()
+            .select({
+                id: medicines.id,
+                medicineName: medicines.medicineName,
+                medicineUrl: medicines.medicineUrl,
+                price: medicines.price,
+                discount: medicines.discount,
+                stock: medicines.stock,
+                images: medicines.images,
+                prescriptionRequired: medicines.prescriptionRequired,
+                createdAt: medicines.createdAt,
+                drugCategoryId: medicines.drugCategoryId,
+                drugCategory: drugCategories.name,
+                drugVarient: medicines.drugVarient,
+                drugDescription: medicines.drugDescription,
+                faqs: medicines.faqs,
+            })
             .from(medicines)
+            .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
             .where(eq(medicines.id, medicineId))
             .limit(1);
 
@@ -245,6 +257,16 @@ export class MedicineService {
         }
 
         return medicine[0];
+    }
+
+    async listDrugCategories() {
+        return db
+            .select({
+                id: drugCategories.id,
+                name: drugCategories.name,
+            })
+            .from(drugCategories)
+            .orderBy(asc(drugCategories.name));
     }
 
   
@@ -266,16 +288,18 @@ export class MedicineService {
                 stock: medicines.stock,
                 images: medicines.images,
                 prescriptionRequired: medicines.prescriptionRequired,
-                drugCategory: medicines.drugCategory,
+                drugCategoryId: medicines.drugCategoryId,
+                drugCategory: drugCategories.name,
                 drugVarient: medicines.drugVarient,
                 drugDescription: medicines.drugDescription,
                 faqs: medicines.faqs,
             })
             .from(medicines)
+            .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
             .where(
                 or(
                     ilike(medicines.medicineName, searchTerm),
-                    ilike(medicines.drugCategory, searchTerm)
+                    ilike(drugCategories.name, searchTerm)
                 )
             )
             .orderBy(desc(medicines.createdAt))

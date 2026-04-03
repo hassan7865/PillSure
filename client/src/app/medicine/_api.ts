@@ -13,6 +13,7 @@ export interface Medicine {
   prescriptionRequired?: boolean;
   createdAt?: string | null;
   drugDescription?: string | null; // Plain text description
+  drugCategoryId?: number | null;
   drugCategory?: string | null;
   drugVarient?: string | null;
   faqs?: Array<{ question: string; answer: string }> | null; // FAQs array
@@ -91,6 +92,13 @@ export const medicineApi = {
         hasMoreCategories: false,
       },
     });
+  },
+
+  listDrugCategories: async (): Promise<{ id: number; name: string }[]> => {
+    const response = await api.get<ApiResponse<{ id: number; name: string }[]>>(
+      "/medicine/drug-categories"
+    );
+    return extractApiDataWithFallback(response, []);
   },
 };
 

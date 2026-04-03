@@ -20,6 +20,7 @@ import Loader from "@/components/ui/loader";
 import cartApi from "@/app/cart/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
+import { buildConsultDoctorUrl } from "@/lib/consult-doctor-url";
 import { PrescriptionMedicineBadge } from "@/components/medicine/PrescriptionMedicineBadge";
 
 type Medicine = {
@@ -33,6 +34,7 @@ type Medicine = {
   prescriptionRequired?: boolean | null;
   createdAt?: string | null;
   description?: any | null;
+  drugCategoryId?: number | null;
   drugCategory?: string | null;
   drugVarient?: string | null;
 };
@@ -41,6 +43,7 @@ type UIProduct = {
   id: number;
   name: string;
   category?: string;
+  drugCategoryId?: number | null;
   price: number;
   originalPrice?: number;
   imageUrl: string;
@@ -87,6 +90,7 @@ const FeaturedProductsSection: React.FC = () => {
             id: m.id,
             name: m.medicineName,
             category: m.drugCategory || undefined,
+            drugCategoryId: m.drugCategoryId,
             price: priceNum,
             originalPrice,
             imageUrl,
@@ -108,8 +112,13 @@ const FeaturedProductsSection: React.FC = () => {
 
   const handleAddToCart = async (product: UIProduct) => {
     if (product.prescriptionRequired) {
-      showInfo("Prescription required", "Please consult doctor and order from your prescription.");
-      router.push("/appointments");
+      showInfo("Prescription required", "Find a doctor who can prescribe this medicine.");
+      router.push(
+        buildConsultDoctorUrl({
+          drugCategoryId: product.drugCategoryId,
+          drugCategory: product.category,
+        })
+      );
       return;
     }
     try {

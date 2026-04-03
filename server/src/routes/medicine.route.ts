@@ -21,6 +21,8 @@ export class MedicineRoute {
     // GET /api/medicine/search?q=paracetamol&limit=20 - Search medicines
     this.router.get("/search", this.searchMedicines);
 
+    this.router.get("/drug-categories", this.listDrugCategories);
+
     // GET /api/medicine/:id - Get medicine by ID
     this.router.get("/:id", this.getMedicineById);
   }
@@ -113,6 +115,15 @@ export class MedicineRoute {
 
       const medicines = await medicineService.searchMedicines(query, limit);
       res.status(200).json(ApiResponse(medicines, "Medicines retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private listDrugCategories = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await medicineService.listDrugCategories();
+      res.status(200).json(ApiResponse(data, "Drug categories retrieved successfully"));
     } catch (error) {
       next(error);
     }

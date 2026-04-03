@@ -1,12 +1,15 @@
 import { db } from "../config/database";
 import { users } from "../schema/users";
 import { medicines } from "../schema/medicine";
+import { drugCategories } from "../schema/drugCategories";
+import { drugCategorySpecializationMapping } from "../schema/drugCategorySpecializationMapping";
+import { specializations } from "../schema/specialization";
 import { doctors } from "../schema/doctor";
 import { hospitals } from "../schema/hospitals";
 import { appointments } from "../schema/appointments";
 import { orders } from "../schema/orders";
 import { roles } from "../schema/roles";
-import { eq, sql, count, and, or, ilike, desc } from "drizzle-orm";
+import { eq, sql, count, and, or, ilike, desc, ne, asc, inArray } from "drizzle-orm";
 import { s3Service } from "./s3.service";
 import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
 import { buildSearchConditions } from "./utils/search.utils";
@@ -458,12 +461,14 @@ export class AdminService {
           images: medicines.images,
           prescriptionRequired: medicines.prescriptionRequired,
           createdAt: medicines.createdAt,
-          drugCategory: medicines.drugCategory,
+          drugCategoryId: medicines.drugCategoryId,
+          drugCategory: drugCategories.name,
           drugVarient: medicines.drugVarient,
           drugDescription: medicines.drugDescription,
           faqs: medicines.faqs,
         })
         .from(medicines)
+        .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
         .where(whereClause)
         .orderBy(desc(medicines.createdAt))
         .limit(limit)
@@ -552,7 +557,17 @@ export class AdminService {
         const desc = String(data.drugDescription).trim();
         updateData.drugDescription = desc || null;
       }
-      if (data.drugCategory !== undefined) updateData.drugCategory = data.drugCategory || null;
+      if (data.drugCategoryId !== undefined) {
+        const raw = data.drugCategoryId;
+        if (raw === null || raw === "" || raw === undefined) {
+          updateData.drugCategoryId = null;
+        } else {
+          const n = parseInt(String(raw), 10);
+          if (!isNaN(n) && n > 0) {
+            updateData.drugCategoryId = n;
+          }
+        }
+      }
       if (data.drugVarient !== undefined) updateData.drugVarient = data.drugVarient || null;
       if (data.faqs !== undefined) {
         // If faqs is a string, try to parse it as JSON, otherwise use as is
@@ -598,10 +613,25 @@ export class AdminService {
           .where(eq(medicines.id, medicineId));
       }
 
-      // Fetch and return updated medicine
       const updated = await db
-        .select()
+        .select({
+          id: medicines.id,
+          medicineName: medicines.medicineName,
+          medicineUrl: medicines.medicineUrl,
+          price: medicines.price,
+          discount: medicines.discount,
+          stock: medicines.stock,
+          images: medicines.images,
+          prescriptionRequired: medicines.prescriptionRequired,
+          createdAt: medicines.createdAt,
+          drugCategoryId: medicines.drugCategoryId,
+          drugCategory: drugCategories.name,
+          drugVarient: medicines.drugVarient,
+          drugDescription: medicines.drugDescription,
+          faqs: medicines.faqs,
+        })
         .from(medicines)
+        .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
         .where(eq(medicines.id, medicineId))
         .limit(1);
 
@@ -614,6 +644,212 @@ export class AdminService {
       
       throw error;
     }
+  }
+
+  async getDrugCategories(page: number = 1, limit: number = 10, search: string = "") {
+    try {
+      const offset = calculateOffset(page, limit);
+      const conditions = [];
+      const searchCondition = buildSearchConditions(search, [drugCategories.name]);
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const query = db
+        .select({
+          id: drugCategories.id,
+          name: drugCategories.name,
+        })
+        .from(drugCategories)
+        .where(whereClause)
+        .orderBy(asc(drugCategories.name))
+        .limit(limit)
+        .offset(offset);
+
+      const countQuery = db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(drugCategories)
+        .where(whereClause);
+
+      const [rows, countResult] = await Promise.all([query, countQuery]);
+      const totalCount = countResult[0]?.count ?? 0;
+
+      return {
+        categories: rows,
+        pagination: calculatePagination(page, limit, totalCount),
+      };
+    } catch (error) {
+      console.error("Error fetching drug categories:", error);
+      throw error;
+    }
+  }
+
+  async createDrugCategory(name: string) {
+    const trimmed = String(name ?? "").trim();
+    if (!trimmed) {
+      throw new Error("Category name is required");
+    }
+    if (trimmed.length > 200) {
+      throw new Error("Category name must be at most 200 characters");
+    }
+
+    const [dup] = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(eq(drugCategories.name, trimmed))
+      .limit(1);
+    if (dup) {
+      throw new Error("A category with this name already exists");
+    }
+
+    const [inserted] = await db
+      .insert(drugCategories)
+      .values({ name: trimmed })
+      .returning({
+        id: drugCategories.id,
+        name: drugCategories.name,
+      });
+    return inserted;
+  }
+
+  async updateDrugCategory(id: number, name: string) {
+    if (!Number.isFinite(id) || id < 1) {
+      throw new Error("Invalid category id");
+    }
+    const trimmed = String(name ?? "").trim();
+    if (!trimmed) {
+      throw new Error("Category name is required");
+    }
+    if (trimmed.length > 200) {
+      throw new Error("Category name must be at most 200 characters");
+    }
+
+    const [existing] = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(eq(drugCategories.id, id))
+      .limit(1);
+    if (!existing) {
+      throw new Error("Category not found");
+    }
+
+    const [conflict] = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(and(eq(drugCategories.name, trimmed), ne(drugCategories.id, id)))
+      .limit(1);
+    if (conflict) {
+      throw new Error("A category with this name already exists");
+    }
+
+    const [updated] = await db
+      .update(drugCategories)
+      .set({ name: trimmed })
+      .where(eq(drugCategories.id, id))
+      .returning({
+        id: drugCategories.id,
+        name: drugCategories.name,
+      });
+    return updated;
+  }
+
+  async deleteDrugCategory(id: number) {
+    if (!Number.isFinite(id) || id < 1) {
+      throw new Error("Invalid category id");
+    }
+
+    const [existing] = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(eq(drugCategories.id, id))
+      .limit(1);
+    if (!existing) {
+      throw new Error("Category not found");
+    }
+
+    await db.delete(drugCategories).where(eq(drugCategories.id, id));
+    return { id };
+  }
+
+  async getAllSpecializations() {
+    return db
+      .select({
+        id: specializations.id,
+        name: specializations.name,
+      })
+      .from(specializations)
+      .orderBy(asc(specializations.name));
+  }
+
+  async getDrugCategoryMappings(drugCategoryId: number) {
+    if (!Number.isFinite(drugCategoryId) || drugCategoryId < 1) {
+      throw new Error("Invalid category id");
+    }
+    const [cat] = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(eq(drugCategories.id, drugCategoryId))
+      .limit(1);
+    if (!cat) {
+      throw new Error("Category not found");
+    }
+    const rows = await db
+      .select({ specializationId: drugCategorySpecializationMapping.specializationId })
+      .from(drugCategorySpecializationMapping)
+      .where(eq(drugCategorySpecializationMapping.drugCategoryId, drugCategoryId));
+    return {
+      specializationIds: rows.map((r) => r.specializationId),
+    };
+  }
+
+  async setDrugCategoryMappings(drugCategoryId: number, specializationIds: unknown) {
+    if (!Number.isFinite(drugCategoryId) || drugCategoryId < 1) {
+      throw new Error("Invalid category id");
+    }
+    const [cat] = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(eq(drugCategories.id, drugCategoryId))
+      .limit(1);
+    if (!cat) {
+      throw new Error("Category not found");
+    }
+
+    const raw = Array.isArray(specializationIds) ? specializationIds : [];
+    const unique = [
+      ...new Set(
+        raw
+          .map((x) => parseInt(String(x), 10))
+          .filter((n) => Number.isFinite(n) && n > 0)
+      ),
+    ];
+
+    if (unique.length > 0) {
+      const found = await db
+        .select({ id: specializations.id })
+        .from(specializations)
+        .where(inArray(specializations.id, unique));
+      if (found.length !== unique.length) {
+        throw new Error("Invalid specialization id");
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(drugCategorySpecializationMapping)
+        .where(eq(drugCategorySpecializationMapping.drugCategoryId, drugCategoryId));
+      if (unique.length > 0) {
+        await tx.insert(drugCategorySpecializationMapping).values(
+          unique.map((specializationId) => ({
+            drugCategoryId,
+            specializationId,
+          }))
+        );
+      }
+    });
+
+    return { drugCategoryId, specializationIds: unique };
   }
 }
 

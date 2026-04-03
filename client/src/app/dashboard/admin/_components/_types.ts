@@ -137,7 +137,8 @@ export interface Medicine {
   images: any | null;
   prescriptionRequired: boolean;
   createdAt: string | null;
-  description: any | null;
+  drugDescription: string | null;
+  drugCategoryId: number | null;
   drugCategory: string | null;
   drugVarient: string | null;
 }
@@ -155,8 +156,27 @@ export interface UpdateMedicineRequest {
   stock?: number | null;
   images?: any | null;
   prescriptionRequired?: boolean;
-  description?: any | null;
-  drugCategory?: string | null;
+  drugDescription?: string | null;
+  drugCategoryId?: number | null;
   drugVarient?: string | null;
+}
+
+export interface DrugCategory {
+  id: number;
+  name: string;
+}
+
+export interface PaginatedDrugCategories {
+  categories: DrugCategory[];
+  pagination: PaginationInfo;
+}
+
+export interface AdminSpecialization {
+  id: number;
+  name: string;
+}
+
+export interface DrugCategoryMappingsResponse {
+  specializationIds: number[];
 }
 

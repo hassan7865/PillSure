@@ -71,6 +71,25 @@ export const doctorApi = {
     const doctor = extractApiData(response);
     return transformDoctor(doctor);
   },
+
+  /** Same drug-category → specialization mapping as RAG recommended doctors (server uses mapping table). */
+  getSpecializationIdsForDrugCategory: async (drugCategory: string): Promise<number[]> => {
+    const params = buildQueryParams({ drugCategory: drugCategory.trim() });
+    const response = await api.get<ApiResponse<{ specializationIds: number[] }>>(
+      `/doctor/specialization-ids-for-drug-category?${params.toString()}`
+    );
+    const data = extractApiDataWithFallback(response, { specializationIds: [] });
+    return Array.isArray(data.specializationIds) ? data.specializationIds : [];
+  },
+
+  getSpecializationIdsForDrugCategoryId: async (drugCategoryId: number): Promise<number[]> => {
+    const params = buildQueryParams({ drugCategoryId });
+    const response = await api.get<ApiResponse<{ specializationIds: number[] }>>(
+      `/doctor/specialization-ids-for-drug-category?${params.toString()}`
+    );
+    const data = extractApiDataWithFallback(response, { specializationIds: [] });
+    return Array.isArray(data.specializationIds) ? data.specializationIds : [];
+  },
 };
 
 export interface Review {

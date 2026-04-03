@@ -29,6 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import cartApi from "@/app/cart/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
+import { buildConsultDoctorUrl } from "@/lib/consult-doctor-url";
 
 export default function MedicineProductPage() {
   const params = useParams();
@@ -127,8 +128,8 @@ export default function MedicineProductPage() {
   const handleAddToCart = async () => {
     if (!medicine || !medicineId) return;
     if (medicine.prescriptionRequired) {
-      showInfo("Prescription required", "Please consult doctor and order from your prescription.");
-      router.push("/appointments");
+      showInfo("Prescription required", "Find a doctor who can prescribe this medicine.");
+      router.push(buildConsultDoctorUrl(medicine));
       return;
     }
     try {

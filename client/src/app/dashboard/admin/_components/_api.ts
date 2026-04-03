@@ -10,6 +10,10 @@ import {
   PaginatedOrders,
   OrderStatus,
   AdminMonthlyRevenue,
+  PaginatedDrugCategories,
+  DrugCategory,
+  AdminSpecialization,
+  DrugCategoryMappingsResponse,
 } from './_types';
 
 import { extractApiData, buildQueryParams } from '@/lib/api-utils';
@@ -40,6 +44,54 @@ export const adminApi = {
   getMedicines: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedMedicines> => {
     const params = buildQueryParams({ page, limit, search: search || undefined });
     const response = await api.get<ApiResponse<PaginatedMedicines>>(`/admin/medicines?${params}`);
+    return extractApiData(response);
+  },
+
+  getDrugCategories: async (
+    page: number = 1,
+    limit: number = 10,
+    search: string = ''
+  ): Promise<PaginatedDrugCategories> => {
+    const params = buildQueryParams({ page, limit, search: search || undefined });
+    const response = await api.get<ApiResponse<PaginatedDrugCategories>>(`/admin/drug-categories?${params}`);
+    return extractApiData(response);
+  },
+
+  createDrugCategory: async (name: string): Promise<DrugCategory> => {
+    const response = await api.post<ApiResponse<DrugCategory>>('/admin/drug-categories', { name });
+    return extractApiData(response);
+  },
+
+  updateDrugCategory: async (id: number, name: string): Promise<DrugCategory> => {
+    const response = await api.put<ApiResponse<DrugCategory>>(`/admin/drug-categories/${id}`, { name });
+    return extractApiData(response);
+  },
+
+  deleteDrugCategory: async (id: number): Promise<{ id: number }> => {
+    const response = await api.delete<ApiResponse<{ id: number }>>(`/admin/drug-categories/${id}`);
+    return extractApiData(response);
+  },
+
+  getAdminSpecializations: async (): Promise<AdminSpecialization[]> => {
+    const response = await api.get<ApiResponse<AdminSpecialization[]>>('/admin/specializations');
+    return extractApiData(response);
+  },
+
+  getDrugCategoryMappings: async (categoryId: number): Promise<DrugCategoryMappingsResponse> => {
+    const response = await api.get<ApiResponse<DrugCategoryMappingsResponse>>(
+      `/admin/drug-categories/${categoryId}/mappings`
+    );
+    return extractApiData(response);
+  },
+
+  setDrugCategoryMappings: async (
+    categoryId: number,
+    specializationIds: number[]
+  ): Promise<{ drugCategoryId: number; specializationIds: number[] }> => {
+    const response = await api.put<ApiResponse<{ drugCategoryId: number; specializationIds: number[] }>>(
+      `/admin/drug-categories/${categoryId}/mappings`,
+      { specializationIds }
+    );
     return extractApiData(response);
   },
 
@@ -80,9 +132,15 @@ export const adminApi = {
 
       // Append all medicine data fields
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, typeof value === 'boolean' ? String(value) : value);
+        if (value === undefined) return;
+        if (value === null) {
+          formData.append(key, "");
+          return;
         }
+        formData.append(
+          key,
+          typeof value === "boolean" ? String(value) : String(value as string | number)
+        );
       });
 
       // Append new image files

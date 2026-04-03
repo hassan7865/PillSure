@@ -1,9 +1,11 @@
 import { db } from "../config/database";
+import { drugCategorySpecializationMapping } from "../schema/drugCategorySpecializationMapping";
+import { drugCategories } from "../schema/drugCategories";
 import { specializations } from "../schema/specialization";
 import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
-import { eq, and, or, ilike, sql, inArray, desc } from "drizzle-orm";
+import { eq, and, ilike, sql, inArray, desc } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
 import { buildSearchConditions } from "./utils/search.utils";
@@ -114,6 +116,44 @@ export class DoctorService {
       .orderBy(specializations.name);
 
     return result;
+  }
+
+ 
+  async getSpecializationIdsForDrugCategoryId(
+    drugCategoryId: number | null | undefined
+  ): Promise<number[]> {
+    if (drugCategoryId == null || drugCategoryId <= 0) {
+      return [];
+    }
+
+    const mappings = await db
+      .select({
+        specializationId: drugCategorySpecializationMapping.specializationId,
+      })
+      .from(drugCategorySpecializationMapping)
+      .where(eq(drugCategorySpecializationMapping.drugCategoryId, drugCategoryId));
+
+    return [...new Set(mappings.map((m) => m.specializationId))];
+  }
+
+  async getSpecializationIdsForDrugCategory(drugCategory: string | null | undefined): Promise<number[]> {
+    if (!drugCategory?.trim()) {
+      return [];
+    }
+
+    const trimmed = drugCategory.trim();
+
+    const rows = await db
+      .select({ id: drugCategories.id })
+      .from(drugCategories)
+      .where(eq(drugCategories.name, trimmed))
+      .limit(1);
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    return this.getSpecializationIdsForDrugCategoryId(rows[0].id);
   }
 
   async getDoctorByUserId(userId: string) {
