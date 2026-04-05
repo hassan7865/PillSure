@@ -38,7 +38,8 @@ import {
   CalendarClock,
   Stethoscope,
   Building2,
-  Layers
+  Layers,
+  MessageCircle
 } from 'lucide-react';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -67,6 +68,11 @@ function getNavItems(user: AuthUser | null) {
         title: 'Appointments',
         url: '/dashboard/appointments',
         icon: CalendarClock
+      },
+      {
+        title: 'WhatsApp',
+        url: '/dashboard/settings/whatsapp',
+        icon: MessageCircle
       }
     ];
   }
@@ -78,6 +84,11 @@ function getNavItems(user: AuthUser | null) {
         url: getDashboardHomeByRole(role),
         icon: LayoutDashboard,
         isActive: true
+      },
+      {
+        title: 'WhatsApp',
+        url: '/dashboard/settings/whatsapp',
+        icon: MessageCircle
       }
     ];
   }

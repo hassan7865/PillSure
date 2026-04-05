@@ -13,3 +13,8 @@ export * from './orders';
 export * from './orderItems';
 export * from './reviews';
 export * from './drugCategorySpecializationMapping';
+export * from './whatsappBusinessAccounts';
+export * from './whatsappMessageHistory';
+export * from './whatsappConversations';
+export * from './chatbotPersonas';
+export * from './doctorAvailabilityExceptions';

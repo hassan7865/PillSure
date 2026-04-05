@@ -36,11 +36,16 @@ export const canAccessDashboardPath = (role: string | null | undefined, pathname
     return (
       pathname === "/dashboard" ||
       pathname.startsWith("/dashboard/doctor") ||
-      pathname.startsWith("/dashboard/appointments")
+      pathname.startsWith("/dashboard/appointments") ||
+      pathname.startsWith("/dashboard/settings")
     );
   }
   if (key === "hospital") {
-    return pathname === "/dashboard" || pathname.startsWith("/dashboard/hospital");
+    return (
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/hospital") ||
+      pathname.startsWith("/dashboard/settings")
+    );
   }
 
   return false;

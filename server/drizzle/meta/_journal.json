@@ -113,6 +113,13 @@
       "when": 1775304000000,
       "tag": "0015_merge_truncated_drug_category_duplicates",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775600000000,
+      "tag": "0016_whatsapp_agent_tables",
+      "breakpoints": true
     }
   ]
 }

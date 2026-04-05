@@ -57,17 +57,26 @@ export class PaymentsRoute {
           }
 
           const amountTotal = session.amount_total ?? 0;
-          await appointmentService.createAppointmentFromStripeSession({
-            stripeSessionId: session.id,
-            patientId: metadata.patientId,
-            doctorId: metadata.doctorId,
-            appointmentDate: metadata.appointmentDate,
-            appointmentTime: metadata.appointmentTime,
-            consultationMode: metadata.consultationMode as "inperson" | "online",
-            patientNotes: metadata.patientNotes || undefined,
-            amountPaid: amountTotal / 100,
-            currency: session.currency || "pkr",
-          });
+          if (metadata.appointmentId) {
+            await appointmentService.markAppointmentPaidFromStripeSession({
+              appointmentId: metadata.appointmentId,
+              stripeSessionId: session.id,
+              amountPaid: amountTotal / 100,
+              currency: session.currency || "pkr",
+            });
+          } else {
+            await appointmentService.createAppointmentFromStripeSession({
+              stripeSessionId: session.id,
+              patientId: metadata.patientId,
+              doctorId: metadata.doctorId,
+              appointmentDate: metadata.appointmentDate,
+              appointmentTime: metadata.appointmentTime,
+              consultationMode: metadata.consultationMode as "inperson" | "online",
+              patientNotes: metadata.patientNotes || undefined,
+              amountPaid: amountTotal / 100,
+              currency: session.currency || "pkr",
+            });
+          }
         }
       }
 

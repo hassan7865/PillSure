@@ -16,6 +16,9 @@ import { OnboardingService } from "./src/services/onboarding.service";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
 import { requestLogger } from "./src/middleware/request.logger";
 import { db } from "./src/config/database";
+import { whatsappRouter } from "./src/routes/whatsapp.route";
+import { WhatsAppSettingsRoute } from "./src/routes/whatsappSettings.route";
+import { ChatbotPersonaRoute } from "./src/routes/chatbotPersona.route";
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +34,8 @@ app.use("/api/payments", express.raw({ type: "application/json" }), paymentsRout
 app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/whatsapp", whatsappRouter);
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -65,6 +70,8 @@ const initializeApp = async () => {
     const adminRoutes = new AdminRoute();
     const livekitRoutes = new LiveKitRoute();
     const ragRoutes = new RAGRoute();
+    const whatsappSettingsRoutes = new WhatsAppSettingsRoute();
+    const chatbotPersonaRoutes = new ChatbotPersonaRoute();
 
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
@@ -77,6 +84,8 @@ const initializeApp = async () => {
     app.use("/api/admin", adminRoutes.getRouter());
     app.use("/api/livekit", livekitRoutes.getRouter());
     app.use("/api/rag", ragRoutes.getRouter());
+    app.use("/api/settings", whatsappSettingsRoutes.getRouter());
+    app.use("/api/chatbot", chatbotPersonaRoutes.getRouter());
 
     // Health check endpoint
     app.get("/health", (req, res) => {

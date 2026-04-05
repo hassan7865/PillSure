@@ -103,6 +103,52 @@ export class AppointmentService {
     return newAppointment[0];
   }
 
+  async markAppointmentPaidFromStripeSession(params: {
+    appointmentId: string;
+    stripeSessionId: string;
+    amountPaid: number;
+    currency: string;
+  }) {
+    const row = await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.id, params.appointmentId))
+      .limit(1);
+
+    if (!row.length) {
+      throw createError("Appointment not found", 404);
+    }
+
+    const apt = row[0];
+    if (apt.stripeSessionId && apt.stripeSessionId !== params.stripeSessionId) {
+      throw createError("Appointment already linked to a different payment", 400);
+    }
+
+    const updated = await db
+      .update(appointments)
+      .set({
+        paymentProvider: "stripe",
+        paymentStatus: "paid",
+        stripeSessionId: params.stripeSessionId,
+        amountPaid: params.amountPaid.toFixed(2),
+        currency: params.currency.toLowerCase(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(appointments.id, params.appointmentId),
+          eq(appointments.isActive, true)
+        )
+      )
+      .returning();
+
+    if (!updated.length) {
+      throw createError("Failed to update appointment payment", 500);
+    }
+
+    return updated[0];
+  }
+
   async createAppointmentFromStripeSession(params: {
     stripeSessionId: string;
     patientId: string;

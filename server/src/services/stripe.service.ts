@@ -24,6 +24,8 @@ export interface AppointmentCheckoutMetadata {
   appointmentTime: string;
   consultationMode: "inperson" | "online";
   patientNotes: string;
+  /** When set, webhook updates this row instead of inserting a new appointment */
+  appointmentId?: string;
 }
 
 export interface MedicineCheckoutMetadata {
@@ -108,6 +110,9 @@ export class StripeService {
       consultationMode: params.metadata.consultationMode,
       patientNotes: params.metadata.patientNotes,
     };
+    if (params.metadata.appointmentId) {
+      metadata.appointmentId = params.metadata.appointmentId;
+    }
 
     const session = await this.stripe.checkout.sessions.create({
       mode: "payment",
