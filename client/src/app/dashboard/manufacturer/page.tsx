@@ -70,6 +70,7 @@ export default function ManufacturerDashboardPage() {
   return (
     <>
       <DashboardScrollWorkspace
+        bodyClassName="overflow-y-auto"
         header={
           <PageHeader
             title="Manufacturer dashboard"
@@ -91,7 +92,7 @@ export default function ManufacturerDashboardPage() {
           />
         }
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+        <div className="flex min-h-0 flex-col gap-4 pb-4">
           {error && !data ? (
             <Card className="border-destructive/40">
               <CardHeader>
@@ -155,7 +156,7 @@ export default function ManufacturerDashboardPage() {
               <Card
                 className={cn(
                   cardSectionClass(),
-                  "flex min-h-0 flex-1 flex-col overflow-hidden",
+                  "flex min-h-[560px] flex-col",
                   loading && "opacity-60",
                 )}
               >
@@ -183,7 +184,7 @@ export default function ManufacturerDashboardPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
+                <CardContent className="flex flex-1 flex-col p-4 sm:p-6">
                   {data.items.length === 0 ? (
                     <div className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-4 py-12 text-center text-sm">
                       <Package className="h-10 w-10 opacity-40" />
@@ -196,7 +197,7 @@ export default function ManufacturerDashboardPage() {
                     </div>
                   ) : (
                     <>
-                      <div className="-mx-4 min-h-0 flex-1 overflow-auto sm:mx-0">
+                      <div className="-mx-4 overflow-x-auto sm:mx-0">
                         <Table>
                           <TableHeader>
                             <TableRow>

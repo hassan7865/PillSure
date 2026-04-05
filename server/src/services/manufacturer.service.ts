@@ -52,6 +52,7 @@ type ExcelParsedRow = {
 
 const EXCEL_HEADER_ALIASES: Record<string, keyof ExcelParsedRow> = {
   medicine_name: "medicineName",
+  medicine: "medicineName",
   product_name: "medicineName",
   product: "medicineName",
   item_name: "medicineName",
@@ -248,6 +249,17 @@ export interface ManufacturerListResponse {
 }
 
 export class ManufacturerService {
+  /** Keep serial sequence aligned with existing rows (important after DB restores). */
+  private async syncMedicinesIdSequence(): Promise<void> {
+    await db.execute(sql`
+      SELECT setval(
+        pg_get_serial_sequence('public.medicines', 'id'),
+        COALESCE((SELECT MAX(id) FROM public.medicines), 0) + 1,
+        false
+      )
+    `);
+  }
+
   async resolveManufacturerIdForUser(userId: string): Promise<string> {
     const rows = await db
       .select({ id: manufacturers.id })
@@ -397,11 +409,13 @@ export class ManufacturerService {
       errors: [],
     };
 
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < body.items.length; i++) {
-        const item = body.items[i];
-        const rowLabel = `Row ${i + 1}`;
-        try {
+    await this.syncMedicinesIdSequence();
+
+    for (let i = 0; i < body.items.length; i++) {
+      const item = body.items[i];
+      const rowLabel = `Row ${i + 1}`;
+      try {
+        await db.transaction(async (tx) => {
           const wholesaleRaw = item.wholesalePrice;
           if (wholesaleRaw === undefined || wholesaleRaw === null || wholesaleRaw === "") {
             throw new Error("wholesalePrice is required");
@@ -446,7 +460,7 @@ export class ManufacturerService {
               })
               .where(eq(manufacturerMedicines.id, existingMfrListing[0].listingId));
             summary.updatedListings += 1;
-            continue;
+            return;
           }
 
           let medicineId: number | undefined;
@@ -507,12 +521,12 @@ export class ManufacturerService {
             });
             summary.createdListings += 1;
           }
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
-          summary.errors.push(`${rowLabel}: ${msg}`);
-        }
+        });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        summary.errors.push(`${rowLabel}: ${msg}`);
       }
-    });
+    }
 
     return summary;
   }
