@@ -240,10 +240,12 @@ export default function MedicalStoreWholesaleOrderPage() {
 
   const catalogTotalPages = catalog ? Math.max(1, Math.ceil(catalog.total / CATALOG_PAGE_SIZE)) : 1;
   const ordersTotalPages = orders ? Math.max(1, Math.ceil(orders.total / ORDERS_PAGE_SIZE)) : 1;
+  const showFloatingOrderBar = tab === "place" && !!manufacturerId && cartTotals.lines > 0;
 
   return (
     <>
       <DashboardScrollWorkspace
+        bodyClassName="overflow-y-auto"
         header={
           <PageHeader
             title="Order from manufacturer"
@@ -254,8 +256,8 @@ export default function MedicalStoreWholesaleOrderPage() {
       >
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-auto",
-            tab === "place" && manufacturerId ? "pb-28" : "pb-6",
+            "min-h-0",
+            showFloatingOrderBar ? "pb-24" : "pb-6",
           )}
         >
           <Tabs value={tab} onValueChange={setTab} className="w-full gap-6">
@@ -542,7 +544,7 @@ export default function MedicalStoreWholesaleOrderPage() {
         </div>
       </DashboardScrollWorkspace>
 
-      {tab === "place" && manufacturerId ? (
+      {showFloatingOrderBar ? (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 px-4 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md dark:shadow-[0_-4px_24px_rgba(0,0,0,0.25)]">
           <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm">
