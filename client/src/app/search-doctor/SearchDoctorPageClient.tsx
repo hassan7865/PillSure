@@ -30,7 +30,7 @@ export default function SearchDoctorPageClient() {
   const [doctorsLoading, setDoctorsLoading] = useState(true);
   const [doctorsError, setDoctorsError] = useState<Error | null>(null);
 
-  // Apply specialization filter from URL (?specializationIds=1,2 or ?drugCategory=...) — same mapping as RAG
+  // Apply specialization filter from URL (?specializationIds=1,2)
   useEffect(() => {
     const specIdsParam = searchParams.get("specializationIds");
     if (specIdsParam) {
@@ -38,48 +38,7 @@ export default function SearchDoctorPageClient() {
       if (ids.length) {
         setSelectedSpecializations(ids);
       }
-      return;
     }
-
-    const drugCategoryIdParam = searchParams.get("drugCategoryId");
-    if (drugCategoryIdParam) {
-      const parsedId = parseInt(drugCategoryIdParam, 10);
-      if (!isNaN(parsedId) && parsedId > 0) {
-        let cancelled = false;
-        (async () => {
-          try {
-            const ids = await doctorApi.getSpecializationIdsForDrugCategoryId(parsedId);
-            if (cancelled || !ids.length) return;
-            setSelectedSpecializations(ids.map((id) => String(id)));
-          } catch (e) {
-            console.error("Failed to resolve specializations for drug category id:", e);
-          }
-        })();
-        return () => {
-          cancelled = true;
-        };
-      }
-    }
-
-    const drugCategory = searchParams.get("drugCategory");
-    if (!drugCategory?.trim()) {
-      return;
-    }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const ids = await doctorApi.getSpecializationIdsForDrugCategory(drugCategory);
-        if (cancelled || !ids.length) return;
-        setSelectedSpecializations(ids.map((id) => String(id)));
-      } catch (e) {
-        console.error("Failed to resolve specializations for drug category:", e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [urlQueryKey]);
 
   // Debounce search input

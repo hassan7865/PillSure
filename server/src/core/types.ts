@@ -3,7 +3,9 @@ export enum UserRole {
   ADMIN = 'admin',
   DOCTOR = 'doctor',
   PHARMACIST = 'pharmacist',
-  HOSPITAL = 'hospital'
+  HOSPITAL = 'hospital',
+  MANUFACTURER = 'manufacturer',
+  MEDICAL_STORE = 'medical_store',
 }
 
 export interface JwtPayload {
@@ -91,6 +93,48 @@ export interface HospitalOnboardingRequest {
   websiteHospital?: string;
   licenseNo: string;
   adminName: string;
+}
+
+export interface ManufacturerOnboardingRequest {
+  legalName: string;
+  shortName?: string;
+  addressLine: string;
+  city: string;
+  province?: string;
+  postalCode?: string;
+  phone: string;
+  licenseNumber: string;
+  website?: string;
+  email?: string;
+}
+
+export interface MedicalStoreOnboardingRequest {
+  storeName: string;
+  addressLine: string;
+  city: string;
+  province?: string;
+  postalCode?: string;
+  phone: string;
+  licenseNumber?: string;
+  website?: string;
+  email?: string;
+  /** WGS84; required together with longitude for onboarding completion */
+  latitude?: number;
+  longitude?: number;
+}
+
+/** Single row for POST /api/manufacturer/medicines/import — category resolved/created by normalized name */
+export interface ManufacturerMedicineImportItem {
+  medicineName?: string;
+  categoryName?: string;
+  wholesalePrice: number | string;
+  moq?: number;
+  listedQuantity?: number;
+  prescriptionRequired?: boolean;
+}
+
+export interface ManufacturerMedicinesImportRequest {
+  items: ManufacturerMedicineImportItem[];
 }
 
 export interface OnboardingResponse {

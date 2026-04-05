@@ -40,6 +40,10 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
       return ["Doctor Info", "Professional Details"];
     } else if (pathname.includes('/hospital')) {
       return ["Hospital Info", "Admin Details"];
+    } else if (pathname.includes('/manufacturer')) {
+      return ["Company profile"];
+    } else if (pathname.includes('/medical-store')) {
+      return ["Store profile"];
     }
     return ["Step 1", "Step 2"];
   };
@@ -65,8 +69,8 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
       </div>
     }>
       {/* Scrollable Content */}
-      <div className="flex-1 p-4 md:p-6">
-        <div className="w-full max-w-3xl mx-auto">
+      <div className="flex-1 px-4 py-6 sm:px-6 md:py-8">
+        <div className="mx-auto w-full max-w-3xl">
           {/* Progress Indicator */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">

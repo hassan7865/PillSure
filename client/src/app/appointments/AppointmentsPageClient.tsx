@@ -15,9 +15,14 @@ import { CalendarClock, Clock, Video, Stethoscope, FileText, AlertCircle, Histor
 import LiveKitVideoCall from "@/components/livekit/LiveKitVideoCall";
 import { useAuth } from "@/contexts/auth-context";
 import PublicLayout from "@/layout/PublicLayout";
+import { PageHeader } from "@/components/shell/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cardSectionClass, publicWidePageClass, surfaceListItemClass } from "@/lib/dashboard-ui";
+import { cn } from "@/lib/utils";
 import { getStatusBadge, getConsultationModeIcon } from "@/lib/component-utils";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import cartApi from "@/app/cart/_api";
+import { appointmentApi } from "@/app/appointments/components/_api";
 
 export default function AppointmentsPageClient() {
   const router = useRouter();
@@ -167,19 +172,22 @@ export default function AppointmentsPageClient() {
   }, [token, user]);
 
   useEffect(() => {
-    if (activeTab === 'prescription' && selected?.id) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) return;
-      fetch(`${apiUrl}/api/appointments/${selected.id}/prescription`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          setPrescription(Array.isArray(data.data) ? data.data : []);
-        })
-        .catch(() => setPrescription([]));
-    }
-  }, [activeTab, selected?.id, token]);
+    if (activeTab !== "prescription" || !selected?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await appointmentApi.getPrescriptionByAppointmentId(selected.id);
+        if (!cancelled) {
+          setPrescription(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) setPrescription([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, selected?.id]);
 
   const handleOpenPrescriptionOrder = () => {
     const initial: Record<number, boolean> = {};
@@ -220,17 +228,21 @@ export default function AppointmentsPageClient() {
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-7xl h-full flex flex-col">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">My Appointments</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            View and manage your appointments with doctors
-          </p>
-        </div>
+      <div className={publicWidePageClass("flex h-full min-h-0 flex-col")}>
+        <PageHeader
+          title="My appointments"
+          description="View and manage your appointments with doctors."
+          icon={CalendarClock}
+        />
 
-        <div className="flex flex-col lg:flex-row flex-1 gap-4 lg:gap-6 min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:gap-6">
           {/* Left: Appointment List */}
-          <Card className="w-full lg:w-[360px] xl:w-[400px] lg:min-w-[320px] xl:min-w-[360px] lg:max-w-md flex flex-col h-full">
+          <Card
+            className={cn(
+              cardSectionClass(),
+              "flex h-full w-full flex-col lg:w-[360px] lg:min-w-[320px] lg:max-w-md xl:w-[400px] xl:min-w-[360px]",
+            )}
+          >
             <CardHeader className="border-b space-y-3">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-primary" />
@@ -306,11 +318,14 @@ export default function AppointmentsPageClient() {
                   {filteredAppointments.map((appt: any) => (
                     <div
                       key={appt.id}
-                      className={`transition-all duration-200 cursor-pointer rounded-lg border p-4 hover:shadow-md ${
-                        selected?.id === appt.id 
-                          ? "border-primary bg-primary/5 shadow-sm" 
-                          : "border-border bg-card hover:border-primary/50"
-                      }`}
+                      className={cn(
+                        surfaceListItemClass(
+                          "cursor-pointer p-4 transition-all duration-200 hover:shadow-md",
+                        ),
+                        selected?.id === appt.id
+                          ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+                          : "hover:border-primary/50",
+                      )}
                       onClick={() => setSelected(appt)}
                     >
                       <div className="flex items-start justify-between gap-3 mb-2">
@@ -343,7 +358,7 @@ export default function AppointmentsPageClient() {
           </Card>
 
           {/* Right: Tabbed Details/Prescription */}
-          <Card className="flex-1 flex flex-col h-full">
+          <Card className={cn(cardSectionClass(), "flex h-full flex-1 flex-col")}>
             {!selected ? (
               <CardContent className="flex-1 flex items-center justify-center min-h-[320px] sm:min-h-[400px]">
                 <div className="flex flex-col items-center justify-center text-center p-6">
@@ -466,14 +481,29 @@ export default function AppointmentsPageClient() {
                       </h2>
                       {/* Only show prescription for current appointment. */}
                       {prescription && prescription.length > 0 ? (
-                        <div className="rounded-lg border bg-primary/5 p-6 space-y-4">
-                          <ul className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                            {prescription.map((item: any, idx: number) => (
-                              <li key={idx}>
-                                <strong>{item.medicineName}</strong> - {item.dose} ({item.quantity})
-                              </li>
-                            ))}
-                          </ul>
+                        <div className="space-y-4 rounded-lg border border-border/80 bg-primary/5 p-4 sm:p-6">
+                          <div className="rounded-md border border-border/80 bg-background">
+                            <Table>
+                              <TableHeader className="[&_th]:bg-muted/50">
+                                <TableRow className="hover:bg-transparent">
+                                  <TableHead className="font-medium">Medicine</TableHead>
+                                  <TableHead className="font-medium">Dose</TableHead>
+                                  <TableHead className="text-right font-medium tabular-nums">Qty</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {prescription.map((item: any, idx: number) => (
+                                  <TableRow key={idx}>
+                                    <TableCell className="font-medium">{item.medicineName}</TableCell>
+                                    <TableCell className="text-muted-foreground">{item.dose ?? "—"}</TableCell>
+                                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                                      {item.quantity ?? "—"}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                           {selected?.hasMedicineOrder ? (
                             <div className="rounded-lg border bg-background p-3">
                               <p className="text-sm font-medium text-foreground">Already ordered</p>

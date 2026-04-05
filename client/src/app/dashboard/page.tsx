@@ -20,7 +20,7 @@ export default function DashboardEntryPage() {
   }, [loading, router, user]);
 
   return (
-    <div className="p-6">
+    <div className="flex min-h-[40vh] items-center justify-center">
       <Loader title="Opening dashboard" description="Redirecting to your dashboard..." />
     </div>
   );

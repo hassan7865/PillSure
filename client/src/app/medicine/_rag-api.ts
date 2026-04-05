@@ -2,6 +2,7 @@ import api from '@/lib/interceptor';
 import { ApiResponse } from '@/lib/types';
 import { Medicine } from './_api';
 import { Doctor } from '@/lib/types';
+import { extractApiData } from '@/lib/api-utils';
 
 export interface RAGMedicineInfo extends Medicine {
   ragScore?: number;
@@ -15,8 +16,6 @@ export interface RAGRecommendationResponse {
   recommendedDoctors: Doctor[];
   latency_ms: number;
 }
-
-import { extractApiData } from '@/lib/api-utils';
 
 export const ragApi = {
   getRecommendations: async (query: string): Promise<RAGRecommendationResponse> => {
@@ -36,5 +35,3 @@ export const ragApi = {
     return extractApiData(response);
   },
 };
-
-export default ragApi;

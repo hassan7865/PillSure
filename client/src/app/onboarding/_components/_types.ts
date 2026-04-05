@@ -35,6 +35,33 @@ export interface PatientOnboardingRequest {
     adminName: string;
   }
 
+  export interface ManufacturerOnboardingRequest {
+    legalName: string;
+    shortName?: string;
+    addressLine: string;
+    city: string;
+    province?: string;
+    postalCode?: string;
+    phone: string;
+    licenseNumber: string;
+    website?: string;
+    email?: string;
+  }
+
+  export interface MedicalStoreOnboardingRequest {
+    storeName: string;
+    addressLine: string;
+    city: string;
+    province?: string;
+    postalCode?: string;
+    phone: string;
+    licenseNumber?: string;
+    website?: string;
+    email?: string;
+    latitude: number;
+    longitude: number;
+  }
+
 
 
   export interface PatientFormValues {
@@ -72,5 +99,32 @@ export interface PatientOnboardingRequest {
     websiteHospital?: string;
     licenseNo: string;
     adminName: string;
+  }
+
+  export interface ManufacturerFormValues {
+    legalName: string;
+    shortName?: string;
+    addressLine: string;
+    city: string;
+    province?: string;
+    postalCode?: string;
+    phone: string;
+    licenseNumber: string;
+    website?: string;
+    email?: string;
+  }
+
+  export interface MedicalStoreFormValues {
+    storeName: string;
+    addressLine: string;
+    city: string;
+    province?: string;
+    postalCode?: string;
+    phone: string;
+    licenseNumber?: string;
+    website?: string;
+    email?: string;
+    latitude: string;
+    longitude: string;
   }
   

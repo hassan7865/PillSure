@@ -13,9 +13,12 @@ import CartRoute from "./src/routes/cart.route";
 import OrderRoute from "./src/routes/order.route";
 import { AuthService } from "./src/services/auth.service";
 import { OnboardingService } from "./src/services/onboarding.service";
+import { ManufacturerRoute } from "./src/routes/manufacturer.route";
+import { MedicalStoreRoute } from "./src/routes/medicalStore.route";
+import { MarketplaceRoute } from "./src/routes/marketplace.route";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
 import { requestLogger } from "./src/middleware/request.logger";
-import { db } from "./src/config/database";
+import { validateS3Config } from "./src/config/s3.config";
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +52,9 @@ app.use((req, res, next) => {
 const initializeApp = async () => {
   try {
     console.log("Database connected successfully");
+    if (!validateS3Config()) {
+      console.warn("S3 configuration is incomplete; image uploads may fail until AWS env vars are set.");
+    }
 
     // Initialize services
     const authService = new AuthService();
@@ -65,6 +71,9 @@ const initializeApp = async () => {
     const adminRoutes = new AdminRoute();
     const livekitRoutes = new LiveKitRoute();
     const ragRoutes = new RAGRoute();
+    const manufacturerRoutes = new ManufacturerRoute();
+    const medicalStoreRoutes = new MedicalStoreRoute();
+    const marketplaceRoutes = new MarketplaceRoute();
 
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
@@ -77,6 +86,9 @@ const initializeApp = async () => {
     app.use("/api/admin", adminRoutes.getRouter());
     app.use("/api/livekit", livekitRoutes.getRouter());
     app.use("/api/rag", ragRoutes.getRouter());
+    app.use("/api/manufacturer", manufacturerRoutes.getRouter());
+    app.use("/api/medical-store", medicalStoreRoutes.getRouter());
+    app.use("/api/marketplace", marketplaceRoutes.getRouter());
 
     // Health check endpoint
     app.get("/health", (req, res) => {
@@ -119,16 +131,13 @@ process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
  
 });
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
+function gracefulShutdown() {
   console.log("Shutting down server...");
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", async () => {
-  console.log("Shutting down server...");
-  process.exit(0);
-});
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
 
 // Start the server
 startServer().catch((error) => {

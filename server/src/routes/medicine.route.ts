@@ -2,6 +2,11 @@ import { Router, Request, Response, NextFunction } from "express";
 import { medicineService } from "../services/medicine.service";
 import { BadRequestError } from "../middleware/error.handler";
 import { ApiResponse } from "../core/api-response";
+import {
+  parseIntInRangeOrDefault,
+  parseOptionalIntInRange,
+  parseOptionalPositiveInt,
+} from "../utils/query-params";
 
 export class MedicineRoute {
   private router: Router;
@@ -23,6 +28,9 @@ export class MedicineRoute {
 
     this.router.get("/drug-categories", this.listDrugCategories);
 
+    // GET /api/medicine/manufacturers — list manufacturers (for filters)
+    this.router.get("/manufacturers", this.listManufacturers);
+
     // GET /api/medicine/:id - Get medicine by ID
     this.router.get("/:id", this.getMedicineById);
   }
@@ -35,11 +43,9 @@ export class MedicineRoute {
 
       let limit: number | undefined = undefined;
       if (limitParam !== undefined) {
-        const parsed = parseInt(limitParam, 10);
-        if (isNaN(parsed) || parsed < 1 || parsed > 24) {
-          return next(BadRequestError("limit must be an integer between 1 and 24"));
-        }
-        limit = parsed;
+        const lr = parseOptionalIntInRange(limitParam, 1, 24, "limit");
+        if (!lr.ok) return next(lr.error);
+        limit = lr.value;
       }
 
       const uniqueCategories = uniqueCategoriesParam.toLowerCase() !== 'false';
@@ -59,32 +65,17 @@ export class MedicineRoute {
       const categoryPageParam = req.query.categoryPage as string | undefined;
       const categoriesPerPageParam = req.query.categoriesPerPage as string | undefined;
 
-      let perCategoryLimit: number | undefined = undefined;
-      if (perCategoryLimitParam !== undefined) {
-        const parsed = parseInt(perCategoryLimitParam, 10);
-        if (isNaN(parsed) || parsed < 1 || parsed > 24) {
-          return next(BadRequestError("perCategoryLimit must be an integer between 1 and 24"));
-        }
-        perCategoryLimit = parsed;
-      }
+      const pl = parseOptionalIntInRange(perCategoryLimitParam, 1, 24, "perCategoryLimit");
+      if (!pl.ok) return next(pl.error);
+      const perCategoryLimit = pl.value;
 
-      let categoryPage: number | undefined = undefined;
-      if (categoryPageParam !== undefined) {
-        const parsed = parseInt(categoryPageParam, 10);
-        if (isNaN(parsed) || parsed < 1) {
-          return next(BadRequestError("categoryPage must be an integer greater than 0"));
-        }
-        categoryPage = parsed;
-      }
+      const cp = parseOptionalPositiveInt(categoryPageParam, "categoryPage");
+      if (!cp.ok) return next(cp.error);
+      const categoryPage = cp.value;
 
-      let categoriesPerPage: number | undefined = undefined;
-      if (categoriesPerPageParam !== undefined) {
-        const parsed = parseInt(categoriesPerPageParam, 10);
-        if (isNaN(parsed) || parsed < 1 || parsed > 20) {
-          return next(BadRequestError("categoriesPerPage must be an integer between 1 and 20"));
-        }
-        categoriesPerPage = parsed;
-      }
+      const cpp = parseOptionalIntInRange(categoriesPerPageParam, 1, 20, "categoriesPerPage");
+      if (!cpp.ok) return next(cpp.error);
+      const categoriesPerPage = cpp.value;
 
       const data = await medicineService.getCatalogMedicines({
         category,
@@ -103,18 +94,38 @@ export class MedicineRoute {
     try {
       const query = req.query.q as string | undefined;
       const limitParam = req.query.limit as string | undefined;
+      const manufacturerIdRaw = req.query.manufacturerId as string | undefined;
 
       if (!query || query.trim().length === 0) {
         return res.status(200).json(ApiResponse([], "No search query provided"));
       }
 
-      const limit = limitParam ? parseInt(limitParam, 10) : 20;
-      if (isNaN(limit) || limit < 1 || limit > 50) {
-        return next(BadRequestError("Limit must be between 1 and 50"));
+      const lr = parseIntInRangeOrDefault(limitParam, 20, 1, 50, "Limit");
+      if (!lr.ok) return next(lr.error);
+      const limit = lr.value;
+
+      let manufacturerId: string | undefined;
+      if (manufacturerIdRaw != null && String(manufacturerIdRaw).trim() !== "") {
+        const m = String(manufacturerIdRaw).trim();
+        if (
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m)
+        ) {
+          return next(BadRequestError("manufacturerId must be a valid UUID"));
+        }
+        manufacturerId = m;
       }
 
-      const medicines = await medicineService.searchMedicines(query, limit);
+      const medicines = await medicineService.searchMedicines(query, limit, manufacturerId);
       res.status(200).json(ApiResponse(medicines, "Medicines retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private listManufacturers = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await medicineService.listManufacturersForPicker();
+      res.status(200).json(ApiResponse(data, "Manufacturers retrieved successfully"));
     } catch (error) {
       next(error);
     }
@@ -130,21 +141,6 @@ export class MedicineRoute {
   };
 
   private getMedicineById = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const medicineId = parseInt(req.params.id, 10);
-
-      if (isNaN(medicineId)) {
-        return next(BadRequestError("Invalid medicine ID"));
-      }
-
-      const medicine = await medicineService.getMedicineById(medicineId);
-      res.status(200).json(ApiResponse(medicine, "Medicine retrieved successfully"));
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  private updateMedicineImages = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const medicineId = parseInt(req.params.id, 10);
 

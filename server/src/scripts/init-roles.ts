@@ -35,6 +35,16 @@ const initializeRoles = async () => {
         name: UserRole.ADMIN,
         description: 'Admin role for system administration',
         isActive: true
+      },
+      {
+        name: UserRole.MANUFACTURER,
+        description: 'Pharmaceutical manufacturer',
+        isActive: true
+      },
+      {
+        name: UserRole.MEDICAL_STORE,
+        description: 'Medical store / pharmacy',
+        isActive: true
       }
     ]);
 

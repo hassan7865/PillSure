@@ -2,13 +2,18 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { ShoppingCart, CheckCircle, XCircle, Sparkles, Stethoscope } from "lucide-react";
+import { ShoppingCart, Stethoscope } from "lucide-react";
 import { RAGMedicineInfo } from "@/app/medicine/_rag-api";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { buildConsultDoctorUrl } from "@/lib/consult-doctor-url";
+import { normalizeMedicineImages } from "@/lib/medicine-display";
+import {
+  MedicinePrescriptionBadge,
+  RagMatchBadge,
+  medicineCatalogCardClassName,
+} from "@/components/medicine/medicine-catalog-parts";
 
 interface RecommendationResultCardProps {
   medicine: RAGMedicineInfo;
@@ -21,24 +26,8 @@ export default function RecommendationResultCard({
 }: RecommendationResultCardProps) {
   const router = useRouter();
 
-  // Parse images
-  const images: string[] = Array.isArray(medicine.images)
-    ? medicine.images
-    : medicine.images
-    ? [medicine.images as unknown as string]
-    : medicine.medicineUrl
-    ? [medicine.medicineUrl]
-    : ["/pills.png"];
-
+  const images = normalizeMedicineImages(medicine);
   const primaryImage = images[0] || "/pills.png";
-
-  // Calculate prices
-  const priceNum = medicine.price ? parseFloat(medicine.price) : 0;
-  const discountPct = medicine.discount ? parseFloat(medicine.discount) : 0;
-  const originalPrice =
-    discountPct > 0 ? priceNum / (1 - discountPct / 100) : undefined;
-  const inStock = (medicine.stock ?? 0) > 0;
-  const finalPrice = discountPct > 0 ? priceNum : originalPrice || priceNum;
 
   return (
     <motion.div
@@ -46,14 +35,10 @@ export default function RecommendationResultCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card
-        className="cursor-pointer hover:shadow-lg transition-all duration-300 border-2 border-primary/20 hover:border-primary/40"
-        onClick={onClick}
-      >
+      <Card className={medicineCatalogCardClassName} onClick={onClick}>
         <CardContent className="p-3 sm:p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6">
-            {/* Image */}
-            <div className="relative w-full sm:w-48 h-48 sm:h-48 rounded-lg overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 md:gap-6">
+            <div className="relative flex h-48 w-full flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted sm:h-48 sm:w-48">
               <Image
                 src={primaryImage}
                 alt={medicine.medicineName}
@@ -61,100 +46,54 @@ export default function RecommendationResultCard({
                 className="object-contain p-2"
                 sizes="(max-width: 640px) 100vw, 192px"
               />
-              {medicine.ragScore && (
-                <div className="absolute top-2 right-2">
-                  <Badge className="bg-primary text-primary-foreground flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" />
-                    {Math.round(medicine.ragScore * 100)}% Match
-                  </Badge>
-                </div>
+              {medicine.ragScore != null && medicine.ragScore > 0 && (
+                <RagMatchBadge score={medicine.ragScore} />
               )}
             </div>
 
-            {/* Content */}
-            <div className="flex-1 flex flex-col gap-3 sm:gap-4">
-              {/* Title and Category */}
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:gap-4">
               <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+                <h3 className="mb-2 text-xl font-bold text-foreground sm:text-2xl">
                   {medicine.medicineName}
                 </h3>
-                {medicine.drugCategory && (
-                  <Badge variant="outline" className="text-xs">
-                    {medicine.drugCategory}
-                  </Badge>
-                )}
               </div>
 
-              {/* Stock Status */}
-              <div className="flex items-center gap-2">
-                {inStock ? (
-                  <div className="flex items-center gap-1 text-green-600 text-sm font-medium">
-                    <CheckCircle className="h-4 w-4" />
-                    In Stock
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-red-600 text-sm font-medium">
-                    <XCircle className="h-4 w-4" />
-                    Out of Stock
-                  </div>
-                )}
-                {medicine.prescriptionRequired && (
-                  <Badge variant="outline" className="text-xs">
-                    Prescription Required
-                  </Badge>
-                )}
+              <div className="flex flex-wrap items-center gap-2">
+                {medicine.prescriptionRequired && <MedicinePrescriptionBadge />}
               </div>
 
-              {/* Description/Context */}
               {medicine.contextUsed && (
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {medicine.contextUsed}
-                </p>
+                <p className="line-clamp-2 text-sm text-muted-foreground">{medicine.contextUsed}</p>
               )}
 
-              {/* Price and Action */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-auto pt-2">
-                <div className="flex flex-col">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
-                      PKR {finalPrice.toFixed(2)}
-                    </span>
-                    {discountPct > 0 && originalPrice && (
-                      <>
-                        <span className="text-sm sm:text-base md:text-lg text-muted-foreground line-through">
-                          PKR {originalPrice.toFixed(2)}
-                        </span>
-                        <Badge className="bg-green-500 text-white text-xs">
-                          {discountPct.toFixed(0)}% OFF
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                </div>
+              <div className="mt-auto flex flex-col justify-between gap-3 pt-2 sm:flex-row sm:items-center sm:gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Pricing and availability are set by pharmacy listings.
+                </p>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                   {medicine.prescriptionRequired && (
                     <Button
                       size="lg"
                       variant="outline"
-                      className="w-full sm:w-auto flex-shrink-0"
+                      className="w-full flex-shrink-0 sm:w-auto"
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(buildConsultDoctorUrl(medicine));
+                        router.push(buildConsultDoctorUrl());
                       }}
                     >
-                      <Stethoscope className="h-4 w-4 mr-2" />
+                      <Stethoscope className="mr-2 h-4 w-4" />
                       Consult a doctor
                     </Button>
                   )}
                   <Button
                     size="lg"
-                    className="w-full sm:w-auto flex-shrink-0"
+                    className="w-full flex-shrink-0 sm:w-auto"
                     onClick={(e) => {
                       e.stopPropagation();
                       onClick();
                     }}
                   >
-                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    <ShoppingCart className="mr-2 h-4 w-4" />
                     View Details
                   </Button>
                 </div>

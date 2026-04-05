@@ -17,24 +17,6 @@ export const errorHandler = (
   let error = { ...err };
   error.message = err.message;
 
-  // Mongoose bad ObjectId
-  if (err.name === 'CastError') {
-    const message = 'Resource not found';
-    error = createError(message, 404);
-  }
-
-  // Mongoose duplicate key
-  if (err.code === '11000') {
-    const message = 'Duplicate field value entered';
-    error = createError(message, 400);
-  }
-
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map((val: any) => val.message).join(', ');
-    error = createError(message, 400);
-  }
-
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     const message = 'Invalid token';

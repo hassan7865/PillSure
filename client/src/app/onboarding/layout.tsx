@@ -2,7 +2,7 @@
 
 import React, { Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Pill, User, Stethoscope, Building2 } from "lucide-react";
+import { Pill, User, Stethoscope, Building2, Factory, Store } from "lucide-react";
 import Loader from "@/components/ui/loader";
 
 interface OnboardingLayoutProps {
@@ -43,6 +43,22 @@ const OnboardingLayoutContent: React.FC<OnboardingLayoutProps> = ({ children }) 
         steps: [
           { id: 1, name: "Hospital Info", description: "Hospital information", icon: Building2 },
           { id: 2, name: "Admin Details", description: "Admin & licensing details", icon: User },
+        ]
+      };
+    } else if (pathname.includes('/manufacturer')) {
+      return {
+        title: "Manufacturer Onboarding",
+        type: "manufacturer",
+        steps: [
+          { id: 1, name: "Company profile", description: "Legal & contact details", icon: Factory },
+        ]
+      };
+    } else if (pathname.includes('/medical-store')) {
+      return {
+        title: "Medical store onboarding",
+        type: "medical_store",
+        steps: [
+          { id: 1, name: "Store profile", description: "Location, license & coordinates", icon: Store },
         ]
       };
     }
@@ -108,8 +124,8 @@ const OnboardingLayoutContent: React.FC<OnboardingLayoutProps> = ({ children }) 
         </div>
         
         {/* Footer */}
-        <div className="text-xs text-muted-foreground mt-auto">
-          © All rights reserved PillSure
+        <div className="mt-auto text-xs text-primary-foreground/70">
+          © {new Date().getFullYear()} PillSure. All rights reserved.
         </div>
       </div>
 

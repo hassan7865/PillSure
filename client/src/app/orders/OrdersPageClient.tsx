@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PublicLayout from "@/layout/PublicLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +13,10 @@ import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 import { CalendarDays, Package, CreditCard, ChevronDown, History } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { PageHeader } from "@/components/shell/page-header";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cardSectionClass, publicPageContainerClass, surfaceListItemClass } from "@/lib/dashboard-ui";
+import { cn } from "@/lib/utils";
 
 export default function OrdersPageClient() {
   const router = useRouter();
@@ -130,18 +134,14 @@ export default function OrdersPageClient() {
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-8">
-        <Card className="border-primary/10 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Package className="h-6 w-6 text-primary" />
-              My Orders
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Track your medicine purchases and payment progress.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
+      <div className={publicPageContainerClass("space-y-6")}>
+        <PageHeader
+          title="My orders"
+          description="Track your medicine purchases and payment progress."
+          icon={Package}
+        />
+        <Card className={cardSectionClass()}>
+          <CardContent className="space-y-3 p-6">
             {loading ? (
               <Loader title="Loading orders" description="Fetching your orders..." />
             ) : orders.length === 0 ? (
@@ -287,7 +287,7 @@ function OrderCard({
                         loadOrderDetails(order.id);
                       }
                     }}
-                    className="rounded-xl border bg-card p-4 hover:border-primary/30 transition-colors"
+                    className={cn(surfaceListItemClass(), "p-4 transition-colors hover:border-primary/30")}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -309,7 +309,9 @@ function OrderCard({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                       <div className="rounded-lg bg-muted/40 p-3">
                         <p className="text-xs text-muted-foreground mb-1">Amount</p>
-                        <p className="font-semibold">PKR {Number(order.total || 0).toFixed(2)}</p>
+                        <p className="font-semibold tabular-nums">
+                          PKR {Number(order.total || 0).toFixed(2)}
+                        </p>
                       </div>
                       <div className="rounded-lg bg-muted/40 p-3">
                         <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
@@ -340,37 +342,58 @@ function OrderCard({
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <div className="mt-3 rounded-lg border bg-muted/20 p-3 space-y-3">
+                      <div className="mt-3 rounded-md border border-border/80 bg-muted/20 p-3">
                         {loadingDetailsById[order.id] ? (
                           <p className="text-sm text-muted-foreground">Loading items...</p>
                         ) : !orderDetailsById[order.id]?.items?.length ? (
                           <p className="text-sm text-muted-foreground">No items found in this order.</p>
                         ) : (
-                          orderDetailsById[order.id].items.map((item: any) => {
-                            const firstImage = extractFirstImage(item.medicineImages);
-                            return (
-                              <div key={item.id} className="flex items-center gap-3 rounded-md border bg-background p-2">
-                                <div className="h-14 w-14 shrink-0 rounded-md border bg-muted overflow-hidden flex items-center justify-center">
-                                  {firstImage ? (
-                                    <img
-                                      src={firstImage}
-                                      alt={item.medicineName}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <Package className="h-5 w-5 text-muted-foreground" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium truncate">{item.medicineName}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Qty: {item.quantity} x PKR {Number(item.unitPrice || 0).toFixed(2)}
-                                  </p>
-                                </div>
-                                <p className="text-sm font-semibold">PKR {Number(item.lineTotal || 0).toFixed(2)}</p>
-                              </div>
-                            );
-                          })
+                          <Table className="min-w-[520px]">
+                            <TableHeader className="[&_th]:bg-muted/50">
+                              <TableRow className="hover:bg-transparent">
+                                <TableHead className="font-medium">Product</TableHead>
+                                <TableHead className="text-right font-medium tabular-nums">Qty</TableHead>
+                                <TableHead className="text-right font-medium tabular-nums">Unit</TableHead>
+                                <TableHead className="text-right font-medium tabular-nums">Line</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {orderDetailsById[order.id].items.map((item: any) => {
+                                const firstImage = extractFirstImage(item.medicineImages);
+                                return (
+                                  <TableRow key={item.id}>
+                                    <TableCell>
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                                          {firstImage ? (
+                                            <img
+                                              src={firstImage}
+                                              alt={item.medicineName}
+                                              className="h-full w-full object-cover"
+                                            />
+                                          ) : (
+                                            <Package className="h-5 w-5 text-muted-foreground" />
+                                          )}
+                                        </div>
+                                        <span className="max-w-[200px] text-sm font-medium leading-snug sm:max-w-none">
+                                          {item.medicineName}
+                                        </span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                                      {item.quantity}
+                                    </TableCell>
+                                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                                      PKR {Number(item.unitPrice || 0).toFixed(2)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold tabular-nums">
+                                      PKR {Number(item.lineTotal || 0).toFixed(2)}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
                         )}
                       </div>
                     </CollapsibleContent>

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
@@ -10,22 +9,20 @@ import orderApi from "@/app/orders/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 import { getDashboardHomeByRole, normalizeRole } from "@/lib/role-routing";
-import { 
-  User, 
-  LogOut, 
-  ShoppingCart, 
-  Stethoscope,
-  Building2,
-  Home,
+import {
+  User,
+  LogOut,
+  ShoppingCart,
   Pill,
   Grid3X3,
-  Info,
-  Phone,
   Search,
-  ChevronDown,
   CalendarClock,
   Trash2,
-  ShoppingBag
+  ShoppingBag,
+  Stethoscope,
+  Building2,
+  Store,
+  Factory,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,7 +43,19 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 
-const Navbar: React.FC = () => {
+export type NavbarCenterSearchProps = {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  /** Defaults to navigating to `/search` with the current query. */
+  onSubmit?: () => void;
+};
+
+type NavbarProps = {
+  centerSearch?: NavbarCenterSearchProps;
+};
+
+const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
   const { user, logout } = useAuth();
   const { showError, showSuccess } = useCustomToast();
   const router = useRouter();
@@ -60,12 +69,15 @@ const Navbar: React.FC = () => {
   const [checkoutLoading, setCheckoutLoading] = useState<"cod" | "online" | null>(null);
   const isCheckoutInfoValid = shippingAddress.trim().length > 0 && contactNo.trim().length > 0;
 
-  const handleJoinAsDoctor = () => {
-    router.push('/auth?role=doctor&mode=signup');
-  };
-
-  const handleRegisterAsHospital = () => {
-    router.push('/auth?role=hospital&mode=signup');
+  const handleNavSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!centerSearch) return;
+    if (centerSearch.onSubmit) {
+      centerSearch.onSubmit();
+      return;
+    }
+    const q = centerSearch.value.trim();
+    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
   };
 
   // Handle scroll effect
@@ -148,34 +160,58 @@ const Navbar: React.FC = () => {
   };
   
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      scrolled ? 'bg-white/95 backdrop-blur-xl shadow-md' : 'bg-white/80 backdrop-blur-md'
-    }`}>
+    <nav
+      className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-background/95 shadow-sm shadow-foreground/5 backdrop-blur-xl"
+          : "bg-background/85 backdrop-blur-md"
+      }`}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-6">
-        <div className="flex items-center justify-between h-16 sm:h-20">
+        <div className="flex h-14 items-center justify-between gap-3 sm:h-16 lg:h-20">
           {/* Logo */}
-          <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => router.push('/')}>
-            <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-              <Pill className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
+          <div className="flex min-w-0 shrink-0 cursor-pointer items-center space-x-2 sm:space-x-3" onClick={() => router.push('/')}>
+            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg sm:h-10 sm:w-10">
+              <Pill className="h-4 w-4 text-primary-foreground sm:h-6 sm:w-6" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            <span className="truncate text-lg font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent sm:text-2xl">
               PillSure
             </span>
           </div>
 
-          {/* Right Side Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Search Icon - Hidden on mobile */}
-            <Button
-              variant="ghost"
-              size="icon"
-              type="button"
-              className="hidden md:flex text-foreground/70 hover:text-primary hover:bg-primary/5 rounded-full transition-all duration-200"
-              onClick={() => router.push("/medicine")}
-              aria-label="Search medicines"
+          {centerSearch && (
+            <form
+              onSubmit={handleNavSearchSubmit}
+              className="mx-2 hidden min-w-0 max-w-2xl flex-1 md:block"
             >
-              <Search className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground sm:left-4 sm:h-5 sm:w-5" />
+                <Input
+                  value={centerSearch.value}
+                  onChange={(e) => centerSearch.onChange(e.target.value)}
+                  placeholder={centerSearch.placeholder ?? "Search medicines, pharmacies…"}
+                  className="h-10 rounded-full border-0 bg-muted pl-10 pr-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 sm:h-11 sm:pl-11"
+                  aria-label="Search"
+                />
+              </div>
+            </form>
+          )}
+
+          {/* Right Side Actions */}
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {/* Search Icon when no inline search */}
+            {!centerSearch && (
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                className="hidden text-foreground/70 hover:bg-primary/5 hover:text-primary md:inline-flex rounded-full transition-all duration-200"
+                onClick={() => router.push("/search")}
+                aria-label="Search medicines"
+              >
+                <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            )}
 
             {/* Cart Icon */}
             <Sheet open={cartOpen} onOpenChange={setCartOpen}>
@@ -216,8 +252,11 @@ const Navbar: React.FC = () => {
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="text-sm font-medium">{item.medicineName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Qty: {item.quantity} x PKR {item.unitPrice}
+                              {item.medicalStoreName ? (
+                                <p className="text-xs text-muted-foreground">{item.medicalStoreName}</p>
+                              ) : null}
+                              <p className="text-xs tabular-nums text-muted-foreground">
+                                Qty: {item.quantity} × PKR {item.unitPrice}
                               </p>
                             </div>
                             <Button
@@ -234,7 +273,7 @@ const Navbar: React.FC = () => {
                           </div>
                         </div>
                       ))}
-                      <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm font-semibold">
+                      <div className="rounded-xl border border-primary/10 bg-primary/5 p-3 text-sm font-semibold tabular-nums">
                         Subtotal: PKR {Number(cartData.total || 0).toFixed(2)}
                       </div>
                     </div>
@@ -272,26 +311,93 @@ const Navbar: React.FC = () => {
               </SheetContent>
             </Sheet>
 
-            {/* Profile Dropdown - Shows different content based on login status */}
+            {/* Guests: same profile control as logged-in users; menu includes Sign in + partner paths */}
+            {!user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-primary/20 p-0 hover:ring-2 hover:ring-primary/20"
+                    aria-label="Account menu"
+                  >
+                    <User className="mx-auto h-4 w-4 text-primary sm:h-5 sm:w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 sm:w-64" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1 p-2">
+                      <p className="text-sm font-semibold sm:text-base">Account</p>
+                      <p className="text-xs text-muted-foreground">Sign in to access your account</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="cursor-pointer py-2 sm:py-3"
+                    onClick={() => router.push("/auth")}
+                  >
+                    <User className="mr-2 h-4 w-4 text-muted-foreground sm:mr-3 sm:h-[1.05rem] sm:w-[1.05rem]" />
+                    <span className="text-sm sm:text-base">Sign In</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    For Professionals
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="cursor-pointer py-2 sm:py-3"
+                    onClick={() => router.push("/auth?role=doctor&mode=signup")}
+                  >
+                    <Stethoscope className="mr-2 h-4 w-4 text-muted-foreground sm:mr-3" />
+                    <div>
+                      <p className="text-sm font-medium sm:text-base">For Doctors</p>
+                      <p className="text-xs text-muted-foreground">Join our medical network</p>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer py-2 sm:py-3"
+                    onClick={() => router.push("/auth?role=hospital&mode=signup")}
+                  >
+                    <Building2 className="mr-2 h-4 w-4 text-muted-foreground sm:mr-3" />
+                    <div>
+                      <p className="text-sm font-medium sm:text-base">For Hospitals</p>
+                      <p className="text-xs text-muted-foreground">Register your facility</p>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    Shops &amp; manufacturing
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="cursor-pointer py-2 sm:py-3"
+                    onClick={() => router.push("/auth?role=medical_store&mode=signup")}
+                  >
+                    <Store className="mr-2 h-4 w-4 text-muted-foreground sm:mr-3" />
+                    <div>
+                      <p className="text-sm font-medium sm:text-base">Open a medical store</p>
+                      <p className="text-xs text-muted-foreground">Retail onboarding &amp; marketplace listing</p>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer py-2 sm:py-3"
+                    onClick={() => router.push("/auth?role=manufacturer&mode=signup")}
+                  >
+                    <Factory className="mr-2 h-4 w-4 text-muted-foreground sm:mr-3" />
+                    <div>
+                      <p className="text-sm font-medium sm:text-base">Manufacturing</p>
+                      <p className="text-xs text-muted-foreground">Wholesale catalog &amp; partner stores</p>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                {user ? (
                   <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0 hover:ring-2 hover:ring-primary/20 transition-all">
                     <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-semibold shadow-lg text-xs sm:text-sm">
                       {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                     </div>
                   </Button>
-                ) : (
-                  <Button 
-                    variant="ghost" 
-                    className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0 hover:ring-2 hover:ring-primary/20 transition-all border-2 border-primary/20"
-                  >
-                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  </Button>
-                )}
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 sm:w-64" align="end" forceMount>
-                {user ? (
                   <>
                     {/* Logged In User Menu */}
                     <DropdownMenuLabel className="font-normal">
@@ -309,96 +415,59 @@ const Navbar: React.FC = () => {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {normalizeRole(user?.role) === 'doctor' ? (
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => router.push(getDashboardHomeByRole(user?.role))}
-                        className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
+                        className="cursor-pointer py-2 sm:py-3"
                       >
-                        <Grid3X3 className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
+                        <Grid3X3 className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <span className="text-sm sm:text-base">Dashboard</span>
                       </DropdownMenuItem>
                     ) : (
                       <>
                         {normalizeRole(user?.role) === 'patient' && (
-                          <DropdownMenuItem 
-                            onClick={() => router.push('/appointments')} 
-                            className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
+                          <DropdownMenuItem
+                            onClick={() => router.push('/appointments')}
+                            className="cursor-pointer py-2 sm:py-3"
                           >
-                            <CalendarClock className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
+                            <CalendarClock className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             <span className="text-sm sm:text-base">My Appointments</span>
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem 
-                          onClick={() => router.push('/orders')} 
-                          className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
+                        <DropdownMenuItem
+                          onClick={() => router.push('/orders')}
+                          className="cursor-pointer py-2 sm:py-3"
                         >
-                          <ShoppingCart className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
+                          <ShoppingCart className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <span className="text-sm sm:text-base">My Orders</span>
                         </DropdownMenuItem>
                       </>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={logout} 
-                      className="cursor-pointer py-2 sm:py-3 text-red-600 focus:text-red-700 focus:bg-red-50 data-[highlighted]:text-red-700 data-[highlighted]:bg-red-50 transition-colors"
-                    >
-                      <LogOut className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-red-600 transition-colors" />
+                    <DropdownMenuItem variant="destructive" onClick={logout} className="cursor-pointer py-2 sm:py-3">
+                      <LogOut className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4" />
                       <span className="text-sm sm:text-base">Log out</span>
                     </DropdownMenuItem>
                   </>
-                ) : (
-                  <>
-                    {/* Logged Out User Menu */}
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1 p-2">
-                        <p className="text-sm sm:text-base font-semibold">Account</p>
-                        <p className="text-xs text-muted-foreground">Sign in to access your account</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => router.push('/auth')} 
-                      className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
-                    >
-                      <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
-                      <span className="text-sm sm:text-base">Sign In</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => router.push('/auth?mode=signup')} 
-                      className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
-                    >
-                      <User className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
-                      <span className="text-sm sm:text-base">Sign Up</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground px-2 py-1.5">
-                      For Professionals
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem 
-                      onClick={handleJoinAsDoctor} 
-                      className="cursor-pointer py-2 sm:py-3 focus:bg-primary/5 focus:text-primary data-[highlighted]:bg-primary/5 data-[highlighted]:text-primary transition-colors"
-                    >
-                      <Stethoscope className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-primary transition-colors" />
-                      <div>
-                        <p className="text-sm sm:text-base font-medium">For Doctors</p>
-                        <p className="text-xs text-muted-foreground">Join our medical network</p>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={handleRegisterAsHospital} 
-                      className="cursor-pointer py-2 sm:py-3 focus:bg-green-50 focus:text-green-700 data-[highlighted]:bg-green-50 data-[highlighted]:text-green-700 transition-colors"
-                    >
-                      <Building2 className="mr-2 sm:mr-3 h-3 w-3 sm:h-4 sm:w-4 text-green-600 data-[highlighted]:text-green-700 transition-colors" />
-                      <div>
-                        <p className="text-sm sm:text-base font-medium">For Hospitals</p>
-                        <p className="text-xs text-muted-foreground">Register your facility</p>
-                      </div>
-                    </DropdownMenuItem>
-                  </>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
           </div>
         </div>
+
+        {centerSearch && (
+          <form onSubmit={handleNavSearchSubmit} className="border-t border-border/40 pb-3 pt-3 md:hidden">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={centerSearch.value}
+                onChange={(e) => centerSearch.onChange(e.target.value)}
+                placeholder={centerSearch.placeholder ?? "Search medicines, pharmacies…"}
+                className="h-10 rounded-full border-0 bg-muted pl-10 pr-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20"
+                aria-label="Search"
+              />
+            </div>
+          </form>
+        )}
       </div>
     </nav>
   );

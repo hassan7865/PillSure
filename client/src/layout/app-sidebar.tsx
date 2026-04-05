@@ -31,14 +31,16 @@ import {
 } from '@/components/ui/sidebar';
 import {
   ChevronRight,
-  CreditCard,
   LayoutDashboard,
   LogOut,
   Pill,
   CalendarClock,
   Stethoscope,
   Building2,
-  Layers
+  LayoutList,
+  ShoppingCart,
+  ClipboardList,
+  FolderOpen
 } from 'lucide-react';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -82,6 +84,58 @@ function getNavItems(user: AuthUser | null) {
     ];
   }
 
+  if (role === 'manufacturer') {
+    return [
+      {
+        title: 'Dashboard',
+        url: getDashboardHomeByRole(role),
+        icon: LayoutDashboard,
+        isActive: true
+      },
+      {
+        title: 'Wholesale orders',
+        url: '/dashboard/manufacturer/wholesale-orders',
+        icon: ClipboardList,
+        isActive: false
+      }
+    ];
+  }
+
+  if (role === 'medical_store') {
+    return [
+      {
+        title: 'Dashboard',
+        url: getDashboardHomeByRole(role),
+        icon: LayoutDashboard,
+        isActive: true
+      },
+      {
+        title: 'Categories',
+        url: '/dashboard/medical-store/categories',
+        icon: FolderOpen,
+        isActive: false
+      },
+      {
+        title: 'Manage listings',
+        url: '/dashboard/medical-store/listings',
+        icon: LayoutList,
+        isActive: false
+      },
+      {
+        title: 'Patient orders',
+        url: '/dashboard/medical-store/retail-orders',
+        icon: ClipboardList,
+        isActive: false
+      },
+      {
+        title: 'Order from manufacturer',
+        url: '/dashboard/medical-store/wholesale-order',
+        icon: ShoppingCart,
+        isActive: false
+      }
+    ];
+  }
+
   if (role === 'admin') {
     return [
       {
@@ -99,21 +153,6 @@ function getNavItems(user: AuthUser | null) {
         title: 'Hospitals',
         url: '/dashboard/admin/hospitals',
         icon: Building2
-      },
-      {
-        title: 'Medicines',
-        url: '/dashboard/admin/medicines',
-        icon: Pill
-      },
-      {
-        title: 'Categories',
-        url: '/dashboard/admin/categories',
-        icon: Layers
-      },
-      {
-        title: 'Orders',
-        url: '/dashboard/admin/orders',
-        icon: CreditCard
       }
     ];
   }
@@ -291,8 +330,8 @@ export default function AppSidebar() {
                 <DropdownMenuGroup>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className='mr-2 h-4 w-4' />
+                <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>

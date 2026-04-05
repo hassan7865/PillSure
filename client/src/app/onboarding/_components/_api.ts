@@ -1,5 +1,5 @@
 import api from '@/lib/interceptor';
-import { DoctorOnboardingRequest, HospitalOnboardingRequest, PatientOnboardingRequest } from './_types';
+import { DoctorOnboardingRequest, HospitalOnboardingRequest, PatientOnboardingRequest, ManufacturerOnboardingRequest, MedicalStoreOnboardingRequest } from './_types';
 import { OnboardingResponseData } from '@/lib/types';
 import { ApiResponse } from '@/lib/types';
 import { extractApiData } from '@/lib/api-utils';
@@ -24,6 +24,16 @@ export const onboardingApi = {
     return extractApiData(response);
   },
 
+  saveManufacturerOnboarding: async (data: ManufacturerOnboardingRequest): Promise<OnboardingResponseData> => {
+    const response = await api.post<ApiResponse<OnboardingResponseData>>('/onboarding/manufacturer', data);
+    return extractApiData(response);
+  },
+
+  saveMedicalStoreOnboarding: async (data: MedicalStoreOnboardingRequest): Promise<OnboardingResponseData> => {
+    const response = await api.post<ApiResponse<OnboardingResponseData>>('/onboarding/medical-store', data);
+    return extractApiData(response);
+  },
+
   // Get saved onboarding data
   getPatientOnboarding: async (): Promise<any> => {
     const response = await api.get('/onboarding/patient');
@@ -37,6 +47,16 @@ export const onboardingApi = {
 
   getHospitalOnboarding: async (): Promise<any> => {
     const response = await api.get('/onboarding/hospital');
+    return extractApiData(response);
+  },
+
+  getManufacturerOnboarding: async (): Promise<any> => {
+    const response = await api.get('/onboarding/manufacturer');
+    return extractApiData(response);
+  },
+
+  getMedicalStoreOnboarding: async (): Promise<any> => {
+    const response = await api.get('/onboarding/medical-store');
     return extractApiData(response);
   },
 

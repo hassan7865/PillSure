@@ -10,6 +10,10 @@ import { Pill, Mail, Lock } from "lucide-react";
 import { useSignup, useGoogleSignup } from "@/app/auth/hooks/use-auth";
 import { getErrorMessage } from "@/lib/error-utils";
 import { SignUpFormValues, SignUpProps } from "./_types";
+import { cardSectionClass } from "@/lib/dashboard-ui";
+import { normalizeRole } from "@/lib/role-routing";
+import { cn } from "@/lib/utils";
+import { SignupProfessionalRolesCollapsible } from "./signup-professional-roles-collapsible";
 
 // Validation functions
 const validateEmail = (email: string): boolean => {
@@ -22,7 +26,38 @@ const validatePassword = (password: string): boolean => {
 
 // Main App component for the signup form
 
+function signupRoleCopy(role: string | undefined): { title: string; description: string } {
+  switch (normalizeRole(role)) {
+    case "medical_store":
+      return {
+        title: "Sign up — Medical store",
+        description: "Create your account, then complete store onboarding (location, license, and listing).",
+      };
+    case "manufacturer":
+      return {
+        title: "Sign up — Manufacturing",
+        description: "Create your account, then add your company profile for wholesale and partner stores.",
+      };
+    case "doctor":
+      return {
+        title: "Sign up — Doctor",
+        description: "Join the network and complete your professional profile after signup.",
+      };
+    case "hospital":
+      return {
+        title: "Sign up — Hospital",
+        description: "Register your facility and complete admin and licensing details next.",
+      };
+    default:
+      return {
+        title: "Sign Up",
+        description: "Create your account to continue",
+      };
+  }
+}
+
 const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) => {
+  const { title: signupTitle, description: signupDescription } = signupRoleCopy(role);
   const form = useForm({
     defaultValues: {
       email: "",
@@ -75,8 +110,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
       {/* Desktop Split Layout */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Left Brand Panel - Hidden on Mobile */}
-    {/* Left Brand Panel - Hidden on Mobile */}
-    <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary via-primary/95 to-accent relative overflow-hidden">
+        <div className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent md:flex md:w-1/2">
           {/* Enhanced background pattern */}
           <div className="absolute inset-0">
             <div className="absolute top-10 left-10 w-32 h-32 bg-white/15 rounded-full blur-2xl animate-pulse"></div>
@@ -89,7 +123,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
           <div className="relative z-10 flex flex-col justify-between h-full p-10 lg:p-12">
             {/* Header */}
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Pillsure</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">PillSure</h1>
               <div className="w-12 h-1 bg-white/30 rounded-full"></div>
             </div>
 
@@ -105,7 +139,7 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
                 </div>
 
                 <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-                  Join Pillsure
+                  Join PillSure
                 </h2>
                 <p className="text-lg text-white/90 leading-relaxed">
                   Create your account to start managing your healthcare journey with confidence.
@@ -132,7 +166,9 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
               
               {/* Footer */}
               <div>
-                <p className="text-xs text-white/50">© 2024 Pillsure. All rights reserved.</p>
+                <p className="text-xs text-white/50">
+                  © {new Date().getFullYear()} PillSure. All rights reserved.
+                </p>
               </div>
             </div>
           </div>
@@ -141,19 +177,23 @@ const SignUp: React.FC<SignUpProps> = ({ onSwitchToLogin, role = 'patient' }) =>
         {/* Form Section */}
         <div className="flex-1 md:w-3/5 flex items-center justify-center p-4 md:p-8">
           <div className="w-full max-w-lg">
-            <Card className="bg-card border border-border rounded-xl shadow-lg md:shadow-2xl">
+            <Card className={cn(cardSectionClass(), "shadow-lg md:shadow-2xl")}>
               {/* Card Header */}
               <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-xl md:text-2xl font-bold text-card-foreground mb-2 text-left">
-                  Sign Up
+                  {signupTitle}
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-sm text-left">
-                  Create your account to continue
+                  {signupDescription}
                 </CardDescription>
               </CardHeader>
 
+              <div className="px-6 pb-3">
+                <SignupProfessionalRolesCollapsible currentRole={role} />
+              </div>
+
               {/* Card Content */}
-              <CardContent className="p-6 pt-2">
+              <CardContent className="p-6 pt-0">
                 <Form {...form}>
                   <form onSubmit={(e) => {
                     e.preventDefault();

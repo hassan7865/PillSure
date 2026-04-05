@@ -6,7 +6,6 @@ export interface AdminStats {
   };
   medicines: {
     total: number;
-    inStock: number;
   };
   doctors: {
     total: number;
@@ -25,30 +24,6 @@ export interface AdminStats {
     byStatus: Record<string, number>;
     paidRevenue: string;
   };
-}
-
-export type OrderStatus = "pending" | "shipped" | "delivered" | "returned";
-
-export interface AdminOrder {
-  id: string;
-  patientId: string;
-  patientName: string;
-  patientEmail: string;
-  status: OrderStatus;
-  paymentMethod: string;
-  paymentStatus: string;
-  subtotal: string;
-  total: string;
-  currency: string;
-  shippingAddress: string | null;
-  contactNo: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PaginatedOrders {
-  orders: AdminOrder[];
-  pagination: PaginationInfo;
 }
 
 export interface AdminMonthlyRevenue {
@@ -127,56 +102,8 @@ export interface PaginatedHospitals {
   pagination: PaginationInfo;
 }
 
-export interface Medicine {
-  id: number;
-  medicineName: string;
-  medicineUrl: string | null;
-  price: string | null;
-  discount: string | null;
-  stock: number | null;
-  images: any | null;
-  prescriptionRequired: boolean;
-  createdAt: string | null;
-  drugDescription: string | null;
-  drugCategoryId: number | null;
-  drugCategory: string | null;
-  drugVarient: string | null;
-}
-
-export interface PaginatedMedicines {
-  medicines: Medicine[];
-  pagination: PaginationInfo;
-}
-
-export interface UpdateMedicineRequest {
-  medicineName?: string;
-  medicineUrl?: string | null;
-  price?: string | null;
-  discount?: string | null;
-  stock?: number | null;
-  images?: any | null;
-  prescriptionRequired?: boolean;
-  drugDescription?: string | null;
-  drugCategoryId?: number | null;
-  drugVarient?: string | null;
-}
-
-export interface DrugCategory {
-  id: number;
-  name: string;
-}
-
-export interface PaginatedDrugCategories {
-  categories: DrugCategory[];
-  pagination: PaginationInfo;
-}
-
 export interface AdminSpecialization {
   id: number;
   name: string;
-}
-
-export interface DrugCategoryMappingsResponse {
-  specializationIds: number[];
 }
 

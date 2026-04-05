@@ -2,33 +2,25 @@
 
 import Footer from "@/app/components/Footer";
 import Navbar from "@/app/components/Navbar";
-import React, { useEffect } from "react";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
+import React from "react";
 import Loader from "@/components/ui/loader";
-import { canAccessPublicArea, getDashboardHomeByRole } from "@/lib/role-routing";
+import { fixedNavbarOffsetPt } from "@/lib/dashboard-ui";
+import { cn } from "@/lib/utils";
+import { usePublicAreaGate } from "@/hooks/use-public-area-gate";
 
 /** Navbar + main + footer without role-based redirects (e.g. legal pages for all users). */
 export function PublicPageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex-1 pt-16 sm:pt-20">{children}</main>
+      <main className={cn("flex-1", fixedNavbarOffsetPt)}>{children}</main>
       <Footer />
     </div>
   );
 }
 
 const PublicLayout = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (loading || !user) return;
-    if (!canAccessPublicArea(user.role)) {
-      router.replace(getDashboardHomeByRole(user.role));
-    }
-  }, [user, loading, router]);
+  const { loading, redirecting } = usePublicAreaGate();
 
   if (loading) {
     return (
@@ -38,8 +30,7 @@ const PublicLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Prevent rendering public pages while role-based redirect is in progress.
-  if (user && !canAccessPublicArea(user.role)) {
+  if (redirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader title="Redirecting" description="Opening your dashboard..." />

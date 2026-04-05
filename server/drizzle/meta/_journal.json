@@ -113,6 +113,118 @@
       "when": 1775304000000,
       "tag": "0015_merge_truncated_drug_category_duplicates",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775400000000,
+      "tag": "0016_manufacturers_and_listings",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1775500000000,
+      "tag": "0017_manufacturer_role_user_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775600000000,
+      "tag": "0018_manufacturer_medicines_listed_quantity",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775700000000,
+      "tag": "0019_medical_stores",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775800000000,
+      "tag": "0020_medical_store_medicines",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1775900000000,
+      "tag": "0021_medical_store_medicines_pack_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0022_manufacturer_wholesale_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0023_medical_store_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1776200000000,
+      "tag": "0024_drop_medicines_drug_category_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776300000000,
+      "tag": "0025_drop_drug_category_specialization_mapping",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776400000000,
+      "tag": "0026_drop_drug_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1776500000000,
+      "tag": "0027_orders_medical_store_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1776600000000,
+      "tag": "0028_medical_stores_logo_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1776700000000,
+      "tag": "0029_drop_medicines_catalog_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1776800000000,
+      "tag": "0030_medical_store_medicines_description_faqs",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1776900000000,
+      "tag": "0031_medicines_drop_drug_description_faqs",
+      "breakpoints": true
     }
   ]
 }

@@ -19,8 +19,10 @@ type FooterLink = { label: string; href: string; external?: boolean };
 const quickLinks: FooterLink[] = [
   { label: "About Us", href: "/" },
   { label: "Find Doctors", href: "/search-doctor" },
-  { label: "Medicine Catalog", href: "/medicine" },
+  { label: "Medicine Catalog", href: "/search?tab=medicines" },
   { label: "Hospital Directory", href: "/auth?role=hospital&mode=signup" },
+  { label: "Open a medical store", href: "/auth?role=medical_store&mode=signup" },
+  { label: "Manufacturer signup", href: "/auth?role=manufacturer&mode=signup" },
   {
     label: "Health Blog",
     href: "mailto:support@pillsure.com?subject=Health%20%26%20Wellness%20Content",
@@ -29,11 +31,11 @@ const quickLinks: FooterLink[] = [
 ];
 
 const supportLinks: FooterLink[] = [
-  { label: "Help Center", href: "/medicine" },
+  { label: "Help Center", href: "/search?tab=medicines" },
   { label: "Contact Us", href: "mailto:support@pillsure.com", external: true },
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
-  { label: "FAQ", href: "/medicine" },
+  { label: "FAQ", href: "/search?tab=medicines" },
 ];
 
 function FooterLinkItem({ link }: { link: FooterLink }) {
@@ -155,7 +157,9 @@ const Footer: React.FC = () => {
         <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-purple-sm">
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
-              <p className="text-muted-foreground text-xs sm:text-sm">© 2024 PillSure. All Rights Reserved</p>
+              <p className="text-muted-foreground text-xs sm:text-sm">
+                © {new Date().getFullYear()} PillSure. All rights reserved.
+              </p>
               <div className="flex items-center space-x-4 sm:space-x-8">
                 <div className="flex space-x-2 sm:space-x-4">
                   {[Facebook, Twitter, Linkedin, Instagram].map((Icon, index) => (

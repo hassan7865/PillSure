@@ -1,33 +1,37 @@
 "use client";
-import React, { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import LoginForm from "./_components/Login";
 import SignUp from "./_components/SignUp";
 import AuthGuard from "@/components/auth-guard";
 import Loader from "@/components/ui/loader";
 
 const AuthPageContent: React.FC = () => {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const role = searchParams.get('role') || 'patient';
-  const mode = searchParams.get('mode') || 'login';
-  const returnUrl = searchParams.get('returnUrl');
-  
-  // Store returnUrl in sessionStorage on mount if present
-  React.useEffect(() => {
+  const role = searchParams.get("role") || "patient";
+  const mode = searchParams.get("mode") || "login";
+  const returnUrl = searchParams.get("returnUrl");
+  const isLogin = mode !== "signup";
+
+  useEffect(() => {
     if (returnUrl) {
-      sessionStorage.setItem('returnUrl', returnUrl);
+      sessionStorage.setItem("returnUrl", returnUrl);
     }
   }, [returnUrl]);
-  
-  // Show signup form if mode=signup, otherwise show login form
-  const [isLogin, setIsLogin] = useState(mode !== 'signup');
 
   const handleSwitchToSignUp = () => {
-    setIsLogin(false);
+    const sp = new URLSearchParams();
+    if (returnUrl) sp.set("returnUrl", returnUrl);
+    sp.set("mode", "signup");
+    router.replace(`/auth?${sp.toString()}`, { scroll: false });
   };
 
   const handleSwitchToLogin = () => {
-    setIsLogin(true);
+    const sp = new URLSearchParams();
+    if (returnUrl) sp.set("returnUrl", returnUrl);
+    const q = sp.toString();
+    router.replace(q ? `/auth?${q}` : "/auth", { scroll: false });
   };
 
   return (

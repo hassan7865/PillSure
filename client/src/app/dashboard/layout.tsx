@@ -7,6 +7,7 @@ import AppSidebar from '@/layout/app-sidebar';
 import Header from '@/layout/app-header';
 import { useAuth } from '@/contexts/auth-context';
 import Loader from '@/components/ui/loader';
+import { PageShell } from '@/components/shell/page-shell';
 import { canAccessDashboardPath, getDashboardHomeByRole } from '@/lib/role-routing';
 
 export default function DashboardLayout({
@@ -45,7 +46,7 @@ export default function DashboardLayout({
         <div className="flex flex-1 flex-col">
           <Header />
           <main className="flex-1 overflow-x-auto overflow-y-auto">
-            {children}
+            <PageShell>{children}</PageShell>
           </main>
         </div>
       </div>

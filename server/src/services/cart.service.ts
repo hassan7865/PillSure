@@ -1,9 +1,11 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../config/database";
 import { carts } from "../schema/carts";
 import { cartItems } from "../schema/cartItems";
 import { medicines } from "../schema/medicine";
 import { appointments } from "../schema/appointments";
+import { medicalStoreMedicines } from "../schema/medicalStoreMedicines";
+import { medicalStores } from "../schema/medicalStores";
 import { createError } from "../middleware/error.handler";
 
 type CartSourceType = "direct" | "prescription";
@@ -34,7 +36,6 @@ export class CartService {
     medicineId: number;
   }) {
     const medicine = await this.getMedicineOrThrow(params.medicineId);
-    if ((medicine.stock ?? 0) <= 0) throw createError("Medicine is out of stock", 400);
 
     if (params.sourceType === "direct" && medicine.prescriptionRequired) {
       throw createError("This medicine requires a prescription", 400);
@@ -68,13 +69,15 @@ export class CartService {
         unitPrice: cartItems.unitPrice,
         sourceType: cartItems.sourceType,
         appointmentId: cartItems.appointmentId,
+        medicalStoreMedicineId: cartItems.medicalStoreMedicineId,
         medicineName: medicines.medicineName,
         prescriptionRequired: medicines.prescriptionRequired,
-        stock: medicines.stock,
-        images: medicines.images,
+        medicalStoreName: medicalStores.storeName,
       })
       .from(cartItems)
       .innerJoin(medicines, eq(cartItems.medicineId, medicines.id))
+      .leftJoin(medicalStoreMedicines, eq(cartItems.medicalStoreMedicineId, medicalStoreMedicines.id))
+      .leftJoin(medicalStores, eq(medicalStoreMedicines.medicalStoreId, medicalStores.id))
       .where(eq(cartItems.cartId, cart.id))
       .orderBy(desc(cartItems.updatedAt), desc(cartItems.createdAt));
 
@@ -82,14 +85,83 @@ export class CartService {
     return { cartId: cart.id, items, subtotal, total: subtotal, currency: "pkr" };
   }
 
-  async addItem(patientId: string, payload: {
-    medicineId: number;
-    quantity?: number;
-    sourceType?: CartSourceType;
-    appointmentId?: string;
-  }) {
+  async addItem(
+    patientId: string,
+    payload: {
+      medicineId: number;
+      quantity?: number;
+      sourceType?: CartSourceType;
+      appointmentId?: string;
+      medicalStoreMedicineId?: string;
+    },
+  ) {
     const quantity = Math.max(1, payload.quantity || 1);
     const sourceType: CartSourceType = payload.sourceType || "direct";
+
+    if (payload.medicalStoreMedicineId) {
+      if (sourceType !== "direct") {
+        throw createError("Pharmacy listing items must use direct checkout", 400);
+      }
+      const cart = await this.getOrCreateCart(patientId);
+      const listingRows = await db
+        .select({
+          id: medicalStoreMedicines.id,
+          medicalStoreId: medicalStoreMedicines.medicalStoreId,
+          medicineId: medicalStoreMedicines.medicineId,
+          retailPrice: medicalStoreMedicines.retailPrice,
+          listedQuantity: medicalStoreMedicines.listedQuantity,
+          isActive: medicalStoreMedicines.isActive,
+        })
+        .from(medicalStoreMedicines)
+        .where(eq(medicalStoreMedicines.id, payload.medicalStoreMedicineId))
+        .limit(1);
+      if (!listingRows.length) throw createError("Pharmacy listing not found", 404);
+      const listing = listingRows[0];
+      if (!listing.isActive) throw createError("This listing is not available", 400);
+      if (Number(listing.medicineId) !== Number(payload.medicineId)) {
+        throw createError("Listing does not match this medicine", 400);
+      }
+      if (listing.listedQuantity < quantity) throw createError("Not enough stock at this pharmacy", 400);
+
+      const medicine = await this.getMedicineOrThrow(payload.medicineId);
+      if (medicine.prescriptionRequired) {
+        throw createError("This medicine requires a prescription", 400);
+      }
+
+      const existing = await db
+        .select()
+        .from(cartItems)
+        .where(
+          and(eq(cartItems.cartId, cart.id), eq(cartItems.medicalStoreMedicineId, payload.medicalStoreMedicineId)),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        const nextQty = Number(existing[0].quantity) + quantity;
+        if (listing.listedQuantity < nextQty) throw createError("Not enough stock at this pharmacy", 400);
+        await db
+          .update(cartItems)
+          .set({ quantity: nextQty, updatedAt: new Date() })
+          .where(eq(cartItems.id, existing[0].id));
+        return this.getCart(patientId);
+      }
+
+      await db.insert(cartItems).values({
+        cartId: cart.id,
+        medicalStoreMedicineId: payload.medicalStoreMedicineId,
+        medicineId: payload.medicineId,
+        quantity,
+        unitPrice: String(listing.retailPrice ?? "0"),
+        sourceType: "direct",
+        appointmentId: null,
+      });
+
+      return this.getCart(patientId);
+    }
+
+    if (sourceType === "direct" && !payload.appointmentId) {
+      throw createError("Add this medicine from a pharmacy listing (marketplace or pharmacy product page).", 400);
+    }
 
     const medicine = await this.assertPrescriptionEligibility({
       sourceType,
@@ -107,8 +179,9 @@ export class CartService {
         and(
           eq(cartItems.cartId, cart.id),
           eq(cartItems.medicineId, payload.medicineId),
-          payload.appointmentId ? eq(cartItems.appointmentId, payload.appointmentId) : sql`${cartItems.appointmentId} IS NULL`
-        )
+          isNull(cartItems.medicalStoreMedicineId),
+          eq(cartItems.appointmentId, payload.appointmentId!),
+        ),
       )
       .limit(1);
 
@@ -122,7 +195,7 @@ export class CartService {
       cartId: cart.id,
       medicineId: payload.medicineId,
       quantity,
-      unitPrice: medicine.price || "0",
+      unitPrice: "0",
       sourceType,
       appointmentId: payload.appointmentId || null,
     });
@@ -133,13 +206,24 @@ export class CartService {
   async updateItem(patientId: string, itemId: string, quantity: number) {
     const cart = await this.getOrCreateCart(patientId);
     const item = await db
-      .select()
+      .select({
+        row: cartItems,
+        listedQuantity: medicalStoreMedicines.listedQuantity,
+      })
       .from(cartItems)
+      .innerJoin(medicines, eq(cartItems.medicineId, medicines.id))
+      .leftJoin(medicalStoreMedicines, eq(cartItems.medicalStoreMedicineId, medicalStoreMedicines.id))
       .where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)))
       .limit(1);
     if (!item.length) throw createError("Cart item not found", 404);
 
     const safeQty = Math.max(1, quantity);
+
+    if (item[0].row.medicalStoreMedicineId) {
+      const max = item[0].listedQuantity ?? 0;
+      if (safeQty > max) throw createError("Not enough stock at this pharmacy", 400);
+    }
+
     await db.update(cartItems).set({ quantity: safeQty, updatedAt: new Date() }).where(eq(cartItems.id, itemId));
     return this.getCart(patientId);
   }

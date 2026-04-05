@@ -1,13 +1,7 @@
 import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
-import { specializations } from "../schema/specialization";
-import { doctors } from "../schema/doctor";
-import { users } from "../schema/users";
-import { hospitals } from "../schema/hospitals";
-import { drugCategorySpecializationMapping } from "../schema/drugCategorySpecializationMapping";
-import { drugCategories } from "../schema/drugCategories";
 import { ragQueries } from "../schema/ragQuery";
-import { eq, inArray, sql, and, ilike } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { BadRequestError } from "../middleware/error.handler";
 
 interface RAGRecommendationResult {
@@ -40,18 +34,8 @@ interface RAGRecommendationResult {
 interface MedicineDetails {
   id: number;
   medicineName: string;
-  medicineUrl: string | null;
-  price: string | null;
-  discount: string | null;
-  stock: number | null;
-  images: any;
   prescriptionRequired: boolean | null;
   createdAt: Date | null;
-  drugCategoryId: number | null;
-  drugCategory: string | null;
-  drugVarient: string | null;
-  drugDescription: string | null;
-  faqs: any;
 }
 
 interface MedicineWithRAGData extends MedicineDetails {
@@ -160,198 +144,14 @@ export class RAGService {
       .select({
         id: medicines.id,
         medicineName: medicines.medicineName,
-        medicineUrl: medicines.medicineUrl,
-        price: medicines.price,
-        discount: medicines.discount,
-        stock: medicines.stock,
-        images: medicines.images,
         prescriptionRequired: medicines.prescriptionRequired,
         createdAt: medicines.createdAt,
-        drugCategoryId: medicines.drugCategoryId,
-        drugCategory: drugCategories.name,
-        drugVarient: medicines.drugVarient,
-        drugDescription: medicines.drugDescription,
-        faqs: medicines.faqs,
       })
       .from(medicines)
-      .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
       .where(inArray(medicines.id, uniqueIds));
 
     const byId = new Map(results.map((row) => [row.id, row]));
     return uniqueIds.map((id) => byId.get(id)).filter((row): row is MedicineDetails => row != null);
-  }
-
-  /**
-   * Get doctors based on drug category using the mapping table
-   * @param drugCategory - Drug category from medicine
-   * @param limit - Maximum number of doctors to return (default: 10)
-   * @returns Array of randomly selected doctors
-   */
-  async getDoctorsByDrugCategory(
-    drugCategoryId: number | null,
-    limit: number = 10
-  ): Promise<DoctorInfo[]> {
-    if (drugCategoryId == null || drugCategoryId <= 0) {
-      return [];
-    }
-
-    try {
-      const mappings = await db
-        .select({
-          specializationId: drugCategorySpecializationMapping.specializationId,
-        })
-        .from(drugCategorySpecializationMapping)
-        .where(eq(drugCategorySpecializationMapping.drugCategoryId, drugCategoryId));
-
-      if (mappings.length === 0) {
-        return [];
-      }
-
-      const specializationIds = [...new Set(mappings.map((m) => m.specializationId))];
-
-      const specializationRecords = await db
-        .select()
-        .from(specializations)
-        .where(inArray(specializations.id, specializationIds));
-
-      if (specializationRecords.length === 0) {
-        return [];
-      }
-
-      // Step 3: Find doctors with these specialization IDs
-      // Doctors have specializationIds as JSONB array, so we need to check if any ID is in the array
-      // Use the same approach as doctor.service.ts - check if specializationIds contains any of the target IDs
-      const jsonbConditions = specializationIds.map((id) =>
-        sql`${doctors.specializationIds} @> ${JSON.stringify([id])}`
-      );
-      const specializationCondition = jsonbConditions.reduce((acc, condition) =>
-        acc ? sql`${acc} OR ${condition}` : condition
-      );
-
-      const doctorsResult = await db
-        .select({
-          id: doctors.id,
-          userId: doctors.userId,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-          gender: doctors.gender,
-          mobile: doctors.mobile,
-          specializationIds: doctors.specializationIds,
-          qualifications: doctors.qualifications,
-          experienceYears: doctors.experienceYears,
-          patientSatisfactionRate: doctors.patientSatisfactionRate,
-          hospitalId: doctors.hospitalId,
-          address: doctors.address,
-          image: doctors.image,
-          feePkr: doctors.feePkr,
-          consultationModes: doctors.consultationModes,
-          openingTime: doctors.openingTime,
-          closingTime: doctors.closingTime,
-          availableDays: doctors.availableDays,
-          hospitalName: hospitals.hospitalName,
-          hospitalAddress: hospitals.hospitalAddress,
-          hospitalContactNo: hospitals.hospitalContactNo,
-        })
-        .from(doctors)
-        .innerJoin(users, eq(doctors.userId, users.id))
-        .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
-        .where(
-          and(
-            eq(doctors.isActive, true),
-            specializationCondition
-          )
-        );
-
-      if (doctorsResult.length === 0) {
-        return [];
-      }
-
-      // Step 4: Randomly shuffle and select doctors
-      const shuffled = this.shuffleArray([...doctorsResult]);
-      const selectedDoctors = shuffled.slice(0, limit);
-      // Stable display order within the random sample (highest satisfaction / experience first)
-      selectedDoctors.sort((a, b) => {
-        const ra = parseFloat(String(a.patientSatisfactionRate ?? 0));
-        const rb = parseFloat(String(b.patientSatisfactionRate ?? 0));
-        if (rb !== ra) return rb - ra;
-        return b.experienceYears - a.experienceYears;
-      });
-
-      // Step 5: Transform doctors to include specializations and formatted data
-      const specializationMap = new Map(
-        specializationRecords.map((spec) => [spec.id, spec])
-      );
-
-      const doctorsWithDetails: DoctorInfo[] = selectedDoctors.map((doctor) => {
-        const doctorSpecializationIds = (doctor.specializationIds as number[]) || [];
-        const doctorSpecializations = doctorSpecializationIds
-          .map((id) => specializationMap.get(id))
-          .filter(Boolean) as Array<{
-          id: number;
-          name: string;
-          description: string | null;
-        }>;
-
-        const primarySpecialization = doctorSpecializations[0];
-        const qualifications = (doctor.qualifications as string[]) || [];
-
-        return {
-          id: doctor.id,
-          userId: doctor.userId,
-          firstName: doctor.firstName,
-          lastName: doctor.lastName,
-          email: doctor.email,
-          gender: doctor.gender,
-          mobile: doctor.mobile,
-          specializationIds: doctorSpecializationIds,
-          specializations: doctorSpecializations,
-          qualifications: qualifications,
-          experienceYears: doctor.experienceYears,
-          patientSatisfactionRate: doctor.patientSatisfactionRate || "0",
-          hospitalId: doctor.hospitalId,
-          address: doctor.address,
-          image: doctor.image,
-          feePkr: doctor.feePkr,
-          consultationModes: (doctor.consultationModes as string[]) || null,
-          openingTime: doctor.openingTime,
-          closingTime: doctor.closingTime,
-          availableDays: (doctor.availableDays as string[]) || null,
-          hospital: doctor.hospitalName
-            ? {
-                id: doctor.hospitalId || "",
-                name: doctor.hospitalName,
-                address: doctor.hospitalAddress || "",
-                contactNo: doctor.hospitalContactNo || "",
-              }
-            : null,
-          name: `${doctor.firstName} ${doctor.lastName}`,
-          specialization: primarySpecialization?.name || "General",
-          experience: doctor.experienceYears,
-          fee: doctor.feePkr ? parseFloat(doctor.feePkr) : 0,
-          rating: doctor.patientSatisfactionRate
-            ? parseFloat(doctor.patientSatisfactionRate)
-            : 0,
-        };
-      });
-
-      return doctorsWithDetails;
-    } catch (error) {
-      console.error("Error fetching doctors by drug category:", error);
-      return [];
-    }
-  }
-
-  /**
-   * Shuffle array randomly (Fisher-Yates shuffle)
-   */
-  private shuffleArray<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
   }
 
   /**
@@ -514,10 +314,7 @@ export class RAGService {
       })
       .filter((item): item is MedicineWithRAGData => item !== null && item.ragScore !== undefined);
 
-    // Get recommended doctors based on top match medicine's drug category
-    const recommendedDoctors = resultWithDetails?.drugCategoryId
-      ? await this.getDoctorsByDrugCategory(resultWithDetails.drugCategoryId, 10)
-      : [];
+    const recommendedDoctors: DoctorInfo[] = [];
 
     return {
       rewritten_query: ragResults.rewritten_query,

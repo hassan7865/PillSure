@@ -39,5 +39,3 @@ export const authApi = {
     return extractApiData(response);
   },
 };
-
-export default api;

@@ -1,0 +1,44 @@
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  timestamp,
+  index,
+  uniqueIndex,
+  doublePrecision,
+} from "drizzle-orm/pg-core";
+import { users } from "./users";
+
+/** Retail pharmacy / medical store profile; lat/lng support nearest-store search (Haversine in app/SQL). */
+export const medicalStores = pgTable(
+  "medical_stores",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    storeName: varchar("store_name", { length: 500 }).notNull(),
+    addressLine: text("address_line").notNull(),
+    city: varchar("city", { length: 120 }).notNull(),
+    province: varchar("province", { length: 120 }),
+    postalCode: varchar("postal_code", { length: 20 }),
+    country: varchar("country", { length: 120 }).notNull().default("Pakistan"),
+    phone: varchar("phone", { length: 50 }),
+    email: varchar("email", { length: 255 }),
+    licenseNumber: varchar("license_number", { length: 120 }),
+    website: text("website"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    /** Public URL for store logo (S3 or CDN); shown on marketplace & pharmacy page */
+    logoUrl: text("logo_url"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow().notNull(),
+  },
+  (table) => ({
+    idxUserId: index("idx_medical_stores_user_id").on(table.userId),
+    uqUserId: uniqueIndex("uq_medical_stores_user_id").on(table.userId),
+    /** Bounding-box prefilter for future nearest queries; distance still computed in SQL/app. */
+    idxLatLng: index("idx_medical_stores_lat_lng").on(table.latitude, table.longitude),
+  }),
+);

@@ -27,10 +27,10 @@ const Loader: React.FC<LoaderProps> = ({
             {icon || <Loader2 className="w-12 h-12 text-primary animate-spin" />}
           </div>
         </div>
-        <h3 className="text-base font-semibold text-foreground mb-2">
+        <h3 className="mb-2 text-lg font-semibold text-foreground md:text-xl">
           {title}
         </h3>
-        <p className="text-foreground-muted text-xs">
+        <p className="text-sm text-muted-foreground md:text-base">
           {description}
         </p>
       </div>

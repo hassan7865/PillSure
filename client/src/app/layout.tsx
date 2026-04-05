@@ -8,7 +8,7 @@ import { Toaster } from "sonner";
 import FloatingRecommendationButton from "@/components/recommendation/FloatingRecommendationButton";
 
 export const metadata: Metadata = {
-  title: "Pillsure - Medication Management",
+  title: "PillSure - Medication Management",
   description: "Your all-in-one solution for medication management and healthcare needs",
 };
 

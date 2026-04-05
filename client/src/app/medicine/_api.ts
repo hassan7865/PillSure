@@ -5,18 +5,8 @@ import { extractApiData, extractApiDataWithFallback, buildQueryString } from '@/
 export interface Medicine {
   id: number;
   medicineName: string;
-  medicineUrl?: string | null;
-  price?: string | null;
-  discount?: string | null;
-  stock?: number | null;
-  images?: string[] | null;
   prescriptionRequired?: boolean;
   createdAt?: string | null;
-  drugDescription?: string | null; // Plain text description
-  drugCategoryId?: number | null;
-  drugCategory?: string | null;
-  drugVarient?: string | null;
-  faqs?: Array<{ question: string; answer: string }> | null; // FAQs array
 }
 
 export interface CatalogCategory {
@@ -31,6 +21,12 @@ export interface CatalogResponse {
     categoriesPerPage: number;
     hasMoreCategories: boolean;
   };
+}
+
+export interface ManufacturerOption {
+  id: string;
+  legalName: string;
+  shortName: string | null;
 }
 
 export const medicineApi = {
@@ -54,7 +50,11 @@ export const medicineApi = {
     return extractApiDataWithFallback(response, []);
   },
 
-  searchMedicines: async (query: string, limit: number = 20): Promise<Medicine[]> => {
+  searchMedicines: async (
+    query: string,
+    limit: number = 20,
+    manufacturerId?: string,
+  ): Promise<Medicine[]> => {
     if (!query || query.trim().length === 0) {
       return [];
     }
@@ -62,9 +62,15 @@ export const medicineApi = {
     const queryString = buildQueryString({
       q: query.trim(),
       limit: limit || undefined,
+      manufacturerId: manufacturerId?.trim() || undefined,
     });
 
     const response = await api.get<ApiResponse<Medicine[]>>(`/medicine/search${queryString}`);
+    return extractApiDataWithFallback(response, []);
+  },
+
+  listManufacturers: async (): Promise<ManufacturerOption[]> => {
+    const response = await api.get<ApiResponse<ManufacturerOption[]>>(`/medicine/manufacturers`);
     return extractApiDataWithFallback(response, []);
   },
 
@@ -94,12 +100,6 @@ export const medicineApi = {
     });
   },
 
-  listDrugCategories: async (): Promise<{ id: number; name: string }[]> => {
-    const response = await api.get<ApiResponse<{ id: number; name: string }[]>>(
-      "/medicine/drug-categories"
-    );
-    return extractApiDataWithFallback(response, []);
-  },
 };
 
 export default medicineApi;

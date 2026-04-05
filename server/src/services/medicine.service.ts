@@ -1,312 +1,162 @@
-import { desc, eq, sql, ilike, or, and, inArray, asc } from "drizzle-orm";
+import { desc, eq, ilike, and, asc } from "drizzle-orm";
 import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
-import { drugCategories } from "../schema/drugCategories";
-import { s3Service } from "./s3.service";
+import { manufacturers } from "../schema/manufacturers";
+import { manufacturerMedicines } from "../schema/manufacturerMedicines";
 import { BadRequestError } from "../middleware/error.handler";
-import {
-  handleMedicineImageUpdate,
-  deleteOldImages,
-  formatImagesForDB,
-} from "./utils/image.utils";
 
 export class MedicineService {
+  async getFeaturedMedicines({
+    limit = 6,
+  }: {
+    limit?: number;
+    category?: string;
+    uniqueCategories?: boolean;
+  }) {
+    const safeLimit = Math.max(1, Math.min(24, limit));
 
-    async getFeaturedMedicines({
-        limit = 6,
-    }: {
-        limit?: number;
-        category?: string;
-        uniqueCategories?: boolean;
-    }) {
-        // Ensure limit is within safe bounds (minimum 1, maximum 24)
-        const safeLimit = Math.max(1, Math.min(24, limit));
-        
-        const latestInCategory = db.$with('latestInCategory').as(
-            db
-                .select({
-                    id: medicines.id,
-                    medicineName: medicines.medicineName,
-                    medicineUrl: medicines.medicineUrl,
-                    price: medicines.price,
-                    discount: medicines.discount,
-                    stock: medicines.stock,
-                    images: medicines.images,
-                    prescriptionRequired: medicines.prescriptionRequired,
-                    createdAt: medicines.createdAt,
-                    drugCategoryId: medicines.drugCategoryId,
-                    drugVarient: medicines.drugVarient,
-                    drugDescription: medicines.drugDescription,
-                    faqs: medicines.faqs,
-                    rn: sql<number>`row_number() over (partition by ${medicines.drugCategoryId} order by ${medicines.createdAt} desc)`.as('rn'),
-                })
-                .from(medicines)
-                .where(sql`${medicines.stock} > 0 AND ${medicines.drugCategoryId} IS NOT NULL`)
-        );
+    return await db
+      .select({
+        id: medicines.id,
+        medicineName: medicines.medicineName,
+        prescriptionRequired: medicines.prescriptionRequired,
+        createdAt: medicines.createdAt,
+      })
+      .from(medicines)
+      .orderBy(desc(medicines.createdAt))
+      .limit(safeLimit);
+  }
 
-        return await db
-            .with(latestInCategory)
-            .select({
-                id: latestInCategory.id,
-                medicineName: latestInCategory.medicineName,
-                medicineUrl: latestInCategory.medicineUrl,
-                price: latestInCategory.price,
-                discount: latestInCategory.discount,
-                stock: latestInCategory.stock,
-                images: latestInCategory.images,
-                prescriptionRequired: latestInCategory.prescriptionRequired,
-                createdAt: latestInCategory.createdAt,
-                drugCategoryId: latestInCategory.drugCategoryId,
-                drugCategory: drugCategories.name,
-                drugVarient: latestInCategory.drugVarient,
-                drugDescription: latestInCategory.drugDescription,
-                faqs: latestInCategory.faqs,
-            })
-            .from(latestInCategory)
-            .leftJoin(drugCategories, eq(latestInCategory.drugCategoryId, drugCategories.id))
-            .where(sql`${latestInCategory.rn} = 1`)
-            .orderBy(desc(latestInCategory.createdAt))
-            .limit(safeLimit);
+  async getCatalogMedicines({
+    search,
+    perCategoryLimit = 12,
+    categoryPage = 1,
+    categoriesPerPage = 6,
+  }: {
+    category?: string;
+    search?: string;
+    perCategoryLimit?: number;
+    categoryPage?: number;
+    categoriesPerPage?: number;
+  }) {
+    const safePerCategoryLimit = Math.max(1, Math.min(24, perCategoryLimit));
+    const safeCategoryPage = Math.max(1, categoryPage);
+    const safeCategoriesPerPage = Math.max(1, Math.min(20, categoriesPerPage));
+
+    const trimmedSearch = search?.trim();
+    const searchCond = trimmedSearch
+      ? ilike(medicines.medicineName, `%${trimmedSearch}%`)
+      : undefined;
+
+    const pageSize = safePerCategoryLimit * safeCategoriesPerPage;
+    const offset = (safeCategoryPage - 1) * pageSize;
+
+    const rows = await db
+      .select({
+        id: medicines.id,
+        medicineName: medicines.medicineName,
+        prescriptionRequired: medicines.prescriptionRequired,
+        createdAt: medicines.createdAt,
+      })
+      .from(medicines)
+      .where(searchCond)
+      .orderBy(desc(medicines.createdAt))
+      .limit(pageSize + 1)
+      .offset(offset);
+
+    const hasMoreCategories = rows.length > pageSize;
+    const pageRows = rows.slice(0, pageSize);
+
+    return {
+      categories: pageRows.length ? [{ category: "All", items: pageRows }] : [],
+      pagination: {
+        categoryPage: safeCategoryPage,
+        categoriesPerPage: safeCategoriesPerPage,
+        hasMoreCategories,
+      },
+    };
+  }
+
+  async getMedicineById(medicineId: number) {
+    const medicine = await db
+      .select({
+        id: medicines.id,
+        medicineName: medicines.medicineName,
+        prescriptionRequired: medicines.prescriptionRequired,
+        createdAt: medicines.createdAt,
+      })
+      .from(medicines)
+      .where(eq(medicines.id, medicineId))
+      .limit(1);
+
+    if (!medicine || medicine.length === 0) {
+      throw BadRequestError("Medicine not found");
     }
 
-    async getCatalogMedicines({
-        category,
-        search,
-        perCategoryLimit = 12,
-        categoryPage = 1,
-        categoriesPerPage = 6,
-    }: {
-        category?: string;
-        search?: string;
-        perCategoryLimit?: number;
-        categoryPage?: number;
-        categoriesPerPage?: number;
-    }) {
-        const safePerCategoryLimit = Math.max(1, Math.min(24, perCategoryLimit));
-        const safeCategoryPage = Math.max(1, categoryPage);
-        const safeCategoriesPerPage = Math.max(1, Math.min(20, categoriesPerPage));
-        const filters = [sql`${medicines.stock} > 0`];
+    return medicine[0];
+  }
 
-        const trimmedCategory = category?.trim();
-        if (trimmedCategory) {
-            filters.push(eq(drugCategories.name, trimmedCategory));
-        }
+  async listDrugCategories() {
+    return [] as { id: number; name: string }[];
+  }
 
-        const trimmedSearch = search?.trim();
-        if (trimmedSearch) {
-            const searchTerm = `%${trimmedSearch}%`;
-            filters.push(ilike(medicines.medicineName, searchTerm));
-        }
+  /** Active manufacturers for filters (e.g. medical store listing medicines by manufacturer catalog). */
+  async listManufacturersForPicker() {
+    return db
+      .select({
+        id: manufacturers.id,
+        legalName: manufacturers.legalName,
+        shortName: manufacturers.shortName,
+      })
+      .from(manufacturers)
+      .where(eq(manufacturers.isActive, true))
+      .orderBy(asc(manufacturers.legalName));
+  }
 
-        const groupedCategories = await db
-            .select({
-                category: drugCategories.name,
-            })
-            .from(medicines)
-            .innerJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
-            .where(and(...filters))
-            .groupBy(drugCategories.name)
-            .orderBy(asc(drugCategories.name))
-            .limit(safeCategoriesPerPage)
-            .offset((safeCategoryPage - 1) * safeCategoriesPerPage);
-
-        const categoryNames = groupedCategories
-            .map((c) => c.category)
-            .filter((c): c is string => Boolean(c));
-
-        if (categoryNames.length === 0) {
-            return {
-                categories: [],
-                pagination: {
-                    categoryPage: safeCategoryPage,
-                    categoriesPerPage: safeCategoriesPerPage,
-                    hasMoreCategories: false,
-                },
-            };
-        }
-
-        const rows = await db
-            .select({
-                id: medicines.id,
-                medicineName: medicines.medicineName,
-                medicineUrl: medicines.medicineUrl,
-                price: medicines.price,
-                discount: medicines.discount,
-                stock: medicines.stock,
-                images: medicines.images,
-                prescriptionRequired: medicines.prescriptionRequired,
-                createdAt: medicines.createdAt,
-                drugCategoryId: medicines.drugCategoryId,
-                drugCategory: drugCategories.name,
-                drugVarient: medicines.drugVarient,
-                drugDescription: medicines.drugDescription,
-                faqs: medicines.faqs,
-            })
-            .from(medicines)
-            .innerJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
-            .where(and(...filters, inArray(drugCategories.name, categoryNames)))
-            .orderBy(desc(medicines.stock), desc(medicines.createdAt));
-
-        const grouped = new Map<string, typeof rows>();
-        for (const row of rows) {
-            if (!row.drugCategory) continue;
-            const existing = grouped.get(row.drugCategory) ?? [];
-            if (existing.length < safePerCategoryLimit) {
-                existing.push(row);
-                grouped.set(row.drugCategory, existing);
-            }
-        }
-
-        const categories = Array.from(grouped.entries())
-            .map(([categoryName, items]) => ({
-                category: categoryName,
-                items,
-            }))
-            .sort((a, b) => a.category.localeCompare(b.category));
-
-        const hasMoreCategories = groupedCategories.length === safeCategoriesPerPage;
-
-        return {
-            categories,
-            pagination: {
-                categoryPage: safeCategoryPage,
-                categoriesPerPage: safeCategoriesPerPage,
-                hasMoreCategories,
-            },
-        };
+  /**
+   * Search medicines by name.
+   * When `manufacturerId` is set, only medicines linked in `manufacturer_medicines` for that manufacturer are returned.
+   */
+  async searchMedicines(query: string, limit: number = 20, manufacturerId?: string | null) {
+    if (!query || query.trim().length === 0) {
+      return [];
     }
 
-    /**
-     * Update medicine images (max 4 images allowed)
-     * @param medicineId - Medicine ID to update
-     * @param newImages - Array of new image files
-     * @param existingImageUrls - Array of existing image URLs to keep
-     * @returns Updated medicine with new image URLs
-     */
-    async updateMedicineImages(
-        medicineId: number,
-        newImages: Express.Multer.File[] = [],
-        existingImageUrls: string[] = []
-    ) {
-        // Validate medicine exists
-        const medicine = await db
-            .select()
-            .from(medicines)
-            .where(eq(medicines.id, medicineId))
-            .limit(1);
+    const safeLimit = Math.max(1, Math.min(50, limit));
+    const searchTerm = `%${query.trim()}%`;
+    const nameCond = ilike(medicines.medicineName, searchTerm);
 
-        if (!medicine || medicine.length === 0) {
-            throw BadRequestError("Medicine not found");
-        }
+    const rowShape = {
+      id: medicines.id,
+      medicineName: medicines.medicineName,
+      prescriptionRequired: medicines.prescriptionRequired,
+    };
 
-        // Get current images
-        const currentImages = (medicine[0].images as string[]) || [];
-
-        // Use utility function to handle image updates
-        const imageUpdateResult = await handleMedicineImageUpdate(
-            currentImages,
-            existingImageUrls,
-            newImages,
-            4
-        );
-
-        // Delete old images from S3
-        await deleteOldImages(imageUpdateResult.imagesToDelete);
-
-        // Update medicine in database with explicit JSONB casting
-        await db
-            .update(medicines)
-            .set({ 
-                images: formatImagesForDB(imageUpdateResult.finalImages)
-            })
-            .where(eq(medicines.id, medicineId));
-
-        return this.getMedicineById(medicineId);
+    const mid = manufacturerId?.trim();
+    if (mid) {
+      return await db
+        .select(rowShape)
+        .from(medicines)
+        .innerJoin(
+          manufacturerMedicines,
+          and(
+            eq(manufacturerMedicines.medicineId, medicines.id),
+            eq(manufacturerMedicines.manufacturerId, mid),
+            eq(manufacturerMedicines.isActive, true),
+          ),
+        )
+        .where(nameCond)
+        .orderBy(desc(medicines.createdAt))
+        .limit(safeLimit);
     }
 
-    /**
-     * Get medicine by ID
-     * @param medicineId - Medicine ID
-     * @returns Medicine details
-     */
-    async getMedicineById(medicineId: number) {
-        const medicine = await db
-            .select({
-                id: medicines.id,
-                medicineName: medicines.medicineName,
-                medicineUrl: medicines.medicineUrl,
-                price: medicines.price,
-                discount: medicines.discount,
-                stock: medicines.stock,
-                images: medicines.images,
-                prescriptionRequired: medicines.prescriptionRequired,
-                createdAt: medicines.createdAt,
-                drugCategoryId: medicines.drugCategoryId,
-                drugCategory: drugCategories.name,
-                drugVarient: medicines.drugVarient,
-                drugDescription: medicines.drugDescription,
-                faqs: medicines.faqs,
-            })
-            .from(medicines)
-            .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
-            .where(eq(medicines.id, medicineId))
-            .limit(1);
-
-        if (!medicine || medicine.length === 0) {
-            throw BadRequestError("Medicine not found");
-        }
-
-        return medicine[0];
-    }
-
-    async listDrugCategories() {
-        return db
-            .select({
-                id: drugCategories.id,
-                name: drugCategories.name,
-            })
-            .from(drugCategories)
-            .orderBy(asc(drugCategories.name));
-    }
-
-  
-    async searchMedicines(query: string, limit: number = 20) {
-        if (!query || query.trim().length === 0) {
-            return [];
-        }
-
-        const safeLimit = Math.max(1, Math.min(50, limit));
-        const searchTerm = `%${query.trim()}%`;
-
-        const results = await db
-            .select({
-                id: medicines.id,
-                medicineName: medicines.medicineName,
-                medicineUrl: medicines.medicineUrl,
-                price: medicines.price,
-                discount: medicines.discount,
-                stock: medicines.stock,
-                images: medicines.images,
-                prescriptionRequired: medicines.prescriptionRequired,
-                drugCategoryId: medicines.drugCategoryId,
-                drugCategory: drugCategories.name,
-                drugVarient: medicines.drugVarient,
-                drugDescription: medicines.drugDescription,
-                faqs: medicines.faqs,
-            })
-            .from(medicines)
-            .leftJoin(drugCategories, eq(medicines.drugCategoryId, drugCategories.id))
-            .where(
-                or(
-                    ilike(medicines.medicineName, searchTerm),
-                    ilike(drugCategories.name, searchTerm)
-                )
-            )
-            .orderBy(desc(medicines.createdAt))
-            .limit(safeLimit);
-
-        return results;
-    }
+    return await db
+      .select(rowShape)
+      .from(medicines)
+      .where(nameCond)
+      .orderBy(desc(medicines.createdAt))
+      .limit(safeLimit);
+  }
 }
 
 export const medicineService = new MedicineService();

@@ -30,3 +30,27 @@ export function calculatePagination(
 export function calculateOffset(page: number, limit: number): number {
   return (page - 1) * limit;
 }
+
+/** Integer page >= 1. Non-finite values fall back to `defaultPage`. */
+export function normalizePage(page: unknown, defaultPage = 1): number {
+  if (page === undefined || page === null) return defaultPage;
+  const n = typeof page === "number" ? page : Number(page);
+  if (!Number.isFinite(n)) return defaultPage;
+  return Math.max(1, Math.floor(n));
+}
+
+/**
+ * Integer limit in [min, max]. Non-finite or missing values use `defaultLimit` (then clamped).
+ */
+export function normalizeLimit(
+  limit: unknown,
+  opts: { defaultLimit: number; max: number; min?: number },
+): number {
+  const min = opts.min ?? 1;
+  const { max, defaultLimit } = opts;
+  const fallback = Math.min(max, Math.max(min, defaultLimit));
+  if (limit === undefined || limit === null) return fallback;
+  const n = typeof limit === "number" ? limit : Number(limit);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(n)));
+}

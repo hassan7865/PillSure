@@ -1,13 +1,43 @@
 import { db } from '../config/database';
-import { users, patients, hospitals } from '../schema';
+import { users, patients, hospitals, manufacturers, medicalStores } from '../schema';
 import { doctors } from '../schema/doctor';
 import { eq } from 'drizzle-orm';
 import { createError, ValidationError } from '../middleware/error.handler';
 import { 
   PatientOnboardingRequest, 
   DoctorOnboardingRequest, 
-  HospitalOnboardingRequest
+  HospitalOnboardingRequest,
+  ManufacturerOnboardingRequest,
+  MedicalStoreOnboardingRequest,
 } from '../core/types';
+
+function parseCoordInput(v: unknown): number | undefined {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = typeof v === "number" ? v : Number(String(v).trim());
+  if (!Number.isFinite(n)) {
+    throw ValidationError("Latitude and longitude must be valid numbers.");
+  }
+  return n;
+}
+
+function assertLatLngPair(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): void {
+  const hasLat = lat != null && Number.isFinite(lat);
+  const hasLng = lng != null && Number.isFinite(lng);
+  if (hasLat !== hasLng) {
+    throw ValidationError("Provide both latitude and longitude, or neither.");
+  }
+  if (hasLat && hasLng) {
+    if (lat! < -90 || lat! > 90) {
+      throw ValidationError("Latitude must be between -90 and 90.");
+    }
+    if (lng! < -180 || lng! > 180) {
+      throw ValidationError("Longitude must be between -180 and 180.");
+    }
+  }
+}
 
 export class OnboardingService {
   constructor() {}
@@ -320,6 +350,258 @@ export class OnboardingService {
         isOnboardingComplete: isComplete,
       };
     });
+  }
+
+  // =========================================================
+  // MANUFACTURER ONBOARDING
+  // =========================================================
+  async saveManufacturerOnboarding(userId: string, data: ManufacturerOnboardingRequest) {
+    return await db.transaction(async (tx) => {
+      const userRow = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (userRow.length === 0) {
+        throw createError("User not found", 404);
+      }
+
+      const existing = await tx
+        .select()
+        .from(manufacturers)
+        .where(eq(manufacturers.userId, userId))
+        .limit(1);
+
+      const current = existing[0];
+      const userEmail = userRow[0].email;
+
+      const finalData = {
+        legalName:
+          data.legalName !== undefined ? data.legalName.trim() : current?.legalName,
+        shortName:
+          data.shortName !== undefined ? data.shortName?.trim() || null : current?.shortName ?? null,
+        addressLine:
+          data.addressLine !== undefined ? data.addressLine.trim() : current?.addressLine,
+        city: data.city !== undefined ? data.city.trim() : current?.city,
+        province: data.province !== undefined ? data.province?.trim() || null : current?.province ?? null,
+        postalCode: data.postalCode !== undefined ? data.postalCode?.trim() || null : current?.postalCode ?? null,
+        phone: data.phone !== undefined ? data.phone.trim() : current?.phone,
+        licenseNumber:
+          data.licenseNumber !== undefined ? data.licenseNumber.trim() : current?.licenseNumber,
+        website: data.website !== undefined ? data.website?.trim() || null : current?.website ?? null,
+        email:
+          data.email !== undefined
+            ? data.email.trim()
+            : current?.email ?? userEmail,
+      };
+
+      const isComplete = Boolean(
+        finalData.legalName &&
+          finalData.addressLine &&
+          finalData.city &&
+          finalData.phone &&
+          finalData.licenseNumber
+      );
+
+      if (existing.length === 0) {
+        if (!finalData.legalName || !finalData.addressLine || !finalData.city) {
+          throw ValidationError("Legal name, address, and city are required to create your manufacturer profile.");
+        }
+      }
+
+      if (existing.length > 0) {
+        const row = current!;
+        await tx
+          .update(manufacturers)
+          .set({
+            legalName: finalData.legalName ?? row.legalName,
+            shortName: finalData.shortName,
+            addressLine: finalData.addressLine ?? row.addressLine,
+            city: finalData.city ?? row.city,
+            province: finalData.province,
+            postalCode: finalData.postalCode,
+            country: "Pakistan",
+            phone: finalData.phone ?? row.phone ?? null,
+            email: finalData.email || null,
+            licenseNumber: finalData.licenseNumber ?? row.licenseNumber ?? null,
+            website: finalData.website,
+            updatedAt: new Date(),
+          })
+          .where(eq(manufacturers.userId, userId));
+      } else {
+        await tx.insert(manufacturers).values({
+          userId,
+          legalName: finalData.legalName!,
+          shortName: finalData.shortName,
+          addressLine: finalData.addressLine!,
+          city: finalData.city!,
+          province: finalData.province,
+          postalCode: finalData.postalCode,
+          country: "Pakistan",
+          phone: finalData.phone ?? null,
+          email: finalData.email || null,
+          licenseNumber: finalData.licenseNumber ?? null,
+          website: finalData.website,
+        });
+      }
+
+      await tx
+        .update(users)
+        .set({
+          onboardingStep: isComplete ? 3 : 1,
+          isOnboardingComplete: isComplete,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+
+      return {
+        onboardingStep: isComplete ? 3 : 1,
+        isOnboardingComplete: isComplete,
+      };
+    });
+  }
+
+  async getManufacturerData(userId: string) {
+    const data = await db
+      .select()
+      .from(manufacturers)
+      .where(eq(manufacturers.userId, userId))
+      .limit(1);
+
+    return data[0] || null;
+  }
+
+  // =========================================================
+  // MEDICAL STORE ONBOARDING
+  // =========================================================
+  async saveMedicalStoreOnboarding(userId: string, data: MedicalStoreOnboardingRequest) {
+    return await db.transaction(async (tx) => {
+      const userRow = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (userRow.length === 0) {
+        throw createError("User not found", 404);
+      }
+
+      const existing = await tx
+        .select()
+        .from(medicalStores)
+        .where(eq(medicalStores.userId, userId))
+        .limit(1);
+
+      const current = existing[0];
+      const userEmail = userRow[0].email;
+
+      const resolvedLat =
+        data.latitude !== undefined ? parseCoordInput(data.latitude) : current?.latitude ?? null;
+      const resolvedLng =
+        data.longitude !== undefined ? parseCoordInput(data.longitude) : current?.longitude ?? null;
+
+      if (data.latitude !== undefined || data.longitude !== undefined) {
+        assertLatLngPair(resolvedLat, resolvedLng);
+      }
+
+      const finalData = {
+        storeName:
+          data.storeName !== undefined ? data.storeName.trim() : current?.storeName,
+        addressLine:
+          data.addressLine !== undefined ? data.addressLine.trim() : current?.addressLine,
+        city: data.city !== undefined ? data.city.trim() : current?.city,
+        province: data.province !== undefined ? data.province?.trim() || null : current?.province ?? null,
+        postalCode: data.postalCode !== undefined ? data.postalCode?.trim() || null : current?.postalCode ?? null,
+        phone: data.phone !== undefined ? data.phone.trim() : current?.phone,
+        licenseNumber:
+          data.licenseNumber !== undefined ? data.licenseNumber?.trim() || null : current?.licenseNumber ?? null,
+        website: data.website !== undefined ? data.website?.trim() || null : current?.website ?? null,
+        email:
+          data.email !== undefined ? data.email.trim() : current?.email ?? userEmail,
+        latitude: resolvedLat,
+        longitude: resolvedLng,
+      };
+
+      assertLatLngPair(finalData.latitude, finalData.longitude);
+
+      const isComplete = Boolean(
+        finalData.storeName &&
+          finalData.addressLine &&
+          finalData.city &&
+          finalData.phone &&
+          typeof finalData.latitude === "number" &&
+          typeof finalData.longitude === "number",
+      );
+
+      if (existing.length === 0) {
+        if (!finalData.storeName || !finalData.addressLine || !finalData.city) {
+          throw ValidationError("Store name, address, and city are required to create your medical store profile.");
+        }
+      }
+
+      if (existing.length > 0) {
+        const row = current!;
+        await tx
+          .update(medicalStores)
+          .set({
+            storeName: finalData.storeName ?? row.storeName,
+            addressLine: finalData.addressLine ?? row.addressLine,
+            city: finalData.city ?? row.city,
+            province: finalData.province,
+            postalCode: finalData.postalCode,
+            country: "Pakistan",
+            phone: finalData.phone ?? row.phone ?? null,
+            email: finalData.email || null,
+            licenseNumber: finalData.licenseNumber,
+            website: finalData.website,
+            latitude: finalData.latitude,
+            longitude: finalData.longitude,
+            updatedAt: new Date(),
+          })
+          .where(eq(medicalStores.userId, userId));
+      } else {
+        await tx.insert(medicalStores).values({
+          userId,
+          storeName: finalData.storeName!,
+          addressLine: finalData.addressLine!,
+          city: finalData.city!,
+          province: finalData.province,
+          postalCode: finalData.postalCode,
+          country: "Pakistan",
+          phone: finalData.phone ?? null,
+          email: finalData.email || null,
+          licenseNumber: finalData.licenseNumber,
+          website: finalData.website,
+          latitude: finalData.latitude,
+          longitude: finalData.longitude,
+        });
+      }
+
+      await tx
+        .update(users)
+        .set({
+          onboardingStep: isComplete ? 3 : 1,
+          isOnboardingComplete: isComplete,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+
+      return {
+        onboardingStep: isComplete ? 3 : 1,
+        isOnboardingComplete: isComplete,
+      };
+    });
+  }
+
+  async getMedicalStoreData(userId: string) {
+    const data = await db
+      .select()
+      .from(medicalStores)
+      .where(eq(medicalStores.userId, userId))
+      .limit(1);
+
+    return data[0] || null;
   }
 
   // =========================================================

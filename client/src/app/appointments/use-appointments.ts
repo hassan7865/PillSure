@@ -305,43 +305,6 @@ export const useBookedSlots = (doctorId: string, date: string | undefined) => {
   return { data, isLoading, error };
 };
 
-export const useCurrentDoctorAppointmentStats = () => {
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchStats = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const result = await appointmentApi.getCurrentDoctorAppointmentStats();
-        if (isMounted) {
-          setData(result);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Failed to fetch stats'));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchStats();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  return { data, isLoading, error };
-};
-
 export const useCurrentDoctorYearlyStats = (year?: number) => {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);

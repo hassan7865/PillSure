@@ -11,11 +11,6 @@ import {
 import { extractApiData, buildStatusParam, buildQueryString } from '@/lib/api-utils';
 
 export const appointmentApi = {
-  createAppointment: async (data: CreateAppointmentRequest): Promise<ApiResponse> => {
-    const response = await api.post('/appointments', data);
-    return extractApiData(response);
-  },
-
   createCheckoutSession: async (data: CreateAppointmentRequest): Promise<CheckoutSessionResponse> => {
     const response = await api.post('/appointments/checkout-session', data);
     return extractApiData(response);
@@ -53,11 +48,6 @@ export const appointmentApi = {
 
   getBookedSlots: async (doctorId: string, date: string): Promise<string[]> => {
     const response = await api.get(`/appointments/booked-slots/${doctorId}/${date}`);
-    return extractApiData(response);
-  },
-
-  getCurrentDoctorAppointmentStats: async (): Promise<ApiResponse> => {
-    const response = await api.get(`/appointments/doctor/stats`);
     return extractApiData(response);
   },
 

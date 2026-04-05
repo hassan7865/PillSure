@@ -34,7 +34,7 @@ export class CartRoute {
     try {
       if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can access cart"));
       const patientId = (req as any).user.userId;
-      const { medicineId, quantity, sourceType, appointmentId } = req.body;
+      const { medicineId, quantity, sourceType, appointmentId, medicalStoreMedicineId } = req.body;
       if (!medicineId) return next(BadRequestError("medicineId is required"));
 
       const data = await cartService.addItem(patientId, {
@@ -42,6 +42,10 @@ export class CartRoute {
         quantity: quantity ? Number(quantity) : 1,
         sourceType,
         appointmentId,
+        medicalStoreMedicineId:
+          medicalStoreMedicineId != null && String(medicalStoreMedicineId).trim() !== ""
+            ? String(medicalStoreMedicineId)
+            : undefined,
       });
       res.status(200).json(ApiResponse(data, "Item added to cart"));
     } catch (error) {

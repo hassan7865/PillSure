@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { OnboardingService } from "../services/onboarding.service";
-import { verifyToken } from "../middleware/jwt.handler";
+import { verifyToken, requireRole } from "../middleware/jwt.handler";
 import { 
   BadRequestError, 
   ValidationError 
@@ -8,7 +8,10 @@ import {
 import { 
   PatientOnboardingRequest, 
   DoctorOnboardingRequest, 
-  HospitalOnboardingRequest 
+  HospitalOnboardingRequest,
+  ManufacturerOnboardingRequest,
+  MedicalStoreOnboardingRequest,
+  UserRole,
 } from "../core/types";
 import { ApiResponse } from "../core/api-response";
 
@@ -28,6 +31,18 @@ export class OnboardingRoutes {
     this.router.post("/patient", verifyToken, this.savePatientOnboarding.bind(this));
     this.router.post("/doctor", verifyToken, this.saveDoctorOnboarding.bind(this));
     this.router.post("/hospital", verifyToken, this.saveHospitalOnboarding.bind(this));
+    this.router.post(
+      "/manufacturer",
+      verifyToken,
+      requireRole([UserRole.MANUFACTURER]),
+      this.saveManufacturerOnboarding.bind(this),
+    );
+    this.router.post(
+      "/medical-store",
+      verifyToken,
+      requireRole([UserRole.MEDICAL_STORE]),
+      this.saveMedicalStoreOnboarding.bind(this),
+    );
     this.router.put("/step", verifyToken, this.updateOnboardingStep.bind(this));
     this.router.get("/status", verifyToken, this.getOnboardingStatus.bind(this));
     
@@ -35,6 +50,18 @@ export class OnboardingRoutes {
     this.router.get("/patient", verifyToken, this.getPatientOnboarding.bind(this));
     this.router.get("/doctor", verifyToken, this.getDoctorOnboarding.bind(this));
     this.router.get("/hospital", verifyToken, this.getHospitalOnboarding.bind(this));
+    this.router.get(
+      "/manufacturer",
+      verifyToken,
+      requireRole([UserRole.MANUFACTURER]),
+      this.getManufacturerOnboarding.bind(this),
+    );
+    this.router.get(
+      "/medical-store",
+      verifyToken,
+      requireRole([UserRole.MEDICAL_STORE]),
+      this.getMedicalStoreOnboarding.bind(this),
+    );
   }
 
   // Unified save endpoints - handle both create and update
@@ -95,6 +122,78 @@ export class OnboardingRoutes {
         },
         result.isOnboardingComplete ? "Onboarding completed successfully." : "Doctor data saved successfully."
       ));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async saveMedicalStoreOnboarding(req: Request, res: Response, next: NextFunction) {
+    const userRole = (req as any).user.role;
+    try {
+      const userId = (req as any).user.userId;
+
+      const status = await this.onboardingService.getOnboardingStatus(userId);
+      if (status.isOnboardingComplete) {
+        const redirectPath = this.getRedirectPath(userRole);
+        return res.status(200).json(
+          ApiResponse(
+            { shouldRedirect: true, redirectTo: redirectPath, role: userRole },
+            "Onboarding is already complete.",
+          ),
+        );
+      }
+
+      const data: MedicalStoreOnboardingRequest = req.body;
+      const result = await this.onboardingService.saveMedicalStoreOnboarding(userId, data);
+      const redirectPath = result.isOnboardingComplete ? this.getRedirectPath(userRole) : undefined;
+      res.status(200).json(
+        ApiResponse(
+          {
+            ...result,
+            role: userRole,
+            ...(result.isOnboardingComplete ? { shouldRedirect: true, redirectTo: redirectPath } : {}),
+          },
+          result.isOnboardingComplete
+            ? "Onboarding completed successfully."
+            : "Medical store data saved successfully.",
+        ),
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async saveManufacturerOnboarding(req: Request, res: Response, next: NextFunction) {
+    const userRole = (req as any).user.role;
+    try {
+      const userId = (req as any).user.userId;
+
+      const status = await this.onboardingService.getOnboardingStatus(userId);
+      if (status.isOnboardingComplete) {
+        const redirectPath = this.getRedirectPath(userRole);
+        return res.status(200).json(
+          ApiResponse(
+            { shouldRedirect: true, redirectTo: redirectPath, role: userRole },
+            "Onboarding is already complete.",
+          ),
+        );
+      }
+
+      const data: ManufacturerOnboardingRequest = req.body;
+      const result = await this.onboardingService.saveManufacturerOnboarding(userId, data);
+      const redirectPath = result.isOnboardingComplete ? this.getRedirectPath(userRole) : undefined;
+      res.status(200).json(
+        ApiResponse(
+          {
+            ...result,
+            role: userRole,
+            ...(result.isOnboardingComplete ? { shouldRedirect: true, redirectTo: redirectPath } : {}),
+          },
+          result.isOnboardingComplete
+            ? "Onboarding completed successfully."
+            : "Manufacturer data saved successfully.",
+        ),
+      );
     } catch (error) {
       next(error);
     }
@@ -162,6 +261,26 @@ export class OnboardingRoutes {
     }
   }
 
+  private async getManufacturerOnboarding(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await this.onboardingService.getManufacturerData(userId);
+      res.status(200).json(ApiResponse(result, "Manufacturer data retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private async getMedicalStoreOnboarding(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await this.onboardingService.getMedicalStoreData(userId);
+      res.status(200).json(ApiResponse(result, "Medical store data retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   private async updateOnboardingStep(req: Request, res: Response, next: NextFunction) {
       const userRole = (req as any).user.role;
     try {
@@ -218,6 +337,10 @@ export class OnboardingRoutes {
         return '/dashboard/admin';
       case 'hospital':
         return '/dashboard/hospital';
+      case 'manufacturer':
+        return '/dashboard/manufacturer';
+      case 'medical_store':
+        return '/dashboard/medical-store';
       case 'patient':
         return '/';
       default:

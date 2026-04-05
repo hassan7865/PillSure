@@ -89,7 +89,7 @@ export default function PrescriptionDiagnosis({
         
         const options = results.map((med) => ({
           value: med.id.toString(),
-          label: `${med.medicineName}${med.drugCategory ? ` (${med.drugCategory})` : ""}`,
+          label: med.medicineName,
         }));
         
         const map = new Map<number, Medicine>();

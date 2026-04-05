@@ -72,6 +72,10 @@
   --input: oklch(0.92 0 0);
   --ring: oklch(0.55 0.25 300);
 
+  /* Elevation (foreground-tinted; works in light/dark) */
+  --shadow-elevated: 0 4px 24px color-mix(in oklch, var(--foreground) 8%, transparent);
+  --shadow-elevated-lg: 0 12px 36px color-mix(in oklch, var(--foreground) 12%, transparent);
+
   /* PURPLE CHART PALETTE */
   --chart-1: oklch(0.55 0.25 300);
   --chart-2: oklch(0.65 0.2 290);
@@ -133,6 +137,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.75 0.20 300);
+
+  --shadow-elevated: 0 4px 24px color-mix(in oklch, var(--foreground) 22%, transparent);
+  --shadow-elevated-lg: 0 12px 36px color-mix(in oklch, var(--foreground) 28%, transparent);
 }
 
 @layer base {
@@ -162,6 +169,16 @@
   label[for] {
     cursor: pointer;
   }
+}
+
+@layer utilities {
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  .shadow-elevated-lg {
+    box-shadow: var(--shadow-elevated-lg);
+  }
+
 }
 
 /* React Select Styles */
@@ -314,4 +331,66 @@
 
 [data-lk-theme="default"] .lk-button:hover {
   background-color: #3d3d3d !important;
+}
+
+/* Marketplace discover hero — floating pill accents */
+@keyframes marketplace-pill-float-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-12deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-14px, 18px, 0) rotate(8deg) scale(1.06);
+  }
+}
+@keyframes marketplace-pill-float-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(18deg) scale(1);
+  }
+  50% {
+    transform: translate3d(20px, -12px, 0) rotate(-10deg) scale(1.1);
+  }
+}
+@keyframes marketplace-pill-float-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(4deg) scale(1);
+  }
+  33% {
+    transform: translate3d(10px, -20px, 0) rotate(-6deg) scale(1.04);
+  }
+  66% {
+    transform: translate3d(-16px, 8px, 0) rotate(10deg) scale(0.98);
+  }
+}
+@keyframes marketplace-pill-float-d {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-20deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(-8px, 14px, 0) rotate(12deg);
+    opacity: 0.55;
+  }
+}
+
+@layer utilities {
+  .animate-marketplace-pill-a {
+    animation: marketplace-pill-float-a 9s ease-in-out infinite;
+    will-change: transform;
+  }
+  .animate-marketplace-pill-b {
+    animation: marketplace-pill-float-b 11s ease-in-out infinite;
+    will-change: transform;
+  }
+  .animate-marketplace-pill-c {
+    animation: marketplace-pill-float-c 8s ease-in-out infinite;
+    will-change: transform;
+  }
+  .animate-marketplace-pill-d {
+    animation: marketplace-pill-float-d 7s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
 }

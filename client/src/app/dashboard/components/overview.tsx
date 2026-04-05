@@ -11,11 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { adminApi } from "@/app/dashboard/admin/_components/_api";
 import { AdminMonthlyRevenue, AdminStats } from "@/app/dashboard/admin/_components/_types";
 import Loader from "@/components/ui/loader";
-import { Users, Stethoscope, Building2, CalendarClock, Package } from "lucide-react";
-import AdminStatsCard from "./admin-stats-card";
-import { Bar, BarChart, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { Users, Stethoscope, Building2, CalendarClock } from "lucide-react";
+import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cardSectionClass } from "@/lib/dashboard-ui";
 
 export default function OverViewPage() {
   const currentYear = new Date().getFullYear();
@@ -108,11 +108,6 @@ export default function OverViewPage() {
     );
   }
 
-  const orderStatusData = Object.entries(stats.orders.byStatus || {}).map(([status, value]) => ({
-    name: status,
-    value: Number(value || 0),
-  }));
-
   const appointmentStatusData = Object.entries(stats.appointments.byStatus || {}).map(([status, value]) => ({
     name: status,
     value: Number(value || 0),
@@ -126,9 +121,6 @@ export default function OverViewPage() {
     "var(--chart-5)",
     "var(--primary)",
   ];
-  const orderChartConfig = {
-    value: { label: "Orders" },
-  } satisfies ChartConfig;
   const appointmentChartConfig = {
     value: { label: "Appointments" },
   } satisfies ChartConfig;
@@ -137,9 +129,9 @@ export default function OverViewPage() {
   } satisfies ChartConfig;
 
   return (
-    <div className="flex flex-1 flex-col space-y-2">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-6">
-        <Card>
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className={cardSectionClass()}>
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -150,31 +142,7 @@ export default function OverViewPage() {
           </CardHeader>
         </Card>
 
-        <AdminStatsCard stats={stats} isLoading={false} />
-
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Total Orders
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.orders.total.toLocaleString()}</CardTitle>
-            <Badge variant="outline">{stats.orders.byStatus.pending || 0} pending</Badge>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4" />
-              Paid Revenue (Medicines)
-            </CardDescription>
-            <CardTitle className="text-2xl">PKR {Number(stats.orders.paidRevenue || 0).toFixed(2)}</CardTitle>
-            <Badge variant="outline">{stats.orders.byStatus.delivered || 0} delivered</Badge>
-          </CardHeader>
-        </Card>
-
-        <Card>
+        <Card className={cardSectionClass()}>
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <Stethoscope className="h-4 w-4" />
@@ -185,7 +153,7 @@ export default function OverViewPage() {
           </CardHeader>
         </Card>
 
-        <Card>
+        <Card className={cardSectionClass()}>
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
@@ -196,7 +164,7 @@ export default function OverViewPage() {
           </CardHeader>
         </Card>
 
-        <Card className="sm:col-span-2">
+        <Card className={cardSectionClass()}>
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <CalendarClock className="h-4 w-4" />
@@ -211,34 +179,8 @@ export default function OverViewPage() {
           </CardHeader>
         </Card>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 lg:px-6 pt-2">
-        <Card>
-          <CardHeader>
-            <CardDescription className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Order Status Distribution
-            </CardDescription>
-            <CardTitle className="text-xl">Orders by Status</CardTitle>
-          </CardHeader>
-          <div className="h-[280px] px-2 pb-4">
-            {orderStatusData.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-4">No order status data available.</p>
-            ) : (
-              <ChartContainer config={orderChartConfig} className="h-full w-full">
-                <PieChart>
-                  <Pie data={orderStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
-                    {orderStatusData.map((entry, index) => (
-                      <Cell key={`order-cell-${entry.name}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
-            )}
-          </div>
-        </Card>
-
-        <Card>
+      <div className="grid grid-cols-1 gap-4 pt-2">
+        <Card className={cardSectionClass()}>
           <CardHeader>
             <CardDescription className="flex items-center gap-2">
               <CalendarClock className="h-4 w-4" />
@@ -266,8 +208,8 @@ export default function OverViewPage() {
           </div>
         </Card>
       </div>
-      <div className="px-4 lg:px-6 pt-2">
-        <Card>
+      <div className="pt-2">
+        <Card className={cardSectionClass()}>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardDescription className="flex items-center gap-2">

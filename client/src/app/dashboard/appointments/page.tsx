@@ -72,7 +72,7 @@ export default function AppointmentsPage() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-4 p-4 lg:p-6 bg-background">
+    <div className="flex h-full flex-col gap-4 bg-background lg:flex-row lg:gap-6">
       {/* Left: Appointment List */}
       <Card className="w-full lg:w-[360px] xl:w-[400px] lg:min-w-[320px] xl:min-w-[360px] lg:max-w-md flex flex-col h-full lg:h-[calc(100vh-8rem)]">
         <CardHeader className="border-b">

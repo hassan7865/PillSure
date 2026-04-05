@@ -11,6 +11,8 @@ import { Pill, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useLogin, useGoogleLogin } from "@/app/auth/hooks/use-auth";
 import { getErrorMessage } from "@/lib/error-utils";
 import { LoginFormProps } from "./_types";
+import { cardSectionClass } from "@/lib/dashboard-ui";
+import { cn } from "@/lib/utils";
 
 
 const validateEmail = (email: string): boolean => {
@@ -62,8 +64,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
       {/* Desktop Split Layout */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Left Brand Panel - Hidden on Mobile */}
-    {/* Left Brand Panel - Hidden on Mobile */}
-    <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary via-primary/95 to-accent relative overflow-hidden">
+        <div className="relative hidden overflow-hidden bg-gradient-to-br from-primary via-primary/95 to-accent md:flex md:w-1/2">
           {/* Enhanced background pattern */}
           <div className="absolute inset-0">
             <div className="absolute top-10 left-10 w-32 h-32 bg-white/15 rounded-full blur-2xl animate-pulse"></div>
@@ -76,7 +77,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
           <div className="relative z-10 flex flex-col justify-between h-full p-10 lg:p-12">
             {/* Header */}
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Pillsure</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">PillSure</h1>
               <div className="w-12 h-1 bg-white/30 rounded-full"></div>
             </div>
 
@@ -119,7 +120,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
               
               {/* Footer */}
               <div>
-                <p className="text-xs text-white/50">© 2024 Pillsure. All rights reserved.</p>
+                <p className="text-xs text-white/50">
+                  © {new Date().getFullYear()} PillSure. All rights reserved.
+                </p>
               </div>
             </div>
           </div>
@@ -128,7 +131,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
         {/* Form Section */}
         <div className="flex-1 md:w-3/5 flex items-center justify-center p-4 md:p-8">
           <div className="w-full max-w-lg">
-            <Card className="bg-card border border-border rounded-xl shadow-lg md:shadow-2xl">
+            <Card className={cn(cardSectionClass(), "shadow-lg md:shadow-2xl")}>
               {/* Card Header */}
               <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-xl md:text-2xl font-bold text-card-foreground mb-2 text-left">
@@ -266,8 +269,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
 
               {/* Card Footer */}
               <CardFooter className="px-6 py-4 rounded-b-xl">
-                <p className="text-sm text-muted-foreground text-center w-full">
-                  Don't have an account?{" "}
+                <p className="text-center text-sm text-muted-foreground">
+                  Don&apos;t have an account?{" "}
                   <Button
                     type="button"
                     variant="link"
@@ -275,7 +278,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
                       e.preventDefault();
                       onSwitchToSignUp();
                     }}
-                    className="text-primary hover:text-primary/80 p-0 h-auto font-medium text-sm"
+                    className="h-auto p-0 text-sm font-medium text-primary hover:text-primary/80"
                   >
                     Sign up
                   </Button>

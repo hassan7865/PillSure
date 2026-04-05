@@ -29,6 +29,10 @@ const getOnboardingPath = (role: string | undefined): string | null => {
       return '/onboarding/doctor';
     case 'hospital':
       return '/onboarding/hospital';
+    case 'manufacturer':
+      return '/onboarding/manufacturer';
+    case 'medical_store':
+      return '/onboarding/medical-store';
     default:
       return null;
   }

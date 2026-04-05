@@ -9,6 +9,10 @@ export const getDashboardHomeByRole = (role?: string | null) => {
       return "/dashboard/doctor";
     case "hospital":
       return "/dashboard/hospital";
+    case "manufacturer":
+      return "/dashboard/manufacturer";
+    case "medical_store":
+      return "/dashboard/medical-store";
     default:
       return "/";
   }
@@ -41,6 +45,12 @@ export const canAccessDashboardPath = (role: string | null | undefined, pathname
   }
   if (key === "hospital") {
     return pathname === "/dashboard" || pathname.startsWith("/dashboard/hospital");
+  }
+  if (key === "manufacturer") {
+    return pathname === "/dashboard" || pathname.startsWith("/dashboard/manufacturer");
+  }
+  if (key === "medical_store") {
+    return pathname === "/dashboard" || pathname.startsWith("/dashboard/medical-store");
   }
 
   return false;

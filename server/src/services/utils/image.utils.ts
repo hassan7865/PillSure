@@ -56,32 +56,41 @@ export async function handleMedicineImageUpdate(
   };
 }
 
-/**
- * Cleanup uploaded images from S3 (for rollback on error)
- * @param uploadedImages - Array of uploaded image URLs
- */
-export async function cleanupUploadedImages(
-  uploadedImages: string[]
-): Promise<void> {
-  if (uploadedImages.length === 0) {
-    return;
+/** Pack photos for medical store listings (folder: store-pack-images). */
+export async function handleListingPackImageUpdate(
+  currentImages: string[],
+  existingImageUrls: string[],
+  newImages: Express.Multer.File[],
+  maxImages: number = 4,
+): Promise<ImageUpdateResult> {
+  const totalImages = existingImageUrls.length + newImages.length;
+  if (totalImages > maxImages) {
+    throw new Error(
+      `Maximum ${maxImages} pack images allowed. You are trying to have ${totalImages} images.`,
+    );
   }
 
-  const keysToCleanup = uploadedImages
-    .map((url) => s3Service.extractKeyFromUrl(url))
-    .filter((key): key is string => key !== null);
-
-  if (keysToCleanup.length > 0) {
-    await s3Service.deleteMultipleFiles(keysToCleanup).catch((cleanupErr) => {
-      console.error("Error cleaning up uploaded images after failure:", cleanupErr);
+  let uploadedImages: string[] = [];
+  if (newImages.length > 0) {
+    const uploadResults = await s3Service.uploadMultipleFiles(newImages, {
+      folder: "store-pack-images",
     });
+    uploadedImages = uploadResults.map((result) => result.url);
   }
+
+  const imagesToDelete = currentImages.filter(
+    (imageUrl) => !existingImageUrls.includes(imageUrl),
+  );
+
+  const finalImages = [...existingImageUrls, ...uploadedImages];
+
+  return {
+    finalImages,
+    imagesToDelete,
+    uploadedImages,
+  };
 }
 
-/**
- * Delete old images from S3 (best-effort, non-blocking)
- * @param imagesToDelete - Array of image URLs to delete
- */
 export async function deleteOldImages(
   imagesToDelete: string[]
 ): Promise<void> {

@@ -1,41 +1,58 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ShoppingCart,
   Heart,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
   ArrowLeft,
   FileText,
   HelpCircle,
   ChevronDown,
   ChevronUp,
   Info,
+  Store,
+  Tag,
 } from "lucide-react";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
 import PublicLayout from "@/layout/PublicLayout";
 import { medicineApi, Medicine } from "@/app/medicine/_api";
+import {
+  marketplaceApi,
+  type MedicalStoreCatalogRow,
+  type PublicStoreDetail,
+} from "@/lib/marketplace-api";
 import { motion } from "framer-motion";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import cartApi from "@/app/cart/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 import { buildConsultDoctorUrl } from "@/lib/consult-doctor-url";
+import { normalizeMedicineImages } from "@/lib/medicine-display";
+import { MedicinePrescriptionBadge, MedicineStockStatus } from "@/components/medicine/medicine-catalog-parts";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { cardSectionClass, marketplaceContentWidthClass, surfaceListItemClass } from "@/lib/dashboard-ui";
+import { cn } from "@/lib/utils";
 
-export default function MedicineProductPage() {
+function isUuid(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
+
+function MedicineProductPageInner() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const medicineId = params.id ? parseInt(params.id as string, 10) : null;
-  
+  const storeIdParam = searchParams.get("storeId")?.trim() ?? "";
+  const listingIdParam = searchParams.get("listingId")?.trim() ?? "";
+
   const [medicine, setMedicine] = useState<Medicine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -43,6 +60,12 @@ export default function MedicineProductPage() {
   const [openFaqs, setOpenFaqs] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
   const { showSuccess, showError, showInfo } = useCustomToast();
+
+  const [storeListing, setStoreListing] = useState<{
+    store: PublicStoreDetail;
+    listing: MedicalStoreCatalogRow;
+  } | null>(null);
+  const [storeContextError, setStoreContextError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!medicineId || isNaN(medicineId)) {
@@ -79,14 +102,51 @@ export default function MedicineProductPage() {
     };
   }, [medicineId]);
 
+  useEffect(() => {
+    if (!medicineId || isNaN(medicineId) || !storeIdParam || !isUuid(storeIdParam)) {
+      setStoreListing(null);
+      setStoreContextError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setStoreContextError(null);
+
+    (async () => {
+      try {
+        const [store, catalog] = await Promise.all([
+          marketplaceApi.getStore(storeIdParam),
+          marketplaceApi.getStoreCatalog(storeIdParam, 1, 8, medicineId),
+        ]);
+        if (cancelled) return;
+        const listing =
+          (listingIdParam && catalog.items.find((r) => r.listingId === listingIdParam)) ||
+          catalog.items.find((r) => r.medicineId === medicineId) ||
+          null;
+        if (listing) {
+          setStoreListing({ store, listing });
+        } else {
+          setStoreListing(null);
+          setStoreContextError("This medicine is no longer listed at that pharmacy.");
+        }
+      } catch {
+        if (!cancelled) {
+          setStoreListing(null);
+          setStoreContextError("Could not load pharmacy listing details.");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [medicineId, storeIdParam, listingIdParam]);
+
   if (isLoading) {
     return (
       <PublicLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <Loader
-            title="Loading Product"
-            description="Fetching medicine information..."
-          />
+          <Loader title="Loading Product" description="Fetching medicine information..." />
         </div>
       </PublicLayout>
     );
@@ -109,32 +169,57 @@ export default function MedicineProductPage() {
     );
   }
 
-  // Parse images
-  const images: string[] = Array.isArray(medicine.images) 
-    ? medicine.images 
-    : medicine.images 
-      ? [medicine.images as unknown as string]
-      : medicine.medicineUrl 
-        ? [medicine.medicineUrl]
-        : ["/pills.png"];
+  const listing = storeListing?.listing;
+  const store = storeListing?.store;
+
+  const imagesFromMedicine = normalizeMedicineImages(medicine);
+
+  const listingExtras: string[] = [];
+  if (listing?.displayImageUrl) listingExtras.push(listing.displayImageUrl);
+  if (listing?.packImages?.length) {
+    for (const u of listing.packImages) {
+      if (u && !listingExtras.includes(u)) listingExtras.push(u);
+    }
+  }
+  const images =
+    storeListing && listingExtras.length > 0
+      ? [...listingExtras, ...imagesFromMedicine.filter((u) => !listingExtras.includes(u))]
+      : imagesFromMedicine;
 
   const primaryImage = images[selectedImageIndex] || images[0] || "/pills.png";
 
-  // Calculate prices
-  const priceNum = medicine.price ? parseFloat(medicine.price) : 0;
-  const discountPct = medicine.discount ? parseFloat(medicine.discount) : 0;
-  const originalPrice = discountPct > 0 ? priceNum / (1 - discountPct / 100) : undefined;
-  const inStock = (medicine.stock ?? 0) > 0;
+  const displayCurrency = listing?.currency?.trim() || "PKR";
+  const displayPriceNum = listing ? Number(listing.retailPrice) : NaN;
+  const hasListingPrice = Boolean(listing) && Number.isFinite(displayPriceNum);
+  const displayDiscountPct = 0;
+
+  const inStock = listing ? listing.isActive && listing.listedQuantity > 0 : false;
+
+  const prescriptionRequired = listing ? listing.prescriptionRequired : Boolean(medicine.prescriptionRequired);
+
   const handleAddToCart = async () => {
     if (!medicine || !medicineId) return;
-    if (medicine.prescriptionRequired) {
+    if (prescriptionRequired) {
       showInfo("Prescription required", "Find a doctor who can prescribe this medicine.");
-      router.push(buildConsultDoctorUrl(medicine));
+      router.push(buildConsultDoctorUrl());
+      return;
+    }
+    if (!listing?.listingId) {
+      showInfo(
+        "Choose a pharmacy",
+        "Open this medicine from a pharmacy on the marketplace so we can route your order to that store.",
+      );
+      router.push("/search");
       return;
     }
     try {
       setAdding(true);
-      await cartApi.addItem({ medicineId, quantity: 1, sourceType: "direct" });
+      await cartApi.addItem({
+        medicineId,
+        quantity: 1,
+        sourceType: "direct",
+        medicalStoreMedicineId: listing.listingId,
+      });
       showSuccess("Added to cart", `${medicine.medicineName} was added to cart.`);
     } catch (error) {
       showError("Failed to add to cart", getErrorMessage(error));
@@ -143,39 +228,28 @@ export default function MedicineProductPage() {
     }
   };
 
-  // Parse drugDescription (plain text field)
-  const drugDescription = medicine.drugDescription;
-  
-  // Parse FAQs (JSONB field)
+  const drugDescription = listing?.drugDescription?.trim() || null;
+
   let faqs: Array<{ question: string; answer: string }> = [];
-  if (medicine.faqs) {
-    if (Array.isArray(medicine.faqs)) {
-      faqs = medicine.faqs;
-    } else if (typeof medicine.faqs === 'string') {
-      try {
-        const parsed = JSON.parse(medicine.faqs);
-        faqs = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        faqs = [];
-      }
-    }
+  if (listing?.faqs?.length) {
+    faqs = listing.faqs;
   }
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-8">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="mb-6"
-        >
+      <div className={marketplaceContentWidthClass("py-8")}>
+        <Button variant="ghost" onClick={() => router.back()} className="mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
 
+        {storeContextError ? (
+          <p className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+            {storeContextError}
+          </p>
+        ) : null}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Image Gallery */}
           <div className="space-y-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -190,19 +264,19 @@ export default function MedicineProductPage() {
                 className="object-contain p-4"
                 unoptimized
               />
-              {discountPct > 0 && (
+              {listing && displayDiscountPct > 0 && (
                 <div className="absolute top-4 right-4 bg-destructive text-white text-sm font-semibold px-3 py-1 rounded-md">
-                  -{Math.round(discountPct)}%
+                  -{Math.round(displayDiscountPct)}%
                 </div>
               )}
             </motion.div>
 
-            {/* Thumbnail Gallery */}
             {images.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {images.map((img, index) => (
                   <button
                     key={index}
+                    type="button"
                     onClick={() => setSelectedImageIndex(index)}
                     className={`relative aspect-square rounded-lg border-2 overflow-hidden transition-all ${
                       selectedImageIndex === index
@@ -223,68 +297,88 @@ export default function MedicineProductPage() {
             )}
           </div>
 
-          {/* Product Info */}
           <div className="space-y-6">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                {medicine.drugCategory && (
-                  <Badge variant="secondary" className="text-xs">
-                    {medicine.drugCategory}
-                  </Badge>
-                )}
-                {medicine.prescriptionRequired && (
-                  <Badge variant="destructive" className="text-xs flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Prescription Required
+              <div className="mb-2 flex items-center gap-2">
+                {prescriptionRequired ? <MedicinePrescriptionBadge /> : null}
+              </div>
+              <h1 className="text-3xl font-bold mb-2">{medicine.medicineName}</h1>
+            </div>
+
+            {store && listing ? (
+              <Card className={cn(cardSectionClass(), "border-primary/25 bg-primary/[0.04]")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Store className="h-4 w-4 text-primary" />
+                    Pharmacy listing
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Sold at </span>
+                    <Link
+                      href={`/pharmacy/${store.id}`}
+                      className="font-semibold text-primary underline-offset-4 hover:underline"
+                    >
+                      {store.storeName}
+                    </Link>
+                    {store.city ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {store.city}
+                        {store.province ? `, ${store.province}` : ""}
+                      </span>
+                    ) : null}
+                  </p>
+                  {listing.categories?.length ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                      {listing.categories.map((c) => (
+                        <Badge key={c.id} variant="secondary" className="font-normal">
+                          {c.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {hasListingPrice ? (
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-4xl font-bold text-primary">
+                  {displayCurrency}{" "}
+                  {displayPriceNum.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </span>
+                {displayDiscountPct > 0 && (
+                  <Badge variant="secondary" className="text-sm">
+                    Save {displayDiscountPct.toFixed(0)}%
                   </Badge>
                 )}
               </div>
-              <h1 className="text-3xl font-bold mb-2">{medicine.medicineName}</h1>
-              {medicine.drugVarient && (
-                <p className="text-muted-foreground text-sm mb-4">{medicine.drugVarient}</p>
-              )}
-            </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Open this product from a pharmacy listing to see price and availability.
+              </p>
+            )}
 
-            {/* Price */}
-            <div className="flex items-baseline gap-3">
-              {originalPrice && (
-                <span className="text-lg text-muted-foreground line-through">
-                  PKR {originalPrice.toFixed(2)}
-                </span>
-              )}
-              <span className="text-4xl font-bold text-primary">
-                PKR {priceNum.toFixed(2)}
-              </span>
-              {discountPct > 0 && (
-                <Badge variant="secondary" className="text-sm">
-                  Save {discountPct.toFixed(0)}%
-                </Badge>
-              )}
-            </div>
-
-            {/* Stock Status */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {inStock ? (
                 <>
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-green-700 font-medium">In Stock</span>
-                  {medicine.stock && (
+                  <MedicineStockStatus inStock size="large" />
+                  {listing ? (
                     <span className="text-sm text-muted-foreground">
-                      ({medicine.stock} available)
+                      ({listing.listedQuantity} at this pharmacy)
                     </span>
-                  )}
+                  ) : null}
                 </>
               ) : (
-                <>
-                  <XCircle className="h-5 w-5 text-destructive" />
-                  <span className="text-destructive font-medium">Out of Stock</span>
-                </>
+                <MedicineStockStatus inStock={false} size="large" />
               )}
             </div>
 
             <Separator />
 
-            {/* Actions */}
             <div className="flex gap-3">
               <Button
                 size="lg"
@@ -293,50 +387,40 @@ export default function MedicineProductPage() {
                 onClick={handleAddToCart}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
-                {adding ? "Adding..." : (medicine.prescriptionRequired ? "Consult Doctor" : "Add to Cart")}
+                {adding ? "Adding..." : prescriptionRequired ? "Consult Doctor" : "Add to Cart"}
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="px-4"
-              >
+              <Button size="lg" variant="outline" className="px-4" type="button">
                 <Heart className="h-5 w-5" />
               </Button>
             </div>
 
-            {/* Additional Info */}
-            <Card>
+            <Card className={cardSectionClass()}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Info className="h-5 w-5" />
                   Product Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Category:</span>
-                  <span className="font-medium">{medicine.drugCategory || "N/A"}</span>
-                </div>
-                {medicine.drugVarient && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Variant:</span>
-                    <span className="font-medium">{medicine.drugVarient}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Prescription:</span>
-                  <span className="font-medium">
-                    {medicine.prescriptionRequired ? "Required" : "Not Required"}
-                  </span>
+              <CardContent>
+                <div className="rounded-md border border-border/80">
+                  <Table>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="text-muted-foreground">Prescription</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {prescriptionRequired ? "Required" : "Not required"}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Drug Description Section */}
         {drugDescription && (
-          <Card className="mt-8">
+          <Card className={cn(cardSectionClass(), "mt-8")}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <FileText className="h-6 w-6" />
@@ -344,16 +428,13 @@ export default function MedicineProductPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                {drugDescription}
-              </p>
+              <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{drugDescription}</p>
             </CardContent>
           </Card>
         )}
 
-        {/* FAQs Section */}
         {faqs.length > 0 && (
-          <Card className="mt-8">
+          <Card className={cn(cardSectionClass(), "mt-8")}>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <HelpCircle className="h-6 w-6" />
@@ -365,25 +446,23 @@ export default function MedicineProductPage() {
                 {faqs.map((faq, index) => {
                   const faqId = `faq-${index}`;
                   const isOpen = openFaqs[faqId] || false;
-                  
+
                   return (
                     <Collapsible
                       key={index}
                       open={isOpen}
                       onOpenChange={(open) => {
-                        setOpenFaqs(prev => ({
+                        setOpenFaqs((prev) => ({
                           ...prev,
-                          [faqId]: open
+                          [faqId]: open,
                         }));
                       }}
                     >
                       <CollapsibleTrigger className="w-full text-left">
-                        <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                        <div className={cn(surfaceListItemClass("flex items-center justify-between p-4 hover:bg-muted/50"))}>
                           <div className="flex items-start gap-3 flex-1">
                             <HelpCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                            <p className="font-medium text-foreground pr-4">
-                              {faq.question || "Question"}
-                            </p>
+                            <p className="font-medium text-foreground pr-4">{faq.question || "Question"}</p>
                           </div>
                           {isOpen ? (
                             <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
@@ -409,3 +488,18 @@ export default function MedicineProductPage() {
   );
 }
 
+export default function MedicineProductPage() {
+  return (
+    <Suspense
+      fallback={
+        <PublicLayout>
+          <div className="flex min-h-screen items-center justify-center">
+            <Loader title="Loading Product" description="Fetching medicine information..." />
+          </div>
+        </PublicLayout>
+      }
+    >
+      <MedicineProductPageInner />
+    </Suspense>
+  );
+}

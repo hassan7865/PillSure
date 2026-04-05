@@ -1,7 +1,7 @@
 /**
  * Utility functions for search/filter operations
  */
-import { or, ilike, sql, SQL, AnyColumn } from "drizzle-orm";
+import { or, ilike, SQL, AnyColumn } from "drizzle-orm";
 
 /**
  * Build search conditions for text fields
@@ -19,28 +19,6 @@ export function buildSearchConditions(
 
   const trimmedTerm = `%${searchTerm.trim()}%`;
   const conditions = fields.map((field) => ilike(field, trimmedTerm));
-  
-  return conditions.length > 0 ? or(...conditions) : undefined;
-}
-
-/**
- * Build case-insensitive search conditions for multiple string fields
- * @param searchTerm - Search term to match
- * @param fieldExpressions - Array of SQL expressions (can include CONCAT expressions)
- * @returns SQL condition or undefined if searchTerm is empty
- */
-export function buildCaseInsensitiveSearch(
-  searchTerm: string | undefined,
-  fieldExpressions: SQL[]
-): SQL | undefined {
-  if (!searchTerm || !searchTerm.trim()) {
-    return undefined;
-  }
-
-  const trimmedTerm = `%${searchTerm.trim()}%`;
-  const conditions = fieldExpressions.map((field) => 
-    sql`LOWER(${field}) LIKE LOWER(${trimmedTerm})`
-  );
   
   return conditions.length > 0 ? or(...conditions) : undefined;
 }
