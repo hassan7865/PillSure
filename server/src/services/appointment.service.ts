@@ -274,6 +274,7 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
       patientId: appointments.patientId,
       doctorId: appointments.doctorId,
       isActive: appointments.isActive,
+      paymentStatus: appointments.paymentStatus,
       patientName: sql<string>`CONCAT(${patientUser.firstName}, ' ', ${patientUser.lastName})`,
       patientEmail: patientUser.email,
       patientGender: patients.gender,
@@ -660,63 +661,6 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
       isHospitalAffiliated,
       doctorId: doctor.id,
       hospitalId: doctor.hospitalId || null,
-    };
-  }
-
-  async getHospitalDashboardStatsByUserId(userId: string) {
-    const hospital = await db
-      .select({
-        id: hospitals.id,
-        hospitalName: hospitals.hospitalName,
-      })
-      .from(hospitals)
-      .where(eq(hospitals.userId, userId))
-      .limit(1);
-
-    if (!hospital.length) {
-      throw createError("Hospital profile not found", 404);
-    }
-
-    const hospitalId = hospital[0].id;
-
-    const statusCounts = await db
-      .select({
-        status: appointments.status,
-        count: sql<number>`COUNT(*)`,
-      })
-      .from(appointments)
-      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
-      .where(and(eq(doctors.hospitalId, hospitalId), eq(appointments.isActive, true)))
-      .groupBy(appointments.status);
-
-    const byStatus: Record<string, number> = {};
-    statusCounts.forEach((row) => {
-      byStatus[row.status] = Number(row.count) || 0;
-    });
-    const totalAppointments = Object.values(byStatus).reduce((sum, v) => sum + v, 0);
-
-    // Hospital revenue = completed appointments fee totals for affiliated doctors.
-    const revenueResult = await db
-      .select({
-        total: sql<string>`coalesce(sum(cast(${doctors.feePkr} as numeric)), 0)::text`,
-      })
-      .from(appointments)
-      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
-      .where(
-        and(
-          eq(doctors.hospitalId, hospitalId),
-          eq(appointments.isActive, true),
-          eq(appointments.status, "completed")
-        )
-      );
-
-    return {
-      hospitalId,
-      hospitalName: hospital[0].hospitalName,
-      totalAppointments,
-      byStatus,
-      totalEarned: Number(revenueResult[0]?.total || 0),
-      currency: "pkr",
     };
   }
 

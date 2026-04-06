@@ -28,12 +28,14 @@ export const generateToken = (payload: JwtPayload): string => {
 };
 
 export const requireRole = (roles: string[]) => {
+  const allowed = roles.map((r) => String(r).toLowerCase());
   return (req: Request, res: Response, next: NextFunction) => {
     if (!(req as any).user) {
       return next(UnauthorizedError("Authentication required"));
     }
 
-    if (!roles.includes((req as any).user.role)) {
+    const userRole = String((req as any).user.role ?? "").toLowerCase();
+    if (!allowed.includes(userRole)) {
       return next(ForbiddenError("Insufficient permissions"));
     }
 

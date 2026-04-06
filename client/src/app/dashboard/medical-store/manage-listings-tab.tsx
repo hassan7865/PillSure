@@ -266,7 +266,8 @@ export function ManageListingsTab({
   const [listedQty, setListedQty] = useState("0");
   const [packImagesAdd, setPackImagesAdd] = useState<PackImageItem[]>([]);
   const [editPackImages, setEditPackImages] = useState<PackImageItem[]>([]);
-  const [manufacturerId, setManufacturerId] = useState("");
+  const [resolvedManufacturerMedicineId, setResolvedManufacturerMedicineId] = useState<string | null>(null);
+  const [batchLinkLoading, setBatchLinkLoading] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [sortOrder, setSortOrder] = useState("0");
   const [formError, setFormError] = useState<string | null>(null);
@@ -341,6 +342,30 @@ export function ManageListingsTab({
     };
   }, [debouncedQ, manufacturerFilterId]);
 
+  useEffect(() => {
+    if (!selectedMedicine || !manufacturerFilterId.trim()) {
+      setResolvedManufacturerMedicineId(null);
+      setBatchLinkLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setBatchLinkLoading(true);
+    medicineApi
+      .resolveManufacturerBatch(selectedMedicine.id, manufacturerFilterId)
+      .then((id) => {
+        if (!cancelled) setResolvedManufacturerMedicineId(id);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedManufacturerMedicineId(null);
+      })
+      .finally(() => {
+        if (!cancelled) setBatchLinkLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMedicine, manufacturerFilterId]);
+
   const resetAddForm = useCallback(() => {
     setPackImagesAdd((prev) => {
       prev.forEach((img) => {
@@ -354,7 +379,8 @@ export function ManageListingsTab({
     setSelectedMedicine(null);
     setRetailPrice("");
     setListedQty("0");
-    setManufacturerId("");
+    setResolvedManufacturerMedicineId(null);
+    setBatchLinkLoading(false);
     setIsActive(true);
     setSortOrder("0");
     setManufacturerFilterId("");
@@ -376,7 +402,6 @@ export function ManageListingsTab({
     setRetailPrice(String(row.retailPrice));
     setListedQty(String(row.listedQuantity));
     setEditPackImages((row.packImages ?? []).map((url) => ({ url, isNew: false })));
-    setManufacturerId("");
     setIsActive(row.isActive);
     setSortOrder(String(row.sortOrder ?? 0));
     setSelectedCategoryIdsEdit(row.categories.map((c) => c.id));
@@ -445,12 +470,13 @@ export function ManageListingsTab({
       setFormError("Stock quantity must be a whole number ≥ 0.");
       return;
     }
-    let mid: string | null | undefined = undefined;
-    if (manufacturerId.trim()) {
-      mid = manufacturerId.trim();
-    } else {
-      mid = null;
+    if (manufacturerFilterId.trim() && batchLinkLoading) {
+      setFormError("Wait for the manufacturer batch link to finish loading.");
+      return;
     }
+    const mid: string | null = manufacturerFilterId.trim()
+      ? resolvedManufacturerMedicineId
+      : null;
     const faqNorm = normalizeFaqsForApi(faqsAdd);
     if (!faqNorm.ok) {
       setFormError(faqNorm.message);
@@ -733,7 +759,8 @@ export function ManageListingsTab({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Optional: limit search to medicines linked to that manufacturer&apos;s catalog.
+                Optional: limit search to that manufacturer&apos;s catalog. If you add a listing with a manufacturer
+                selected, we link it to their wholesale batch automatically when one exists.
               </p>
             </div>
             <div className="space-y-2">
@@ -780,6 +807,29 @@ export function ManageListingsTab({
                   Selected: <strong>{selectedMedicine.medicineName}</strong>
                 </p>
               ) : null}
+              {selectedMedicine && manufacturerFilterId ? (
+                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Wholesale batch link</span>
+                  {batchLinkLoading ? (
+                    <p className="mt-1">Looking up manufacturer batch…</p>
+                  ) : resolvedManufacturerMedicineId ? (
+                    <p className="mt-1">
+                      Linked to{" "}
+                      <span className="font-medium text-foreground">
+                        {(manufacturers.find((x) => x.id === manufacturerFilterId)?.shortName?.trim() ||
+                          manufacturers.find((x) => x.id === manufacturerFilterId)?.legalName) ??
+                          "this manufacturer"}
+                      </span>
+                      &apos;s catalog batch for traceability.
+                    </p>
+                  ) : (
+                    <p className="mt-1">
+                      No active wholesale listing for this medicine under that manufacturer—your store listing will be
+                      created without a batch link.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -819,15 +869,6 @@ export function ManageListingsTab({
               onAddFiles={(files) => addPackFiles(setPackImagesAdd, files)}
               onRemove={(i) => removePackAt(i, setPackImagesAdd)}
             />
-            <div className="space-y-2">
-              <Label htmlFor="ms-mfg">Manufacturer batch ID (optional UUID)</Label>
-              <Input
-                id="ms-mfg"
-                value={manufacturerId}
-                onChange={(e) => setManufacturerId(e.target.value)}
-                placeholder="Leave empty if not applicable"
-              />
-            </div>
             <div className="flex items-center gap-2">
               <Checkbox id="ms-active" checked={isActive} onCheckedChange={(v) => setIsActive(v === true)} />
               <Label htmlFor="ms-active" className="text-sm font-normal cursor-pointer">
@@ -882,7 +923,11 @@ export function ManageListingsTab({
             <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleCreate} disabled={submitting}>
+            <Button
+              type="button"
+              onClick={handleCreate}
+              disabled={submitting || (!!manufacturerFilterId.trim() && batchLinkLoading)}
+            >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create listing"}
             </Button>
           </DialogFooter>
@@ -910,11 +955,13 @@ export function ManageListingsTab({
                 ) : null}
               </div>
               <div className="space-y-1 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
-                <p className="text-xs font-medium text-muted-foreground">Manufacturer</p>
+                <p className="text-xs font-medium text-muted-foreground">Manufacturer / wholesale batch</p>
                 <p className="font-medium text-foreground">{editRow.manufacturerName ?? "—"}</p>
                 {editRow.manufacturerMedicineId ? (
-                  <p className="break-all font-mono text-[10px] text-muted-foreground">{editRow.manufacturerMedicineId}</p>
-                ) : null}
+                  <p className="text-xs text-muted-foreground">Linked to manufacturer wholesale catalog (batch).</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Not linked to a manufacturer batch.</p>
+                )}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">

@@ -80,6 +80,11 @@ function getNavItems(user: AuthUser | null) {
         url: getDashboardHomeByRole(role),
         icon: LayoutDashboard,
         isActive: true
+      },
+      {
+        title: 'Doctors',
+        url: '/dashboard/hospital/doctors',
+        icon: Stethoscope
       }
     ];
   }

@@ -7,6 +7,8 @@ import {
   CheckoutSessionResponse,
   DoctorDashboardStats,
   HospitalDashboardStats,
+  HospitalDoctorsPayload,
+  HospitalDoctorAppointmentsPayload,
 } from './_types';
 import { extractApiData, buildStatusParam, buildQueryString } from '@/lib/api-utils';
 
@@ -62,7 +64,28 @@ export const appointmentApi = {
   },
 
   getCurrentHospitalDashboardStats: async (): Promise<HospitalDashboardStats> => {
-    const response = await api.get(`/appointments/hospital/dashboard-stats`);
+    const response = await api.get(`/hospital/dashboard-stats`);
+    return extractApiData(response);
+  },
+
+  getHospitalDoctors: async (): Promise<HospitalDoctorsPayload> => {
+    const response = await api.get(`/hospital/doctors`);
+    return extractApiData(response);
+  },
+
+  getHospitalDoctorAppointments: async (doctorId: string): Promise<HospitalDoctorAppointmentsPayload> => {
+    const response = await api.get(`/hospital/doctors/${encodeURIComponent(doctorId)}/appointments`);
+    return extractApiData(response);
+  },
+
+  /** Same fields as auth register: doctor signs in later and completes onboarding. */
+  createHospitalDoctor: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
+    const response = await api.post(`/hospital/doctors`, data);
+    return extractApiData(response);
+  },
+
+  patchHospitalDoctorActive: async (doctorId: string, isActive: boolean) => {
+    const response = await api.patch(`/hospital/doctors/${encodeURIComponent(doctorId)}`, { isActive });
     return extractApiData(response);
   },
 

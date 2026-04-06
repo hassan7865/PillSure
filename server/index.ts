@@ -16,6 +16,7 @@ import { OnboardingService } from "./src/services/onboarding.service";
 import { ManufacturerRoute } from "./src/routes/manufacturer.route";
 import { MedicalStoreRoute } from "./src/routes/medicalStore.route";
 import { MarketplaceRoute } from "./src/routes/marketplace.route";
+import { HospitalRoute } from "./src/routes/hospital.route";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
 import { requestLogger } from "./src/middleware/request.logger";
 import { validateS3Config } from "./src/config/s3.config";
@@ -74,6 +75,7 @@ const initializeApp = async () => {
     const manufacturerRoutes = new ManufacturerRoute();
     const medicalStoreRoutes = new MedicalStoreRoute();
     const marketplaceRoutes = new MarketplaceRoute();
+    const hospitalRoutes = new HospitalRoute();
 
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
@@ -89,6 +91,7 @@ const initializeApp = async () => {
     app.use("/api/manufacturer", manufacturerRoutes.getRouter());
     app.use("/api/medical-store", medicalStoreRoutes.getRouter());
     app.use("/api/marketplace", marketplaceRoutes.getRouter());
+    app.use("/api/hospital", hospitalRoutes.getRouter());
 
     // Health check endpoint
     app.get("/health", (req, res) => {

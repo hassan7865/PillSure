@@ -31,6 +31,9 @@ export class MedicineRoute {
     // GET /api/medicine/manufacturers — list manufacturers (for filters)
     this.router.get("/manufacturers", this.listManufacturers);
 
+    // GET /api/medicine/manufacturer-batch?medicineId=1&manufacturerId=uuid — resolve wholesale batch row id
+    this.router.get("/manufacturer-batch", this.getManufacturerBatch);
+
     // GET /api/medicine/:id - Get medicine by ID
     this.router.get("/:id", this.getMedicineById);
   }
@@ -126,6 +129,35 @@ export class MedicineRoute {
     try {
       const data = await medicineService.listManufacturersForPicker();
       res.status(200).json(ApiResponse(data, "Manufacturers retrieved successfully"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getManufacturerBatch = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const medicineIdParam = req.query.medicineId as string | undefined;
+      const manufacturerIdRaw = req.query.manufacturerId as string | undefined;
+      const medicineId = parseInt(medicineIdParam ?? "", 10);
+      if (isNaN(medicineId) || medicineId < 1) {
+        return next(BadRequestError("medicineId must be a positive integer"));
+      }
+      if (manufacturerIdRaw == null || String(manufacturerIdRaw).trim() === "") {
+        return next(BadRequestError("manufacturerId is required"));
+      }
+      const m = String(manufacturerIdRaw).trim();
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m)
+      ) {
+        return next(BadRequestError("manufacturerId must be a valid UUID"));
+      }
+      const manufacturerMedicineId = await medicineService.resolveManufacturerMedicineId(medicineId, m);
+      res.status(200).json(
+        ApiResponse(
+          { manufacturerMedicineId },
+          manufacturerMedicineId ? "Manufacturer batch resolved" : "No active batch for this medicine and manufacturer",
+        ),
+      );
     } catch (error) {
       next(error);
     }

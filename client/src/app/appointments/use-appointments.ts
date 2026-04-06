@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { appointmentApi } from './components/_api';
-import { CreateAppointmentRequest, UpdateAppointmentStatusRequest, UpdateAppointmentNotesRequest } from './components/_types';
+import {
+  CreateAppointmentRequest,
+  UpdateAppointmentStatusRequest,
+  UpdateAppointmentNotesRequest,
+  HospitalDoctorsPayload,
+  HospitalDoctorAppointmentsPayload,
+} from './components/_types';
 import { useCustomToast } from '@/hooks/use-custom-toast';
 import { getErrorMessage } from '@/lib/error-utils';
 
@@ -396,6 +402,100 @@ export const useCurrentHospitalDashboardStats = () => {
   }, []);
 
   return { data, isLoading, error };
+};
+
+export const useHospitalDoctors = () => {
+  const [data, setData] = useState<HospitalDoctorsPayload | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await appointmentApi.getHospitalDoctors();
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to fetch hospital doctors"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const run = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const result = await appointmentApi.getHospitalDoctors();
+        if (isMounted) setData(result);
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error("Failed to fetch hospital doctors"));
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    run();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return { data, isLoading, error, refetch };
+};
+
+export const useHospitalDoctorAppointments = (doctorId: string | undefined) => {
+  const [data, setData] = useState<HospitalDoctorAppointmentsPayload | null>(null);
+  const [isLoading, setIsLoading] = useState(!!doctorId);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refetch = useCallback(async () => {
+    if (!doctorId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await appointmentApi.getHospitalDoctorAppointments(doctorId);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to fetch doctor appointments"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [doctorId]);
+
+  useEffect(() => {
+    if (!doctorId) {
+      setData(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    let isMounted = true;
+    const run = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const result = await appointmentApi.getHospitalDoctorAppointments(doctorId);
+        if (isMounted) setData(result);
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error("Failed to fetch doctor appointments"));
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    run();
+    return () => {
+      isMounted = false;
+    };
+  }, [doctorId]);
+
+  return { data, isLoading, error, refetch };
 };
 
 export const useCompletedAppointmentsByPatientId = (patientId: string | undefined) => {

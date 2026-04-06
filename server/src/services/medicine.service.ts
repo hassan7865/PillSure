@@ -157,6 +157,26 @@ export class MedicineService {
       .orderBy(desc(medicines.createdAt))
       .limit(safeLimit);
   }
+
+ 
+  async resolveManufacturerMedicineId(medicineId: number, manufacturerId: string): Promise<string | null> {
+    if (!Number.isInteger(medicineId) || medicineId < 1) {
+      throw BadRequestError("medicineId must be a positive integer");
+    }
+    const mfr = manufacturerId.trim();
+    const row = await db
+      .select({ id: manufacturerMedicines.id })
+      .from(manufacturerMedicines)
+      .where(
+        and(
+          eq(manufacturerMedicines.medicineId, medicineId),
+          eq(manufacturerMedicines.manufacturerId, mfr),
+          eq(manufacturerMedicines.isActive, true),
+        ),
+      )
+      .limit(1);
+    return row[0]?.id ?? null;
+  }
 }
 
 export const medicineService = new MedicineService();

@@ -1,18 +1,21 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import Loader from "@/components/ui/loader";
 import { useCurrentHospitalDashboardStats } from "@/app/appointments/use-appointments";
 import { CalendarClock, CheckCircle2, Clock3, Wallet, XCircle, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
 import { cardSectionClass, surfaceInsetClass } from "@/lib/dashboard-ui";
+import { getErrorMessage } from "@/lib/error-utils";
 
 const HospitalDashboardPage = () => {
-  const { data: stats, isLoading, error } = useCurrentHospitalDashboardStats();
+  const { data: stats, isLoading: statsLoading, error: statsError } = useCurrentHospitalDashboardStats();
 
-  if (isLoading) {
+  if (statsLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <Loader title="Loading dashboard" description="Fetching hospital stats..." />
@@ -20,21 +23,27 @@ const HospitalDashboardPage = () => {
     );
   }
 
-  if (error || !stats) {
+  if (statsError || !stats) {
+    const message = statsError ? getErrorMessage(statsError) : "Unable to load hospital dashboard stats.";
+    const isProfileMissing =
+      typeof message === "string" &&
+      (message.toLowerCase().includes("hospital profile not found") || message.toLowerCase().includes("not found"));
+
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-muted-foreground">Unable to load hospital dashboard stats.</p>
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+        {isProfileMissing ? (
+          <Button asChild variant="default">
+            <Link href="/onboarding/hospital">Complete hospital onboarding</Link>
+          </Button>
+        ) : null}
       </div>
     );
   }
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        description={stats.hospitalName}
-        icon={Building2}
-      />
+      <PageHeader title="Dashboard" description={stats.hospitalName} icon={Building2} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className={cardSectionClass()}>
@@ -52,7 +61,7 @@ const HospitalDashboardPage = () => {
               <Clock3 className="h-4 w-4" />
               Pending
             </CardDescription>
-            <CardTitle className="text-2xl">{stats.byStatus?.pending || 0}</CardTitle>
+            <CardTitle className="text-2xl">{stats.byStatus?.pending ?? stats.byStatus?.in_progress ?? 0}</CardTitle>
           </CardHeader>
         </Card>
         <Card className={cardSectionClass()}>
@@ -87,7 +96,7 @@ const HospitalDashboardPage = () => {
               <Clock3 className="h-3 w-3" />
               Pending
             </p>
-            <p className="text-2xl font-semibold">{stats.byStatus?.pending || 0}</p>
+            <p className="text-2xl font-semibold">{stats.byStatus?.pending ?? stats.byStatus?.in_progress ?? 0}</p>
           </div>
           <div className={surfaceInsetClass("p-3")}>
             <p className="flex items-center gap-1 text-xs text-muted-foreground">

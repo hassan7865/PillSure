@@ -25,7 +25,6 @@ export class AppointmentRoute {
     this.router.get('/doctor/stats', verifyToken, this.getCurrentDoctorAppointmentStats);
     this.router.get('/doctor/dashboard-stats', verifyToken, this.getCurrentDoctorDashboardStats);
     this.router.get('/doctor/yearly-stats', verifyToken, this.getCurrentDoctorYearlyStats);
-    this.router.get('/hospital/dashboard-stats', verifyToken, this.getCurrentHospitalDashboardStats);
     this.router.get('/booked-slots/:doctorId/:date', this.getBookedSlots);
     this.router.get('/:id', verifyToken, this.getAppointmentById);
     this.router.put('/:id/status', verifyToken, this.updateAppointmentStatus);
@@ -177,22 +176,6 @@ export class AppointmentRoute {
 
       const result = await appointmentService.getDoctorDashboardStatsByUserId(userId);
       res.status(200).json(ApiResponse(result, "Doctor dashboard statistics retrieved successfully"));
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  private getCurrentHospitalDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = (req as any).user.userId;
-      const userRole = (req as any).user.role;
-
-      if (userRole !== 'hospital') {
-        return next(BadRequestError("This endpoint is only available for hospitals"));
-      }
-
-      const result = await appointmentService.getHospitalDashboardStatsByUserId(userId);
-      res.status(200).json(ApiResponse(result, "Hospital dashboard statistics retrieved successfully"));
     } catch (error) {
       next(error);
     }
