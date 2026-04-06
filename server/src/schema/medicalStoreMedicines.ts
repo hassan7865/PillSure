@@ -26,16 +26,13 @@ export const medicalStoreMedicines = pgTable(
     medicineId: integer("medicine_id")
       .notNull()
       .references(() => medicines.id, { onDelete: "cascade" }),
-    /** When set, points at the manufacturer batch/listing this stock traceably came from. */
-    manufacturerMedicineId: uuid("manufacturer_medicine_id").references(
+manufacturerMedicineId: uuid("manufacturer_medicine_id").references(
       () => manufacturerMedicines.id,
       { onDelete: "set null" },
     ),
     packImages: jsonb("pack_images").$type<string[] | null>(),
-    /** Listing-specific product description (was on global `medicines`). */
-    drugDescription: text("drug_description"),
-    /** Listing-specific FAQs as JSON array, e.g. [{ "question": "", "answer": "" }]. */
-    faqs: jsonb("faqs").$type<Array<{ question: string; answer: string }> | null>(),
+drugDescription: text("drug_description"),
+faqs: jsonb("faqs").$type<Array<{ question: string; answer: string }> | null>(),
     retailPrice: numeric("retail_price", { precision: 12, scale: 2 }).notNull(),
     listedQuantity: integer("listed_quantity").notNull().default(0),
     currency: varchar("currency", { length: 10 }).notNull().default("PKR"),

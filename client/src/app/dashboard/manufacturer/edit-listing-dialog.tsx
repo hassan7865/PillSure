@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,7 +58,7 @@ export function ManufacturerEditListingDialog({ open, onOpenChange, row, onSaved
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <AppDialogContent size="sm" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit listing</DialogTitle>
           <DialogDescription>
@@ -138,7 +132,7 @@ export function ManufacturerEditListingDialog({ open, onOpenChange, row, onSaved
             )}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

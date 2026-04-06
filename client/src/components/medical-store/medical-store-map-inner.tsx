@@ -8,8 +8,6 @@ import { cn } from "@/lib/utils";
 
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
-/** Default view: Karachi — used until coordinates are set or parsed. */
 export const DEFAULT_MAP_CENTER: [number, number] = [24.8607, 67.0011];
 
 const markerIcon = L.icon({

@@ -26,8 +26,7 @@ interface RAGRecommendationResult {
   embedding_cost?: number;
   rewritten_query_cost?: number;
   total_cost?: number;
-  /** Structured LLM extraction from RAG /recommend (QueryUnderstanding) */
-  query_understanding?: Record<string, unknown> | null;
+query_understanding?: Record<string, unknown> | null;
   retrieval_meta?: Record<string, unknown> | null;
 }
 
@@ -84,13 +83,7 @@ export class RAGService {
     // Get RAG API URL from environment variable, default to localhost
     this.ragApiUrl = process.env.RAG_API_URL || "http://localhost:8000";
   }
-
-  /**
-   * Call RAG API to get medicine recommendations based on query
-   * @param query - User query/symptom description
-   * @returns RAG recommendation results
-   */
-  async getRAGRecommendations(query: string): Promise<RAGRecommendationResult> {
+async getRAGRecommendations(query: string): Promise<RAGRecommendationResult> {
     if (!query || query.trim().length === 0) {
       throw BadRequestError("Query is required");
     }
@@ -122,13 +115,7 @@ export class RAGService {
       throw new Error("Failed to fetch RAG recommendations: Unknown error");
     }
   }
-
-  /**
-   * Fetch complete medicine entries from database based on medicine IDs
-   * @param medicineIds - Array of medicine IDs to fetch
-   * @returns Array of complete medicine entries
-   */
-  async getMedicinesByIds(medicineIds: number[]): Promise<MedicineDetails[]> {
+async getMedicinesByIds(medicineIds: number[]): Promise<MedicineDetails[]> {
     if (!medicineIds || medicineIds.length === 0) {
       return [];
     }
@@ -153,15 +140,7 @@ export class RAGService {
     const byId = new Map(results.map((row) => [row.id, row]));
     return uniqueIds.map((id) => byId.get(id)).filter((row): row is MedicineDetails => row != null);
   }
-
-  /**
-   * Log RAG query to database
-   * @param query - Original user query
-   * @param ragResults - RAG API results
-   * @param embeddingCost - Cost for embedding generation (optional)
-   * @param rewrittenQueryCost - Cost for query rewriting (optional)
-   */
-  private async logRAGQuery(
+private async logRAGQuery(
     query: string,
     ragResults: RAGRecommendationResult,
     embeddingCost?: number | null,
@@ -221,15 +200,7 @@ export class RAGService {
       console.error("Failed to log RAG query to database:", error);
     }
   }
-
-  /**
-   * Get RAG recommendations with complete medicine details and recommended doctors
-   * @param query - User query/symptom description
-   * @param embeddingCost - Optional embedding cost to log
-   * @param rewrittenQueryCost - Optional rewritten query cost to log
-   * @returns RAG recommendations with complete medicine entries and doctors from database
-   */
-  async getRecommendationsWithMedicineDetails(
+async getRecommendationsWithMedicineDetails(
     query: string,
     embeddingCost?: number | null,
     rewrittenQueryCost?: number | null

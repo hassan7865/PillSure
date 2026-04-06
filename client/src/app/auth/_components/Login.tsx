@@ -20,9 +20,6 @@ const validateEmail = (email: string): boolean => {
 };
 
 
-
-
-
 const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignUp }) => {
   const form = useForm({
     defaultValues: {

@@ -7,8 +7,6 @@ import Loader from "@/components/ui/loader";
 import { fixedNavbarOffsetPt } from "@/lib/dashboard-ui";
 import { cn } from "@/lib/utils";
 import { usePublicAreaGate } from "@/hooks/use-public-area-gate";
-
-/** Navbar + main + footer without role-based redirects (e.g. legal pages for all users). */
 export function PublicPageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">

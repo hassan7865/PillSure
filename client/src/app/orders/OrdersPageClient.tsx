@@ -33,13 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 
 type ShippingAddressEntry = {
   id: string;
@@ -267,7 +262,7 @@ export default function OrdersPageClient() {
             if (!open) resetAddressForm();
           }}
         >
-          <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <AppDialogContent size="md" className="!max-h-[90vh] gap-0 !overflow-hidden p-0">
             <div className="border-b border-border/60 bg-gradient-to-br from-primary/[0.08] via-primary/[0.03] to-transparent px-6 pb-5 pt-6">
               <div className="flex gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-sm ring-1 ring-primary/10">
@@ -462,7 +457,7 @@ export default function OrdersPageClient() {
                 </Button>
               </div>
             </div>
-          </DialogContent>
+          </AppDialogContent>
         </Dialog>
         <Card className={cardSectionClass()}>
           <CardContent className="space-y-3 p-6">

@@ -10,8 +10,6 @@ import {
   doublePrecision,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
-
-/** Retail pharmacy / medical store profile; lat/lng support nearest-store search (Haversine in app/SQL). */
 export const medicalStores = pgTable(
   "medical_stores",
   {
@@ -31,8 +29,7 @@ export const medicalStores = pgTable(
     closingTime: varchar("closing_time", { length: 10 }),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
-    /** Public URL for store logo (S3 or CDN); shown on marketplace & pharmacy page */
-    logoUrl: text("logo_url"),
+logoUrl: text("logo_url"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow().notNull(),
@@ -40,7 +37,6 @@ export const medicalStores = pgTable(
   (table) => ({
     idxUserId: index("idx_medical_stores_user_id").on(table.userId),
     uqUserId: uniqueIndex("uq_medical_stores_user_id").on(table.userId),
-    /** Bounding-box prefilter for future nearest queries; distance still computed in SQL/app. */
-    idxLatLng: index("idx_medical_stores_lat_lng").on(table.latitude, table.longitude),
+idxLatLng: index("idx_medical_stores_lat_lng").on(table.latitude, table.longitude),
   }),
 );

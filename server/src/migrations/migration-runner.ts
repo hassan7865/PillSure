@@ -15,15 +15,8 @@ const pool = new Pool({
 const db = drizzle(pool);
 
 const MIGRATIONS_DIR = path.join(__dirname, '../../drizzle');
-
-/**
- * Migration Runner - Alembic-like migration system
- */
 export class MigrationRunner {
-  /**
-   * Get current migration version from database
-   */
-  static async current(): Promise<string | null> {
+static async current(): Promise<string | null> {
     try {
       const result = await pool.query(`
         SELECT hash FROM drizzle.__drizzle_migrations 
@@ -39,11 +32,7 @@ export class MigrationRunner {
       throw error;
     }
   }
-
-  /**
-   * Get migration history
-   */
-  static async history(): Promise<Array<{ hash: string; created_at: Date }>> {
+static async history(): Promise<Array<{ hash: string; created_at: Date }>> {
     try {
       const result = await pool.query(`
         SELECT hash, created_at 
@@ -61,31 +50,19 @@ export class MigrationRunner {
       throw error;
     }
   }
-
-  /**
-   * Run all pending migrations (upgrade)
-   */
-  static async upgrade(): Promise<void> {
+static async upgrade(): Promise<void> {
     console.log('Running migrations...');
     await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
     console.log('All migrations applied successfully');
   }
-
-  /**
-   * Check if migrations directory exists and has migrations
-   */
-  static async checkMigrationsExist(): Promise<boolean> {
+static async checkMigrationsExist(): Promise<boolean> {
     if (!fs.existsSync(MIGRATIONS_DIR)) {
       return false;
     }
     const files = fs.readdirSync(MIGRATIONS_DIR);
     return files.some(file => file.endsWith('.sql'));
   }
-
-  /**
-   * Get pending migrations
-   */
-  static async pending(): Promise<string[]> {
+static async pending(): Promise<string[]> {
     try {
       const history = await this.history();
       const appliedHashes = new Set(history.map(h => h.hash));
@@ -114,11 +91,7 @@ export class MigrationRunner {
       return [];
     }
   }
-
-  /**
-   * Close database connection
-   */
-  static async close(): Promise<void> {
+static async close(): Promise<void> {
     await pool.end();
   }
 }

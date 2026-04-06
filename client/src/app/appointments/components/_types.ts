@@ -78,8 +78,6 @@ export interface HospitalDoctorSummary {
   mobile: string;
   feePkr: string | null;
 }
-
-/** Row shape aligned with server getAppointmentsByDoctor (hospital view uses a subset). */
 export interface HospitalDoctorAppointmentRow {
   id: string;
   appointmentDate: string;

@@ -19,6 +19,7 @@ import {
   marketplaceContentWidthClass,
   surfaceListItemClass,
 } from "@/lib/dashboard-ui";
+import { InlineError } from "@/components/shell/inline-error";
 import { cn } from "@/lib/utils";
 
 const DEBOUNCE_MS = 350;
@@ -32,8 +33,7 @@ function SearchPageContent() {
   const [debounced, setDebounced] = useState(qParam);
   const [loading, setLoading] = useState(false);
   const [medResults, setMedResults] = useState<MarketplaceListingHit[]>([]);
-  /** Total matching listings (may exceed `medResults` when limited to first page). */
-  const [listingsTotal, setListingsTotal] = useState<number | null>(null);
+const [listingsTotal, setListingsTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ function SearchPageContent() {
           "flex-1 pb-8 lg:pb-12",
         )}
       >
-        <div className="mx-auto w-full max-w-6xl">
+        <div className="w-full min-w-0">
           {!hasQuery ? (
             <div className="mb-10 lg:mb-12">
               <div className="mb-4 flex min-w-0 items-center justify-center gap-2 lg:justify-start">
@@ -162,11 +162,11 @@ function SearchPageContent() {
             </header>
           )}
 
-        {error && (
-          <p className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
-          </p>
-        )}
+        {error ? (
+          <div className="mb-6">
+            <InlineError title="Search failed" message={error} />
+          </div>
+        ) : null}
 
         {loading && hasQuery && (
           <div className="mb-6 space-y-4">

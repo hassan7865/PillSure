@@ -77,9 +77,7 @@ export const appointmentApi = {
     const response = await api.get(`/hospital/doctors/${encodeURIComponent(doctorId)}/appointments`);
     return extractApiData(response);
   },
-
-  /** Same fields as auth register: doctor signs in later and completes onboarding. */
-  createHospitalDoctor: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
+createHospitalDoctor: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
     const response = await api.post(`/hospital/doctors`, data);
     return extractApiData(response);
   },

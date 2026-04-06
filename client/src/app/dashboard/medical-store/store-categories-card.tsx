@@ -6,13 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import medicalStoreApi, { type MedicalStoreCategory } from "./_api";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -202,7 +197,7 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
       </DashboardScrollWorkspace>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent showCloseButton className="sm:max-w-md">
+        <AppDialogContent showCloseButton size="sm" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>New category</DialogTitle>
           </DialogHeader>
@@ -224,11 +219,11 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
 
       <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
-        <DialogContent showCloseButton className="sm:max-w-md">
+        <AppDialogContent showCloseButton size="sm" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Rename category</DialogTitle>
           </DialogHeader>
@@ -245,11 +240,11 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
 
       <Dialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
-        <DialogContent showCloseButton className="sm:max-w-md">
+        <AppDialogContent showCloseButton size="sm" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete category?</DialogTitle>
           </DialogHeader>
@@ -265,7 +260,7 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </>
   );

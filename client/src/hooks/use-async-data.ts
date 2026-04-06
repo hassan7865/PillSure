@@ -1,23 +1,9 @@
-/**
- * Custom hook for async data fetching with loading and error states
- * Includes automatic cleanup to prevent state updates on unmounted components
- */
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface UseAsyncDataOptions<T> {
-  /**
-   * Initial data value
-   */
-  initialData?: T | null;
-  /**
-   * Whether to fetch immediately on mount
-   * @default true
-   */
-  immediate?: boolean;
-  /**
-   * Dependency array for refetching
-   */
-  deps?: React.DependencyList;
+initialData?: T | null;
+immediate?: boolean;
+deps?: React.DependencyList;
 }
 
 export interface UseAsyncDataResult<T> {
@@ -28,22 +14,6 @@ export interface UseAsyncDataResult<T> {
   setData: (data: T | null) => void;
   setError: (error: Error | null) => void;
 }
-
-/**
- * Custom hook for async data fetching
- * 
- * @param fetchFn - Async function that returns the data
- * @param options - Options for the hook
- * @returns Object with data, loading state, error, and refetch function
- * 
- * @example
- * ```tsx
- * const { data, isLoading, error, refetch } = useAsyncData(
- *   () => api.getDoctors(),
- *   { immediate: true }
- * );
- * ```
- */
 export function useAsyncData<T>(
   fetchFn: () => Promise<T>,
   options: UseAsyncDataOptions<T> = {}

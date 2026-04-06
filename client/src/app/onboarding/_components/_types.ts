@@ -65,7 +65,6 @@ export interface PatientOnboardingRequest {
   }
 
 
-
   export interface PatientFormValues {
     gender: 'male' | 'female' | 'other';
     mobile: string;

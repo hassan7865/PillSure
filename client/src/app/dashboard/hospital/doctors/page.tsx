@@ -2,15 +2,15 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ListingPanel } from "@/components/shell/listing-panel";
 import { Button } from "@/components/ui/button";
-import Loader from "@/components/ui/loader";
 import { useHospitalDoctors } from "@/app/appointments/use-appointments";
 import { appointmentApi } from "@/app/appointments/components/_api";
 import { ArrowLeft, Stethoscope, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/page-header";
-import { cardSectionClass, surfaceInsetClass } from "@/lib/dashboard-ui";
+import { surfaceInsetClass } from "@/lib/dashboard-ui";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import {
@@ -21,14 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HospitalDoctorDetailDialog } from "./_components/doctor-detail-dialog";
@@ -119,7 +113,11 @@ export default function HospitalDoctorsPage() {
           if (!open) resetForm();
         }}
       >
-        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => submitting && e.preventDefault()}>
+        <AppDialogContent
+          size="sm"
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => submitting && e.preventDefault()}
+        >
           <form onSubmit={handleRegisterSubmit}>
             <DialogHeader>
               <DialogTitle>Register a doctor</DialogTitle>
@@ -187,7 +185,7 @@ export default function HospitalDoctorsPage() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
 
       <HospitalDoctorDetailDialog
@@ -199,82 +197,81 @@ export default function HospitalDoctorsPage() {
         doctorSummary={detailDoctorSummary}
       />
 
-      <Card className={cardSectionClass()}>
-        <CardHeader>
-          <CardTitle className="text-lg">All doctors</CardTitle>
-          <CardDescription>
-            {doctorsPayload?.stats ? (
-              <>
-                {doctorsPayload.stats.activeDoctors} active
-                {doctorsPayload.stats.inactiveDoctors > 0
-                  ? ` · ${doctorsPayload.stats.inactiveDoctors} inactive`
-                  : ""}
-                {" · "}
-                {doctorsPayload.stats.totalAppointments} appointments across doctors
-              </>
-            ) : (
-              "Loading summary…"
-            )}
-          </CardDescription>
-        </CardHeader>
-        <div className="px-6 pb-6">
-          {doctorsLoading ? (
-            <div className="flex min-h-[120px] items-center justify-center py-6">
-              <Loader title="Loading doctors" description="Fetching affiliated doctors..." />
-            </div>
-          ) : doctorsError ? (
-            <p className="text-sm text-muted-foreground">{getErrorMessage(doctorsError)}</p>
-          ) : doctors.length === 0 ? (
-            <div className={surfaceInsetClass("flex flex-col items-center gap-3 py-10 text-center")}>
-              <p className="text-sm text-muted-foreground">No affiliated doctors yet.</p>
-              <Button type="button" variant="secondary" size="sm" className="gap-2" onClick={() => setRegisterOpen(true)}>
-                <UserPlus className="h-4 w-4" />
-                Register your first doctor
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border/60">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Doctor</TableHead>
-                    <TableHead className="hidden sm:table-cell">Specializations</TableHead>
-                    <TableHead className="w-[160px]">Status</TableHead>
-                    <TableHead className="text-right">Appointments</TableHead>
-                    <TableHead className="text-right">Earned (PKR)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {doctors.map((d) => (
-                    <TableRow
-                      key={d.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setDetailDoctorId(d.id)}
-                    >
-                      <TableCell>
-                        <div className="font-medium">
-                          {d.firstName} {d.lastName}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{d.email}</div>
-                      </TableCell>
-                      <TableCell className="hidden max-w-[200px] truncate text-sm sm:table-cell">
-                        {(d.specializationNames || []).join(", ") || "—"}
-                      </TableCell>
-                      <TableCell className="align-middle">
-                        <Badge variant={d.isActive ? "default" : "outline"} className="text-xs font-normal">
-                          {d.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{d.totalAppointments}</TableCell>
-                      <TableCell className="text-right tabular-nums">{Number(d.totalEarned || 0).toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+      <ListingPanel
+        header={
+          <CardHeader>
+            <CardTitle className="text-lg">All doctors</CardTitle>
+            <CardDescription>
+              {doctorsPayload?.stats ? (
+                <>
+                  {doctorsPayload.stats.activeDoctors} active
+                  {doctorsPayload.stats.inactiveDoctors > 0
+                    ? ` · ${doctorsPayload.stats.inactiveDoctors} inactive`
+                    : ""}
+                  {" · "}
+                  {doctorsPayload.stats.totalAppointments} appointments across doctors
+                </>
+              ) : (
+                "Loading summary…"
+              )}
+            </CardDescription>
+          </CardHeader>
+        }
+        isLoading={doctorsLoading}
+        loadingTitle="Loading doctors"
+        loadingDescription="Fetching affiliated doctors..."
+        error={doctorsError ? getErrorMessage(doctorsError) : null}
+        isEmpty={!doctorsLoading && !doctorsError && doctors.length === 0}
+        empty={
+          <div className={surfaceInsetClass("flex flex-col items-center gap-3 py-10 text-center")}>
+            <p className="text-sm text-muted-foreground">No affiliated doctors yet.</p>
+            <Button type="button" variant="secondary" size="sm" className="gap-2" onClick={() => setRegisterOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Register your first doctor
+            </Button>
+          </div>
+        }
+      >
+        <div className="overflow-x-auto rounded-lg border border-border/60">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Doctor</TableHead>
+                <TableHead className="hidden sm:table-cell">Specializations</TableHead>
+                <TableHead className="w-[160px]">Status</TableHead>
+                <TableHead className="text-right">Appointments</TableHead>
+                <TableHead className="text-right">Earned (PKR)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {doctors.map((d) => (
+                <TableRow
+                  key={d.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setDetailDoctorId(d.id)}
+                >
+                  <TableCell>
+                    <div className="font-medium">
+                      {d.firstName} {d.lastName}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{d.email}</div>
+                  </TableCell>
+                  <TableCell className="hidden max-w-[200px] truncate text-sm sm:table-cell">
+                    {(d.specializationNames || []).join(", ") || "—"}
+                  </TableCell>
+                  <TableCell className="align-middle">
+                    <Badge variant={d.isActive ? "default" : "outline"} className="text-xs font-normal">
+                      {d.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{d.totalAppointments}</TableCell>
+                  <TableCell className="text-right tabular-nums">{Number(d.totalEarned || 0).toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      </Card>
+      </ListingPanel>
     </>
   );
 }

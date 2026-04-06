@@ -3,13 +3,8 @@ import { cn } from "@/lib/utils";
 
 type PrescriptionMedicineBadgeProps = {
   className?: string;
-  /** Tighter padding and type for small product thumbnails */
-  size?: "default" | "compact";
+size?: "default" | "compact";
 };
-
-/**
- * Clearer than “Rx” alone: communicates that a doctor’s prescription is required.
- */
 export function PrescriptionMedicineBadge({
   className,
   size = "default",

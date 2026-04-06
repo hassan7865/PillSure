@@ -12,6 +12,8 @@ import { PaginationBar } from "@/components/shell/pagination-bar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cardSectionClass } from "@/lib/dashboard-ui";
 import { DashboardScrollWorkspace } from "@/components/shell/dashboard-scroll-workspace";
+import { InlineError } from "@/components/shell/inline-error";
+import { ListingPanel } from "@/components/shell/listing-panel";
 import { cn } from "@/lib/utils";
 import Loader from "@/components/ui/loader";
 import { manufacturerApi, type ManufacturerListingRow, type ManufacturerListResponse } from "./_api";
@@ -94,17 +96,7 @@ export default function ManufacturerDashboardPage() {
       >
         <div className="flex min-h-0 flex-col gap-4 pb-4">
           {error && !data ? (
-            <Card className="border-destructive/40">
-              <CardHeader>
-                <CardTitle className="text-lg text-destructive">Could not load listings</CardTitle>
-                <CardDescription>{error}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" size="sm" onClick={() => load(page, debouncedSearch)}>
-                  Try again
-                </Button>
-              </CardContent>
-            </Card>
+            <InlineError title="Could not load listings" message={error} onRetry={() => load(page, debouncedSearch)} />
           ) : null}
 
           {loading && !data && !error ? (
@@ -153,113 +145,104 @@ export default function ManufacturerDashboardPage() {
                 </Card>
               </div>
 
-              <Card
-                className={cn(
-                  cardSectionClass(),
-                  "flex min-h-[560px] flex-col",
-                  loading && "opacity-60",
-                )}
-              >
-                <CardHeader className="shrink-0 space-y-4">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Listed medicines</CardTitle>
-                      <CardDescription>
-                        {data.total === 0
-                          ? debouncedSearch
-                            ? `No medicines match “${debouncedSearch}”.`
-                            : "No listings yet — use bulk import to add your first rows."
-                          : `Showing ${data.items.length} of ${data.total} listing${data.total === 1 ? "" : "s"}.`}
-                      </CardDescription>
-                    </div>
-                    <div className="relative w-full sm:max-w-xs">
-                      <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" aria-hidden />
-                      <Input
-                        placeholder="Search by medicine name…"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        className="pl-9"
-                        aria-label="Search medicines"
-                      />
-                    </div>
+              <ListingPanel
+                cardClassName={cn("min-h-[560px]", loading && "opacity-60")}
+                listTitle="Listed medicines"
+                listDescription={
+                  data.total === 0
+                    ? debouncedSearch
+                      ? `No medicines match “${debouncedSearch}”.`
+                      : "No listings yet — use bulk import to add your first rows."
+                    : `Showing ${data.items.length} of ${data.total} listing${data.total === 1 ? "" : "s"}.`
+                }
+                toolbarEnd={
+                  <div className="relative w-full sm:max-w-xs">
+                    <Search
+                      className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                      aria-hidden
+                    />
+                    <Input
+                      placeholder="Search by medicine name…"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      className="pl-9"
+                      aria-label="Search medicines"
+                    />
                   </div>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col p-4 sm:p-6">
-                  {data.items.length === 0 ? (
-                    <div className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-4 py-12 text-center text-sm">
-                      <Package className="h-10 w-10 opacity-40" />
-                      <p>{debouncedSearch ? "Try a different search." : "No medicines listed yet."}</p>
-                      {!debouncedSearch ? (
-                        <Button type="button" onClick={() => setImportOpen(true)}>
-                          Import from Excel
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="-mx-4 overflow-x-auto sm:mx-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="font-semibold">Medicine</TableHead>
-                              <TableHead className="text-right font-semibold">
-                                Wholesale ({data.items[0]?.currency ?? "PKR"})
-                              </TableHead>
-                              <TableHead className="text-right font-semibold">MOQ</TableHead>
-                              <TableHead className="text-right font-semibold">Listed qty</TableHead>
-                              <TableHead className="font-semibold">Status</TableHead>
-                              <TableHead className="font-semibold">Updated</TableHead>
-                              <TableHead className="text-right font-semibold">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {data.items.map((row: ManufacturerListingRow) => (
-                              <TableRow key={row.listingId}>
-                                <TableCell>
-                                  <div className="max-w-[220px] font-medium leading-snug">{row.medicineName}</div>
-                                  <div className="text-xs text-muted-foreground">ID {row.medicineId}</div>
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">{row.wholesalePrice}</TableCell>
-                                <TableCell className="text-right tabular-nums">{row.moq}</TableCell>
-                                <TableCell className="text-right tabular-nums">{row.listedQuantity.toLocaleString()}</TableCell>
-                                <TableCell>
-                                  {row.isActive ? (
-                                    <Badge variant="secondary" className="font-normal">
-                                      Active
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="font-normal">
-                                      Inactive
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell className="whitespace-nowrap text-muted-foreground">
-                                  {format(new Date(row.updatedAt), "MMM d, yyyy HH:mm")}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => openEdit(row)}>
-                                    <Pencil className="h-3.5 w-3.5" />
-                                    Edit
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      <PaginationBar
-                        className="mt-4 shrink-0"
-                        page={page}
-                        totalPages={totalPages}
-                        onPageChange={setPage}
-                        disabled={loading}
-                        summary={<span className="text-muted-foreground">Page {page} of {totalPages}</span>}
-                      />
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                }
+                isEmpty={data.items.length === 0}
+                empty={
+                  <div className="text-muted-foreground flex flex-col items-center justify-center gap-4 py-12 text-center text-sm">
+                    <Package className="h-10 w-10 opacity-40" />
+                    <p>{debouncedSearch ? "Try a different search." : "No medicines listed yet."}</p>
+                    {!debouncedSearch ? (
+                      <Button type="button" onClick={() => setImportOpen(true)}>
+                        Import from Excel
+                      </Button>
+                    ) : null}
+                  </div>
+                }
+                footer={
+                  data.items.length > 0 ? (
+                    <PaginationBar
+                      page={page}
+                      totalPages={totalPages}
+                      onPageChange={setPage}
+                      disabled={loading}
+                      summary={<span className="text-muted-foreground">Page {page} of {totalPages}</span>}
+                    />
+                  ) : null
+                }
+              >
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-semibold">Medicine</TableHead>
+                      <TableHead className="text-right font-semibold">
+                        Wholesale ({data.items[0]?.currency ?? "PKR"})
+                      </TableHead>
+                      <TableHead className="text-right font-semibold">MOQ</TableHead>
+                      <TableHead className="text-right font-semibold">Listed qty</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">Updated</TableHead>
+                      <TableHead className="text-right font-semibold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((row: ManufacturerListingRow) => (
+                      <TableRow key={row.listingId}>
+                        <TableCell>
+                          <div className="max-w-[220px] font-medium leading-snug">{row.medicineName}</div>
+                          <div className="text-xs text-muted-foreground">ID {row.medicineId}</div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{row.wholesalePrice}</TableCell>
+                        <TableCell className="text-right tabular-nums">{row.moq}</TableCell>
+                        <TableCell className="text-right tabular-nums">{row.listedQuantity.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {row.isActive ? (
+                            <Badge variant="secondary" className="font-normal">
+                              Active
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="font-normal">
+                              Inactive
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                          {format(new Date(row.updatedAt), "MMM d, yyyy HH:mm")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => openEdit(row)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ListingPanel>
             </>
           ) : null}
         </div>

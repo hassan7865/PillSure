@@ -7,6 +7,7 @@ import {
   parseOptionalIntInRange,
   parseOptionalPositiveInt,
 } from "../utils/query-params";
+import { isUuid } from "../utils/uuid";
 
 export class MedicineRoute {
   private router: Router;
@@ -110,9 +111,7 @@ export class MedicineRoute {
       let manufacturerId: string | undefined;
       if (manufacturerIdRaw != null && String(manufacturerIdRaw).trim() !== "") {
         const m = String(manufacturerIdRaw).trim();
-        if (
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m)
-        ) {
+        if (!isUuid(m)) {
           return next(BadRequestError("manufacturerId must be a valid UUID"));
         }
         manufacturerId = m;
@@ -146,9 +145,7 @@ export class MedicineRoute {
         return next(BadRequestError("manufacturerId is required"));
       }
       const m = String(manufacturerIdRaw).trim();
-      if (
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m)
-      ) {
+      if (!isUuid(m)) {
         return next(BadRequestError("manufacturerId must be a valid UUID"));
       }
       const manufacturerMedicineId = await medicineService.resolveManufacturerMedicineId(medicineId, m);

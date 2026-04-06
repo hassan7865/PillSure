@@ -1,9 +1,4 @@
-/** Default currency when API omits it (marketplace listings). */
 export const DEFAULT_MARKETPLACE_CURRENCY = "PKR";
-
-/**
- * One line for listing retail price: `PKR 1,234.50` — use with `tabular-nums` in UI.
- */
 export function formatRetailPriceLine(
   currency: string | null | undefined,
   retailPrice: string | number,

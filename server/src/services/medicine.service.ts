@@ -1,9 +1,10 @@
-import { desc, eq, ilike, and, asc } from "drizzle-orm";
+import { desc, eq, and, asc } from "drizzle-orm";
 import { db } from "../config/database";
 import { medicines } from "../schema/medicine";
 import { manufacturers } from "../schema/manufacturers";
 import { manufacturerMedicines } from "../schema/manufacturerMedicines";
 import { BadRequestError } from "../middleware/error.handler";
+import { buildSearchConditions } from "./utils/search.utils";
 
 export class MedicineService {
   async getFeaturedMedicines({
@@ -43,10 +44,7 @@ export class MedicineService {
     const safeCategoryPage = Math.max(1, categoryPage);
     const safeCategoriesPerPage = Math.max(1, Math.min(20, categoriesPerPage));
 
-    const trimmedSearch = search?.trim();
-    const searchCond = trimmedSearch
-      ? ilike(medicines.medicineName, `%${trimmedSearch}%`)
-      : undefined;
+    const searchCond = buildSearchConditions(search, [medicines.medicineName]);
 
     const pageSize = safePerCategoryLimit * safeCategoriesPerPage;
     const offset = (safeCategoryPage - 1) * pageSize;
@@ -99,9 +97,7 @@ export class MedicineService {
   async listDrugCategories() {
     return [] as { id: number; name: string }[];
   }
-
-  /** Active manufacturers for filters (e.g. medical store listing medicines by manufacturer catalog). */
-  async listManufacturersForPicker() {
+async listManufacturersForPicker() {
     return db
       .select({
         id: manufacturers.id,
@@ -112,19 +108,16 @@ export class MedicineService {
       .where(eq(manufacturers.isActive, true))
       .orderBy(asc(manufacturers.legalName));
   }
-
-  /**
-   * Search medicines by name.
-   * When `manufacturerId` is set, only medicines linked in `manufacturer_medicines` for that manufacturer are returned.
-   */
-  async searchMedicines(query: string, limit: number = 20, manufacturerId?: string | null) {
+async searchMedicines(query: string, limit: number = 20, manufacturerId?: string | null) {
     if (!query || query.trim().length === 0) {
       return [];
     }
 
     const safeLimit = Math.max(1, Math.min(50, limit));
-    const searchTerm = `%${query.trim()}%`;
-    const nameCond = ilike(medicines.medicineName, searchTerm);
+    const nameCond = buildSearchConditions(query, [medicines.medicineName]);
+    if (!nameCond) {
+      return [];
+    }
 
     const rowShape = {
       id: medicines.id,

@@ -1,21 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ListingPanel } from "@/components/shell/listing-panel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -580,124 +575,41 @@ export function ManageListingsTab({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-border/80 shadow-sm">
-        <CardHeader className="shrink-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {compactCatalogHeader ? (
-            <CardDescription className="text-sm">
-              <span className="font-medium text-foreground">{total}</span> listing{total === 1 ? "" : "s"} — add, edit,
-              or remove products below
-            </CardDescription>
-          ) : (
-            <div>
-              <CardTitle className="text-lg">Your catalog</CardTitle>
-              <CardDescription>Create, edit, or remove store listings ({total} total)</CardDescription>
-            </div>
-          )}
-          <Button type="button" className="gap-2 shrink-0" onClick={openAdd}>
-            <Plus className="h-4 w-4" />
-            List new medicine
-          </Button>
-        </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-6 pt-0">
-          {error ? (
-            <p className="shrink-0 text-sm text-destructive">{error}</p>
-          ) : null}
-
-          {loading && !rows.length ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : null}
-
-          {rows.length > 0 ? (
-            <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border/80">
-              <Table className="min-w-[640px]">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className={thClass}>Product</TableHead>
-                    <TableHead className={thClass}>Price</TableHead>
-                    <TableHead className={thClass}>Stock</TableHead>
-                    <TableHead className={thClass}>Status</TableHead>
-                    <TableHead className={cn(thClass, "hidden md:table-cell")}>Updated</TableHead>
-                    <TableHead className={cn(thClass, "text-right")}>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row) => (
-                    <TableRow key={row.listingId}>
-                      <TableCell>
-                        <div className="font-medium leading-snug">{row.medicineName}</div>
-                        {row.categories?.length ? (
-                          <div className="text-xs text-muted-foreground">
-                            {row.categories.map((c) => c.name).join(" · ")}
-                          </div>
-                        ) : null}
-                        {row.prescriptionRequired ? (
-                          <span className="mt-1 inline-block">
-                            <MedicineRxStamp className="text-[10px] py-px" />
-                          </span>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="tabular-nums">
-                        {row.currency}{" "}
-                        {Number(row.retailPrice).toLocaleString(undefined, {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell className="tabular-nums">{row.listedQuantity}</TableCell>
-                      <TableCell>
-                        {row.isActive ? (
-                          <Badge className="bg-primary text-primary-foreground hover:bg-primary/90">Live</Badge>
-                        ) : (
-                          <Badge variant="secondary">Hidden</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
-                        {new Date(row.updatedAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEdit(row)}
-                            aria-label="Edit listing"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => {
-                              setFormError(null);
-                              setDeleteRow(row);
-                            }}
-                            aria-label="Remove listing"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : null}
-
-          {!loading && !error && rows.length === 0 ? (
-            <p className="shrink-0 py-8 text-center text-sm text-muted-foreground">
-              No listings yet. Add a medicine to get started.
-            </p>
-          ) : null}
-
-          {totalPages > 1 ? (
-            <div className="mt-auto flex shrink-0 items-center justify-between gap-2 border-t border-border/60 pt-4">
+      <ListingPanel
+        cardClassName="flex min-h-0 flex-1 flex-col overflow-hidden border-border/80 shadow-sm"
+        header={
+          <CardHeader className="shrink-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {compactCatalogHeader ? (
+              <CardDescription className="text-sm">
+                <span className="font-medium text-foreground">{total}</span> listing{total === 1 ? "" : "s"} — add, edit,
+                or remove products below
+              </CardDescription>
+            ) : (
+              <div>
+                <CardTitle className="text-lg">Your catalog</CardTitle>
+                <CardDescription>Create, edit, or remove store listings ({total} total)</CardDescription>
+              </div>
+            )}
+            <Button type="button" className="gap-2 shrink-0" onClick={openAdd}>
+              <Plus className="h-4 w-4" />
+              List new medicine
+            </Button>
+          </CardHeader>
+        }
+        error={error}
+        onRetry={onRefresh}
+        isLoading={Boolean(loading && !rows.length)}
+        loadingTitle="Loading catalog"
+        loadingDescription="Fetching your listings…"
+        isEmpty={!loading && !error && rows.length === 0}
+        empty={
+          <p className="shrink-0 py-8 text-center text-sm text-muted-foreground">
+            No listings yet. Add a medicine to get started.
+          </p>
+        }
+        footer={
+          totalPages > 1 ? (
+            <div className="flex w-full items-center justify-between gap-2 border-t border-border/60 pt-4">
               <p className="text-xs text-muted-foreground">
                 Page {page} / {totalPages}
               </p>
@@ -722,9 +634,88 @@ export function ManageListingsTab({
                 </Button>
               </div>
             </div>
-          ) : null}
-        </CardContent>
-      </Card>
+          ) : null
+        }
+      >
+        <div className="rounded-lg border border-border/80">
+          <Table className="min-w-[640px]">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className={thClass}>Product</TableHead>
+                <TableHead className={thClass}>Price</TableHead>
+                <TableHead className={thClass}>Stock</TableHead>
+                <TableHead className={thClass}>Status</TableHead>
+                <TableHead className={cn(thClass, "hidden md:table-cell")}>Updated</TableHead>
+                <TableHead className={cn(thClass, "text-right")}>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.listingId}>
+                  <TableCell>
+                    <div className="font-medium leading-snug">{row.medicineName}</div>
+                    {row.categories?.length ? (
+                      <div className="text-xs text-muted-foreground">
+                        {row.categories.map((c) => c.name).join(" · ")}
+                      </div>
+                    ) : null}
+                    {row.prescriptionRequired ? (
+                      <span className="mt-1 inline-block">
+                        <MedicineRxStamp className="text-[10px] py-px" />
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {row.currency}{" "}
+                    {Number(row.retailPrice).toLocaleString(undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    })}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{row.listedQuantity}</TableCell>
+                  <TableCell>
+                    {row.isActive ? (
+                      <Badge className="bg-primary text-primary-foreground hover:bg-primary/90">Live</Badge>
+                    ) : (
+                      <Badge variant="secondary">Hidden</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
+                    {new Date(row.updatedAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => openEdit(row)}
+                        aria-label="Edit listing"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setFormError(null);
+                          setDeleteRow(row);
+                        }}
+                        aria-label="Remove listing"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </ListingPanel>
 
       {/* Add */}
       <Dialog
@@ -734,7 +725,7 @@ export function ManageListingsTab({
           if (!open) resetAddForm();
         }}
       >
-        <DialogContent className="max-h-[min(90vh,780px)] overflow-y-auto sm:max-w-2xl" showCloseButton>
+        <AppDialogContent size="lg" className="!max-h-[min(90vh,780px)]" showCloseButton>
           <DialogHeader>
             <DialogTitle>List a new medicine</DialogTitle>
             <DialogDescription>Search the catalog, then set price and availability for your store.</DialogDescription>
@@ -931,12 +922,12 @@ export function ManageListingsTab({
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create listing"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
 
       {/* Edit */}
       <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
-        <DialogContent className="max-h-[min(90vh,780px)] overflow-y-auto sm:max-w-2xl" showCloseButton>
+        <AppDialogContent size="lg" className="!max-h-[min(90vh,780px)]" showCloseButton>
           <DialogHeader>
             <DialogTitle>Edit listing</DialogTitle>
             <DialogDescription>
@@ -1048,12 +1039,12 @@ export function ManageListingsTab({
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
 
       {/* Delete */}
       <Dialog open={!!deleteRow} onOpenChange={(o) => !o && setDeleteRow(null)}>
-        <DialogContent showCloseButton className="sm:max-w-md">
+        <AppDialogContent showCloseButton size="sm" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Remove listing?</DialogTitle>
             <DialogDescription>
@@ -1070,7 +1061,7 @@ export function ManageListingsTab({
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </div>
   );

@@ -18,11 +18,6 @@ interface DatabaseConfig {
   host?: string;
   port?: number;
 }
-
-/**
- * Parse DATABASE_URL if available
- * Format: postgresql://user:password@host:port/database
- */
 function parseDatabaseUrl(url?: string): Partial<DatabaseConfig> {
   if (!url) return {};
 
@@ -40,10 +35,6 @@ function parseDatabaseUrl(url?: string): Partial<DatabaseConfig> {
     return {};
   }
 }
-
-/**
- * Get database configuration from environment variables or use defaults
- */
 export function getDatabaseConfig(): DatabaseConfig {
   // Parse DATABASE_URL if available
   const urlConfig = parseDatabaseUrl(process.env.DATABASE_URL);
@@ -64,10 +55,6 @@ export function getDatabaseConfig(): DatabaseConfig {
 
   return config;
 }
-
-/**
- * Check if Docker is available
- */
 export async function checkDockerAvailable(): Promise<boolean> {
   try {
     await execAsync('docker --version');
@@ -76,10 +63,6 @@ export async function checkDockerAvailable(): Promise<boolean> {
     return false;
   }
 }
-
-/**
- * Get the appropriate docker-compose command based on OS
- */
 export function getDockerComposeCommand(): string {
   // Check if docker compose (v2) is available, otherwise use docker-compose (v1)
   // Both work cross-platform

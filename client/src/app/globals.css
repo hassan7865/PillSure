@@ -45,6 +45,9 @@
 
 :root {
   --app-navbar-height: 56px;
+  /** Dashboard: fixed top bar (matches layout/app-header h-16) + PageShell vertical padding (py-6 × 2) */
+  --dashboard-header-height: 4rem;
+  --dashboard-page-shell-vertical: 3rem;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -188,6 +191,13 @@
     box-shadow: var(--shadow-elevated-lg);
   }
 
+  /** Nested scroll regions inside dashboard PageShell (see --dashboard-header-height) */
+  .dashboard-scroll-workspace-height {
+    height: calc(
+      100dvh - var(--dashboard-header-height) - var(--dashboard-page-shell-vertical)
+    );
+    min-height: 320px;
+  }
 }
 
 /* React Select Styles */

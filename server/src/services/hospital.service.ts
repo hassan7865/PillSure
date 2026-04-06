@@ -11,8 +11,10 @@ import { createError } from "../middleware/error.handler";
 import { appointmentService } from "./appointment.service";
 
 export class HospitalService {
-  async getHospitalDashboardStatsByUserId(userId: string) {
-    const hospital = await db
+  private async requireHospitalForUser(
+    userId: string,
+  ): Promise<{ id: string; hospitalName: string }> {
+    const rows = await db
       .select({
         id: hospitals.id,
         hospitalName: hospitals.hospitalName,
@@ -21,11 +23,16 @@ export class HospitalService {
       .where(eq(hospitals.userId, userId))
       .limit(1);
 
-    if (!hospital.length) {
+    if (!rows.length) {
       throw createError("Hospital profile not found", 404);
     }
 
-    const hospitalId = hospital[0].id;
+    return rows[0];
+  }
+
+  async getHospitalDashboardStatsByUserId(userId: string) {
+    const hospital = await this.requireHospitalForUser(userId);
+    const hospitalId = hospital.id;
 
     const statusCounts = await db
       .select({
@@ -59,7 +66,7 @@ export class HospitalService {
 
     return {
       hospitalId,
-      hospitalName: hospital[0].hospitalName,
+      hospitalName: hospital.hospitalName,
       totalAppointments,
       byStatus,
       totalEarned: Number(revenueResult[0]?.total || 0),
@@ -68,17 +75,8 @@ export class HospitalService {
   }
 
   async getHospitalDoctorsByUserId(userId: string) {
-    const hospital = await db
-      .select({ id: hospitals.id })
-      .from(hospitals)
-      .where(eq(hospitals.userId, userId))
-      .limit(1);
-
-    if (!hospital.length) {
-      throw createError("Hospital profile not found", 404);
-    }
-
-    const hospitalId = hospital[0].id;
+    const hospital = await this.requireHospitalForUser(userId);
+    const hospitalId = hospital.id;
 
     const doctorRows = await db
       .select({
@@ -163,12 +161,7 @@ export class HospitalService {
       password?: string;
     },
   ) {
-    const hospital = await db
-      .select({ id: hospitals.id })
-      .from(hospitals)
-      .where(eq(hospitals.userId, hospitalUserId))
-      .limit(1);
-    if (!hospital.length) throw createError("Hospital profile not found", 404);
+    const hospital = await this.requireHospitalForUser(hospitalUserId);
 
     const firstName = String(payload.firstName || "").trim();
     const lastName = String(payload.lastName || "").trim();
@@ -222,7 +215,7 @@ export class HospitalService {
           qualifications: [],
           experienceYears: 0,
           patientSatisfactionRate: "0.00",
-          hospitalId: hospital[0].id,
+          hospitalId: hospital.id,
           address: "",
           consultationModes: [],
           availableDays: [],
@@ -237,17 +230,12 @@ export class HospitalService {
   }
 
   async setHospitalDoctorActiveByUserId(hospitalUserId: string, doctorId: string, isActive: boolean) {
-    const hospital = await db
-      .select({ id: hospitals.id })
-      .from(hospitals)
-      .where(eq(hospitals.userId, hospitalUserId))
-      .limit(1);
-    if (!hospital.length) throw createError("Hospital profile not found", 404);
+    const hospital = await this.requireHospitalForUser(hospitalUserId);
 
     const doctorRow = await db
       .select({ id: doctors.id })
       .from(doctors)
-      .where(and(eq(doctors.id, doctorId), eq(doctors.hospitalId, hospital[0].id)))
+      .where(and(eq(doctors.id, doctorId), eq(doctors.hospitalId, hospital.id)))
       .limit(1);
 
     if (!doctorRow.length) {
@@ -261,20 +249,8 @@ export class HospitalService {
 
     return { doctorId, isActive };
   }
-
-  /**
-   * Lists all appointments for a doctor that belongs to the hospital of hospitalUserId.
-   */
-  async getHospitalDoctorAppointmentsByUserId(hospitalUserId: string, doctorId: string) {
-    const hospital = await db
-      .select({ id: hospitals.id })
-      .from(hospitals)
-      .where(eq(hospitals.userId, hospitalUserId))
-      .limit(1);
-
-    if (!hospital.length) {
-      throw createError("Hospital profile not found", 404);
-    }
+async getHospitalDoctorAppointmentsByUserId(hospitalUserId: string, doctorId: string) {
+    const hospital = await this.requireHospitalForUser(hospitalUserId);
 
     const doctorRow = await db
       .select({
@@ -288,7 +264,7 @@ export class HospitalService {
       })
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .where(and(eq(doctors.id, doctorId), eq(doctors.hospitalId, hospital[0].id)))
+      .where(and(eq(doctors.id, doctorId), eq(doctors.hospitalId, hospital.id)))
       .limit(1);
 
     if (!doctorRow.length) {

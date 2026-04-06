@@ -73,9 +73,7 @@ export const medicineApi = {
     const response = await api.get<ApiResponse<ManufacturerOption[]>>(`/medicine/manufacturers`);
     return extractApiDataWithFallback(response, []);
   },
-
-  /** Resolves `manufacturer_medicines.id` when listing a store SKU tied to a manufacturer catalog batch. */
-  resolveManufacturerBatch: async (
+resolveManufacturerBatch: async (
     medicineId: number,
     manufacturerId: string,
   ): Promise<string | null> => {

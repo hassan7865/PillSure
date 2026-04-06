@@ -55,8 +55,6 @@ function MarketplaceBottomNavInner() {
     </nav>
   );
 }
-
-/** Next.js requires Suspense around any client tree that calls `useSearchParams`. */
 function MarketplaceBottomNav() {
   return (
     <Suspense

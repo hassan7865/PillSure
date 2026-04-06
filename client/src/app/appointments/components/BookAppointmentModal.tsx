@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
@@ -141,7 +142,10 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[95vh] sm:max-h-[90vh] p-0 overflow-hidden flex flex-col">
+      <AppDialogContent
+        size="lg"
+        className="max-w-[95vw] sm:max-w-xl md:max-w-2xl !max-h-[95vh] sm:!max-h-[90vh] flex flex-col gap-0 !overflow-hidden p-0"
+      >
         <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4 flex-shrink-0">
           <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold">Book Appointment</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
@@ -445,7 +449,7 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
             </div>
           </form>
         </Form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

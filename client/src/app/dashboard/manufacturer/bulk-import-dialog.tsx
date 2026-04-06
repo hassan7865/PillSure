@@ -2,14 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
 import { manufacturerApi, type ManufacturerImportSummary } from "./_api";
@@ -18,8 +12,7 @@ import { Download, FileSpreadsheet, Loader2, Upload } from "lucide-react";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Called after a successful API response so the parent can refresh listings */
-  onImportComplete?: () => void;
+onImportComplete?: () => void;
 };
 
 export function ManufacturerBulkImportDialog({ open, onOpenChange, onImportComplete }: Props) {
@@ -82,9 +75,10 @@ export function ManufacturerBulkImportDialog({ open, onOpenChange, onImportCompl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+      <AppDialogContent
         showCloseButton
-        className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
+        size="lg"
+        className="!max-h-[min(90vh,720px)] flex flex-col gap-0 !overflow-hidden p-0"
       >
         <DialogHeader className="shrink-0 border-b px-6 pt-6 pb-4">
           <DialogTitle>Bulk import (Excel)</DialogTitle>
@@ -203,7 +197,7 @@ export function ManufacturerBulkImportDialog({ open, onOpenChange, onImportCompl
             Close
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

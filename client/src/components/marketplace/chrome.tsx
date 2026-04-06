@@ -18,8 +18,7 @@ export function MarketplaceNav({
   center,
   showMobileMenu = true,
 }: {
-  /** Desktop center area (e.g. search). Hidden below `lg` unless `showMobileMenu` duplicates it in-page. */
-  center?: React.ReactNode;
+center?: React.ReactNode;
   showMobileMenu?: boolean;
 }) {
   const pathname = usePathname();
@@ -92,8 +91,6 @@ export function MarketplaceNav({
     </header>
   );
 }
-
-/** Compact search used in nav (catalog page). */
 export function NavSearchInput({
   value,
   onChange,

@@ -1,6 +1,4 @@
 import type { Medicine } from "@/app/medicine/_api";
-
-/** Master `medicines` rows do not store images; use pharmacy listing `packImages` / `displayImageUrl`. */
 export function normalizeMedicineImages(_medicine?: Medicine | null): string[] {
   return [];
 }
@@ -11,8 +9,6 @@ export interface CatalogPriceDisplay {
   originalPrice: number | undefined;
   finalPrice: number;
 }
-
-/** Catalog price display when listing-level price fields exist (e.g. legacy callers). */
 export function getCatalogPriceDisplay(
   price?: string | null,
   discount?: string | null,

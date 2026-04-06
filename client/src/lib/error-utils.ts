@@ -1,7 +1,3 @@
-/**
- * Utility function to extract error messages consistently across the application
- * Handles various error formats from different sources (Axios, API responses, etc.)
- */
 export const getErrorMessage = (error: any): string => {
   // Check for server response error message (most specific)
   if (error?.response?.data?.message) {
@@ -26,10 +22,6 @@ export const getErrorMessage = (error: any): string => {
   // Default fallback
   return 'An error occurred';
 };
-
-/**
- * Helper to format error messages for display
- */
 export const formatErrorMessage = (error: any, defaultMessage: string = 'An error occurred'): string => {
   const message = getErrorMessage(error);
   return message || defaultMessage;

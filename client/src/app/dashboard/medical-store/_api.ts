@@ -326,8 +326,7 @@ export interface RetailOrderRow {
   contactNo: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Line items in this order (medicines, quantities, prices). */
-  lines: RetailOrderLine[];
+lines: RetailOrderLine[];
 }
 
 export interface RetailOrdersListResponse {

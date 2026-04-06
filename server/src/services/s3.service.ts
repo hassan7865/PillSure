@@ -22,14 +22,7 @@ export class S3Service {
     this.bucketName = s3Config.bucketName;
     this.region = s3Config.region;
   }
-
-  /**
-   * Upload a single file to S3
-   * @param file - Buffer or file data to upload
-   * @param options - Upload options (folder, fileName, contentType)
-   * @returns Promise with upload result containing URL, key, and bucket
-   */
-  async uploadFile(
+async uploadFile(
     file: Buffer | Express.Multer.File,
     options: UploadOptions = {}
   ): Promise<UploadResult> {
@@ -114,27 +107,14 @@ export class S3Service {
       throw new Error(`Failed to upload file to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
-
-  /**
-   * Upload multiple files to S3
-   * @param files - Array of files to upload
-   * @param options - Upload options
-   * @returns Promise with array of upload results
-   */
-  async uploadMultipleFiles(
+async uploadMultipleFiles(
     files: Express.Multer.File[],
     options: UploadOptions = {}
   ): Promise<UploadResult[]> {
     const uploadPromises = files.map((file) => this.uploadFile(file, options));
     return Promise.all(uploadPromises);
   }
-
-  /**
-   * Delete a single file from S3
-   * @param key - S3 key (path) of the file to delete
-   * @returns Promise<void>
-   */
-  async deleteFile(key: string): Promise<void> {
+async deleteFile(key: string): Promise<void> {
     try {
       const command = new DeleteObjectCommand({
         Bucket: this.bucketName,
@@ -147,13 +127,7 @@ export class S3Service {
       throw new Error(`Failed to delete file from S3: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
-
-  /**
-   * Delete multiple files from S3
-   * @param keys - Array of S3 keys to delete
-   * @returns Promise<void>
-   */
-  async deleteMultipleFiles(keys: string[]): Promise<void> {
+async deleteMultipleFiles(keys: string[]): Promise<void> {
     try {
       if (keys.length === 0) return;
 
@@ -170,13 +144,7 @@ export class S3Service {
       throw new Error(`Failed to delete files from S3: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
-
-  /**
-   * Extract S3 key from URL
-   * @param url - Full S3 URL
-   * @returns S3 key or null if invalid URL
-   */
-  extractKeyFromUrl(url: string): string | null {
+extractKeyFromUrl(url: string): string | null {
     try {
       const escapedBucket = this.bucketName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const escapedRegion = this.region.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -193,13 +161,7 @@ export class S3Service {
       return null;
     }
   }
-
-  /**
-   * Sanitize filename to remove special characters
-   * @param fileName - Original filename
-   * @returns Sanitized filename
-   */
-  private sanitizeFileName(fileName: string): string {
+private sanitizeFileName(fileName: string): string {
     // Remove extension
     const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf(".")) || fileName;
     // Replace spaces and special characters with underscores

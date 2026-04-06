@@ -1,9 +1,8 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-
 export const DASHBOARD_SCROLL_WORKSPACE_CLASS =
-  "flex h-[calc(100dvh-7rem)] min-h-[320px] w-full flex-col gap-6";
+  "dashboard-scroll-workspace-height flex w-full flex-col gap-6";
 
 export type DashboardScrollWorkspaceProps = {
   header: React.ReactNode;

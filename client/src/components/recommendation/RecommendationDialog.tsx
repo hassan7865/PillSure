@@ -2,13 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, Sparkles } from "lucide-react";
@@ -94,7 +89,10 @@ export default function RecommendationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+      <AppDialogContent
+        size="xl"
+        className="max-w-[95vw] flex flex-col gap-0 !overflow-hidden p-0 !max-h-[95vh] sm:!max-h-[90vh]"
+      >
         <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 flex-shrink-0 border-b">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -229,7 +227,7 @@ export default function RecommendationDialog({
             )}
           </div>
         </div>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

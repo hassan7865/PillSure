@@ -120,12 +120,9 @@ export interface MedicalStoreOnboardingRequest {
   email?: string;
   openingTime?: string;
   closingTime?: string;
-  /** WGS84; required together with longitude for onboarding completion */
-  latitude?: number;
+latitude?: number;
   longitude?: number;
 }
-
-/** Single row for POST /api/manufacturer/medicines/import — category resolved/created by normalized name */
 export interface ManufacturerMedicineImportItem {
   medicineName?: string;
   categoryName?: string;
@@ -145,7 +142,6 @@ export interface OnboardingResponse {
   onboardingStep?: number;
   isOnboardingComplete?: boolean;
 }
-
 
 
 export interface ApiResponse<T = any> {

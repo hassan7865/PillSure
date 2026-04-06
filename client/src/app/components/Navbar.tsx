@@ -47,8 +47,7 @@ export type NavbarCenterSearchProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  /** Defaults to navigating to `/search` with the current query. */
-  onSubmit?: () => void;
+onSubmit?: () => void;
 };
 
 type NavbarProps = {

@@ -14,6 +14,7 @@ import { manufacturers } from "../schema/manufacturers";
 import { s3Service } from "./s3.service";
 import { deleteOldImages, handleListingPackImageUpdate } from "./utils/image.utils";
 import { calculateOffset, normalizeLimit, normalizePage } from "./utils/pagination.utils";
+import { isUuid } from "../utils/uuid";
 
 function firstPackImageUrl(pack: unknown): string | null {
   if (Array.isArray(pack)) {
@@ -27,10 +28,6 @@ function normalizePackImages(p: unknown): string[] | null {
   if (!Array.isArray(p)) return null;
   const urls = p.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
   return urls.length ? urls.map((u) => u.trim()) : null;
-}
-
-function isUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
 function normalizeListingFaqsFromDb(raw: unknown): Array<{ question: string; answer: string }> | null {
@@ -64,8 +61,6 @@ function faqsForDb(
   }
   return normalizeListingFaqsFromDb(raw);
 }
-
-/** Store-scoped category attached to a listing (M2M). */
 export interface MedicalStoreCategoryRef {
   id: string;
   name: string;
@@ -84,22 +79,18 @@ export interface MedicalStoreCatalogRow {
   listingId: string;
   medicineId: number;
   medicineName: string;
-  /** Categories for this listing at this store (empty if uncategorized). */
-  categories: MedicalStoreCategoryRef[];
+categories: MedicalStoreCategoryRef[];
   retailPrice: string;
   listedQuantity: number;
   currency: string;
   isActive: boolean;
   prescriptionRequired: boolean;
-  /** Primary image from listing pack photos */
-  displayImageUrl: string | null;
+displayImageUrl: string | null;
   packImages: string[] | null;
   manufacturerMedicineId: string | null;
-  /** Present when listing is linked to a manufacturer batch */
-  manufacturerId: string | null;
+manufacturerId: string | null;
   manufacturerName: string | null;
-  /** Listing-specific (per store SKU). */
-  drugDescription: string | null;
+drugDescription: string | null;
   faqs: Array<{ question: string; answer: string }> | null;
   sortOrder: number;
   updatedAt: string;
@@ -116,8 +107,6 @@ export interface MedicalStoreCatalogResponse {
     totalUnitsListed: number;
   };
 }
-
-/** Public marketplace: store card / list row */
 export interface PublicStoreSummary {
   id: string;
   storeName: string;
@@ -155,8 +144,6 @@ export interface PublicStoreDetail {
   longitude: number | null;
   logoUrl: string | null;
 }
-
-/** Listing search hit: catalog row plus store context */
 export interface MarketplaceListingHit extends MedicalStoreCatalogRow {
   medicalStoreId: string;
   storeName: string;
@@ -185,8 +172,7 @@ export interface CreateMedicalStoreListingInput {
   manufacturerMedicineId?: string | null;
   isActive?: boolean;
   sortOrder?: number;
-  /** UUIDs of store categories (must belong to this medical store). */
-  categoryIds?: string[];
+categoryIds?: string[];
   drugDescription?: string | null;
   faqs?: Array<{ question: string; answer: string }> | null;
 }
@@ -199,8 +185,7 @@ export interface UpdateMedicalStoreListingInput {
   manufacturerMedicineId?: string | null;
   isActive?: boolean;
   sortOrder?: number;
-  /** When set, replaces all category links for this listing. */
-  categoryIds?: string[];
+categoryIds?: string[];
   drugDescription?: string | null;
   faqs?: Array<{ question: string; answer: string }> | null;
 }
@@ -358,8 +343,6 @@ function mapJoinToMarketplaceHit(
     storeName: r.storeName,
   };
 }
-
-/** Same listing joins as listingFromJoin, plus inner join to medical_stores for marketplace search. */
 function listingFromJoinWithStore() {
   return db
     .select(listingJoinWithStoreSelect)
@@ -890,9 +873,7 @@ export class MedicalStoreService {
       },
     };
   }
-
-  /** Public marketplace: active stores that have at least one active listing. */
-  async listPublicStores(params: {
+async listPublicStores(params: {
     page?: number;
     limit?: number;
     q?: string;
@@ -910,9 +891,7 @@ export class MedicalStoreService {
         : undefined;
 
     const storeFilters = and(eq(medicalStores.isActive, true), searchCond);
-
-    /** Active listing counts per store (join avoids broken correlation in scalar subqueries). */
-    const listingAgg = db
+const listingAgg = db
       .select({
         storeId: medicalStoreMedicines.medicalStoreId,
         activeListingCount: sql<number>`count(*)::int`.as("activeListingCount"),
@@ -1016,9 +995,7 @@ export class MedicalStoreService {
     }
     return row;
   }
-
-  /** Public catalog: active listings only. Optional `medicineId` filters to that SKU in this store. */
-  async getPublicStoreCatalog(
+async getPublicStoreCatalog(
     storeId: string,
     pageParam = 1,
     limitParam = 12,
@@ -1074,9 +1051,7 @@ export class MedicalStoreService {
       limit,
     };
   }
-
-  /** Search active listings across all active stores (medicine name, store name, city). */
-  async searchPublicListings(params: {
+async searchPublicListings(params: {
     q?: string;
     page?: number;
     limit?: number;
@@ -1126,9 +1101,7 @@ export class MedicalStoreService {
       limit,
     };
   }
-
-  /** Patient retail orders placed against this pharmacy (same store as dashboard). */
-  async listRetailOrders(userId: string, page: number, limit: number) {
+async listRetailOrders(userId: string, page: number, limit: number) {
     const medicalStoreId = await this.resolveMedicalStoreIdForUser(userId);
     const safePage = normalizePage(page, 1);
     const safeLimit = normalizeLimit(limit, { defaultLimit: 20, max: 100 });

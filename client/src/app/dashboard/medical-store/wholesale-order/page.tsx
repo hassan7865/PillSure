@@ -10,14 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import {
   Select,
   SelectContent,
@@ -580,7 +574,7 @@ export default function MedicalStoreWholesaleOrderPage() {
       ) : null}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <AppDialogContent size="sm" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Confirm wholesale order</DialogTitle>
             <DialogDescription>
@@ -606,7 +600,7 @@ export default function MedicalStoreWholesaleOrderPage() {
               {submitting ? "Submitting…" : "Submit order"}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </>
   );

@@ -1,10 +1,6 @@
 import { Request } from "express";
 import { BadRequestError } from "../middleware/error.handler";
 import type { AppError } from "../middleware/error.handler";
-
-/**
- * Parse `page` and `limit` from query string. Invalid values fall back to defaults (same behavior as previous inline parseInt chains).
- */
 export function parsePageLimitQuery(
   req: Request,
   opts: { pageDefault?: number; limitDefault: number },
@@ -52,8 +48,6 @@ export function parseOptionalPositiveInt(
   }
   return { ok: true, value: parsed };
 }
-
-/** When the query key is omitted, use defaultValue; otherwise enforce [min, max]. */
 export function parseIntInRangeOrDefault(
   raw: string | undefined,
   defaultValue: number,

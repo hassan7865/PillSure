@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { usePatientAppointments } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
@@ -562,7 +563,7 @@ export default function AppointmentsPageClient() {
         </Dialog>
 
         <Dialog open={showOrderPrescriptionDialog} onOpenChange={setShowOrderPrescriptionDialog}>
-          <DialogContent>
+          <AppDialogContent size="md">
             <DialogHeader>
               <DialogTitle>Select Medicines To Add To Cart</DialogTitle>
             </DialogHeader>
@@ -586,14 +587,12 @@ export default function AppointmentsPageClient() {
                 {orderingPrescription ? "Adding..." : "Add Selected To Cart"}
               </Button>
             </div>
-          </DialogContent>
+          </AppDialogContent>
         </Dialog>
       </div>
     </PublicLayout>
   );
 }
-
-/** Completed consultations only; all other statuses (incl. cancelled) stay under Active. */
 function appointmentIsCompleted(status: unknown): boolean {
   return String(status ?? "").toLowerCase().trim() === "completed";
 }

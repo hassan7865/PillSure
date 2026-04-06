@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,8 @@ import { PageHeader } from "@/components/shell/page-header";
 import { PaginationBar } from "@/components/shell/pagination-bar";
 import { DashboardScrollWorkspace } from "@/components/shell/dashboard-scroll-workspace";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cardSectionClass } from "@/lib/dashboard-ui";
+import { InlineError } from "@/components/shell/inline-error";
+import { ListingPanel } from "@/components/shell/listing-panel";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 15;
@@ -163,17 +164,7 @@ export default function ManufacturerWholesaleOrdersPage() {
       >
         <div className="flex h-full min-h-0 flex-col gap-4">
           {error && !data ? (
-            <Card className="shrink-0 border-destructive/40">
-              <CardHeader>
-                <CardTitle className="text-lg text-destructive">Could not load orders</CardTitle>
-                <CardDescription>{error}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" size="sm" onClick={() => load()}>
-                  Try again
-                </Button>
-              </CardContent>
-            </Card>
+            <InlineError title="Could not load orders" message={error} onRetry={() => load()} />
           ) : null}
 
           {loading && !data && !error ? (
@@ -183,78 +174,74 @@ export default function ManufacturerWholesaleOrdersPage() {
           ) : null}
 
           {data ? (
-            <Card
-              className={cn(
-                cardSectionClass(loading ? "opacity-60" : ""),
-                "flex min-h-0 flex-1 flex-col overflow-hidden",
-              )}
-            >
-              <CardHeader className="shrink-0">
-                <div className="flex items-center gap-2">
-                  <Factory className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle className="text-lg">Incoming orders</CardTitle>
-                    <CardDescription>
-                      {data.total === 0
-                        ? "No wholesale orders yet."
-                        : `Showing ${data.items.length} of ${data.total} order${data.total === 1 ? "" : "s"}.`}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-                {data.items.length === 0 ? (
-                  <p className="shrink-0 text-sm text-muted-foreground">
-                    When a medical store places a wholesale order, it will appear here.
-                  </p>
-                ) : (
-                  <>
-                    <div className="-mx-4 min-h-0 flex-1 overflow-auto sm:mx-0">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="font-semibold">Date</TableHead>
-                            <TableHead className="font-semibold">Medical store</TableHead>
-                            <TableHead className="font-semibold">Status</TableHead>
-                            <TableHead className="text-right font-semibold">Total</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {data.items.map((row: WholesaleOrderSummaryRow) => (
-                            <TableRow
-                              key={row.id}
-                              className="cursor-pointer"
-                              onClick={() => openDetail(row.id)}
-                            >
-                              <TableCell className="whitespace-nowrap text-muted-foreground">
-                                {format(new Date(row.createdAt), "MMM d, yyyy HH:mm")}
-                              </TableCell>
-                              <TableCell className="font-medium">{row.medicalStoreName ?? "—"}</TableCell>
-                              <TableCell>
-                                <Badge variant="secondary" className="font-normal capitalize">
-                                  {row.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {row.currency} {row.total}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+            <ListingPanel
+              cardClassName={cn("flex min-h-0 flex-1 flex-col overflow-hidden", loading && "opacity-60")}
+              header={
+                <CardHeader className="shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Factory className="h-5 w-5 text-primary" />
+                    <div>
+                      <CardTitle className="text-lg">Incoming orders</CardTitle>
+                      <CardDescription>
+                        {data.total === 0
+                          ? "No wholesale orders yet."
+                          : `Showing ${data.items.length} of ${data.total} order${data.total === 1 ? "" : "s"}.`}
+                      </CardDescription>
                     </div>
-                    <PaginationBar
-                      className="shrink-0"
-                      page={page}
-                      totalPages={totalPages}
-                      onPageChange={setPage}
-                      disabled={loading}
-                      summary={<span className="text-muted-foreground">Page {page} of {totalPages}</span>}
-                    />
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                  </div>
+                </CardHeader>
+              }
+              isEmpty={data.items.length === 0}
+              empty={
+                <p className="shrink-0 text-sm text-muted-foreground">
+                  When a medical store places a wholesale order, it will appear here.
+                </p>
+              }
+              footer={
+                data.items.length > 0 ? (
+                  <PaginationBar
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    disabled={loading}
+                    summary={<span className="text-muted-foreground">Page {page} of {totalPages}</span>}
+                  />
+                ) : null
+              }
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-semibold">Date</TableHead>
+                    <TableHead className="font-semibold">Medical store</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="text-right font-semibold">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((row: WholesaleOrderSummaryRow) => (
+                    <TableRow
+                      key={row.id}
+                      className="cursor-pointer"
+                      onClick={() => openDetail(row.id)}
+                    >
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {format(new Date(row.createdAt), "MMM d, yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell className="font-medium">{row.medicalStoreName ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-normal capitalize">
+                          {row.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.currency} {row.total}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ListingPanel>
           ) : null}
         </div>
       </DashboardScrollWorkspace>

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -12,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Loader from "@/components/ui/loader";
 import medicalStoreApi, { type RetailOrderLine, type RetailOrderRow } from "@/app/dashboard/medical-store/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -21,8 +19,9 @@ import { CreditCard, Mail, MapPin, Package, Phone, Pill, User } from "lucide-rea
 import { PageHeader } from "@/components/shell/page-header";
 import { PaginationBar } from "@/components/shell/pagination-bar";
 import { DashboardScrollWorkspace } from "@/components/shell/dashboard-scroll-workspace";
-import { cardSectionClass, surfaceInsetClass, surfaceListItemClass } from "@/lib/dashboard-ui";
+import { surfaceInsetClass, surfaceListItemClass } from "@/lib/dashboard-ui";
 import { cn } from "@/lib/utils";
+import { ListingPanel } from "@/components/shell/listing-panel";
 
 const STATUS_OPTIONS = ["pending", "placed", "shipped", "delivered", "returned"] as const;
 
@@ -134,36 +133,25 @@ export default function MedicalStoreRetailOrdersPage() {
         />
       }
     >
-      <Card className={cn(cardSectionClass(), "flex h-full min-h-0 flex-col overflow-hidden")}>
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-6 pt-6">
-          {loading ? (
-            <div className="flex min-h-0 flex-1 items-center justify-center">
-              <Loader title="Loading orders" description="Fetching patient orders and line items..." />
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="shrink-0 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-12 text-center">
-              <Package className="mx-auto mb-3 h-11 w-11 text-muted-foreground/60" />
-              <p className="font-medium text-foreground">No patient orders yet</p>
-              <p className="mt-1.5 text-sm text-muted-foreground">
-                When customers buy from your listings, orders will appear here with full item breakdowns.
-              </p>
-            </div>
-          ) : (
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-              {orders.map((order) => (
-                <RetailOrderCard
-                  key={order.id}
-                  order={order}
-                  updating={updatingId === order.id}
-                  onStatusChange={updateStatus}
-                />
-              ))}
-            </div>
-          )}
-
-          {!loading ? (
+      <ListingPanel
+        listTitle="Orders"
+        listDescription={`${total} order${total === 1 ? "" : "s"} total`}
+        isLoading={loading}
+        loadingTitle="Loading orders"
+        loadingDescription="Fetching patient orders and line items..."
+        isEmpty={!loading && orders.length === 0}
+        empty={
+          <div className="shrink-0 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-12 text-center">
+            <Package className="mx-auto mb-3 h-11 w-11 text-muted-foreground/60" />
+            <p className="font-medium text-foreground">No patient orders yet</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              When customers buy from your listings, orders will appear here with full item breakdowns.
+            </p>
+          </div>
+        }
+        footer={
+          !loading ? (
             <PaginationBar
-              className="shrink-0"
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
@@ -174,9 +162,20 @@ export default function MedicalStoreRetailOrdersPage() {
                 </>
               }
             />
-          ) : null}
-        </CardContent>
-      </Card>
+          ) : null
+        }
+      >
+        <div className="min-h-0 space-y-4 pr-1">
+          {orders.map((order) => (
+            <RetailOrderCard
+              key={order.id}
+              order={order}
+              updating={updatingId === order.id}
+              onStatusChange={updateStatus}
+            />
+          ))}
+        </div>
+      </ListingPanel>
     </DashboardScrollWorkspace>
   );
 }

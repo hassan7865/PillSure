@@ -11,13 +11,10 @@ import { manufacturerWholesaleOrderItems } from "../schema/manufacturerWholesale
 import { medicalStores } from "../schema/medicalStores";
 import { buildSearchConditions } from "./utils/search.utils";
 import { calculateOffset, normalizeLimit, normalizePage } from "./utils/pagination.utils";
+import { isUuid } from "../utils/uuid";
 
 const WHOLESALE_STATUSES = ["pending", "confirmed", "fulfilled", "cancelled"] as const;
 export type WholesaleOrderStatus = (typeof WHOLESALE_STATUSES)[number];
-
-function isUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
-}
 
 function displayManufacturerName(shortName: string | null, legalName: string): string {
   const s = typeof shortName === "string" && shortName.trim().length > 0 ? shortName.trim() : null;
@@ -75,10 +72,8 @@ export interface WholesaleOrderSummaryRow {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Present for store-side list */
-  manufacturerDisplayName?: string;
-  /** Present for manufacturer-side list */
-  medicalStoreName?: string;
+manufacturerDisplayName?: string;
+medicalStoreName?: string;
 }
 
 export interface WholesaleOrdersListResponse {

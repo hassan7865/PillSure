@@ -17,8 +17,6 @@ const professionalLinks = [
   { href: "/auth?role=medical_store&mode=signup", label: "Medical store", Icon: Store },
   { href: "/auth?role=manufacturer&mode=signup", label: "Manufacturer", Icon: Factory },
 ] as const;
-
-/** Shown only on signup — collapsed by default so patient sign-up stays simple. */
 export function SignupProfessionalRolesCollapsible({ currentRole, className }: Props) {
   const isProfessional = !["", "patient"].includes(normalizeRole(currentRole));
 

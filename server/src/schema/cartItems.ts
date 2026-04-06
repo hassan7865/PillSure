@@ -10,8 +10,7 @@ export const cartItems = pgTable(
     cartId: uuid("cart_id")
       .notNull()
       .references(() => carts.id, { onDelete: "cascade" }),
-    /** Pharmacy listing line when buying from marketplace / store PDP. */
-    medicalStoreMedicineId: uuid("medical_store_medicine_id").references(() => medicalStoreMedicines.id, {
+medicalStoreMedicineId: uuid("medical_store_medicine_id").references(() => medicalStoreMedicines.id, {
       onDelete: "cascade",
     }),
     medicineId: integer("medicine_id").notNull(),

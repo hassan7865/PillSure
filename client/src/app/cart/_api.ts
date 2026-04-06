@@ -6,8 +6,7 @@ export type CartItemPayload = {
   quantity?: number;
   sourceType?: "direct" | "prescription";
   appointmentId?: string;
-  /** Pharmacy listing row when buying from marketplace / store product page */
-  medicalStoreMedicineId?: string;
+medicalStoreMedicineId?: string;
 };
 
 export const cartApi = {

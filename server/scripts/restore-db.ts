@@ -11,10 +11,6 @@ interface PostgreSQLVersion {
   minor: number;
   full: string;
 }
-
-/**
- * Execute a command and return stdout/stderr
- */
 async function executeCommand(
   command: string,
   args: string[],
@@ -62,10 +58,6 @@ async function executeCommand(
     });
   });
 }
-
-/**
- * Get PostgreSQL version from container
- */
 async function getPostgreSQLVersion(
   containerName: string,
   dbUser: string,
@@ -109,10 +101,6 @@ async function getPostgreSQLVersion(
     return { major: 14, minor: 0, full: 'Unknown' };
   }
 }
-
-/**
- * Detect PostgreSQL version from backup file
- */
 function detectBackupVersion(backupPath: string): { version?: string; isCustom?: boolean } {
   try {
     const content = fs.readFileSync(backupPath, 'utf-8');
@@ -141,10 +129,6 @@ function detectBackupVersion(backupPath: string): { version?: string; isCustom?:
     return {};
   }
 }
-
-/**
- * Sanitize database/username for SQL commands
- */
 function sanitizeIdentifier(identifier: string): string {
   // Remove or escape potentially dangerous characters
   // Only allow alphanumeric and underscore
@@ -154,18 +138,10 @@ function sanitizeIdentifier(identifier: string): string {
   }
   return identifier;
 }
-
-/**
- * Escape database name for SQL (used in queries)
- */
 function escapeSqlString(str: string): string {
   // Escape single quotes for SQL strings
   return `'${str.replace(/'/g, "''")}'`;
 }
-
-/**
- * Terminate all active connections to a database (PostgreSQL version agnostic)
- */
 async function terminateConnections(
   containerName: string,
   dbName: string,
@@ -221,10 +197,6 @@ async function terminateConnections(
 
   console.log('Warning: Could not terminate all connections (may already be terminated)');
 }
-
-/**
- * Drop database if exists (with error handling)
- */
 async function dropDatabase(
   containerName: string,
   dbName: string,
@@ -269,10 +241,6 @@ async function dropDatabase(
     }
   }
 }
-
-/**
- * Create database (with error handling)
- */
 async function createDatabase(
   containerName: string,
   dbName: string,
@@ -309,10 +277,6 @@ async function createDatabase(
     throw new Error(`Failed to create database: ${result.stderr}`);
   }
 }
-
-/**
- * Restore database from SQL file
- */
 async function restoreFromSQL(
   containerName: string,
   backupPath: string,
@@ -429,10 +393,6 @@ async function restoreFromSQL(
     });
   });
 }
-
-/**
- * Pre-process backup file to handle version differences
- */
 function preprocessBackup(backupPath: string, targetVersion: PostgreSQLVersion): string {
   const tempPath = backupPath + '.processed';
   
@@ -465,10 +425,6 @@ function preprocessBackup(backupPath: string, targetVersion: PostgreSQLVersion):
     return backupPath;
   }
 }
-
-/**
- * Clean up temporary files
- */
 function cleanupTempFile(filePath: string): void {
   if (fs.existsSync(filePath) && filePath.endsWith('.processed')) {
     try {
@@ -478,10 +434,6 @@ function cleanupTempFile(filePath: string): void {
     }
   }
 }
-
-/**
- * Main restore function
- */
 async function restoreDatabase(backupFile?: string) {
   let processedBackupPath: string | null = null;
   let backupPath: string = '';

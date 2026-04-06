@@ -1,10 +1,6 @@
 "use client";
 
 import { Pill } from "lucide-react";
-
-/**
- * Decorative floating pill silhouettes for the marketplace hero (GPU-friendly transforms).
- */
 export function MarketplaceHeroPillAnimation() {
   return (
     <div

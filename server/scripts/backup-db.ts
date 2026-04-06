@@ -11,10 +11,6 @@ interface PostgreSQLVersion {
   minor: number;
   full: string;
 }
-
-/**
- * Execute a command and return stdout/stderr
- */
 async function executeCommand(
   command: string,
   args: string[],
@@ -57,10 +53,6 @@ async function executeCommand(
     });
   });
 }
-
-/**
- * Get PostgreSQL version from container
- */
 async function getPostgreSQLVersion(
   containerName: string,
   dbUser: string,
@@ -104,10 +96,6 @@ async function getPostgreSQLVersion(
     return { major: 14, minor: 0, full: 'Unknown' };
   }
 }
-
-/**
- * Sanitize database/username for SQL commands
- */
 function sanitizeIdentifier(identifier: string): string {
   // Remove or escape potentially dangerous characters
   // Only allow alphanumeric and underscore
@@ -117,10 +105,6 @@ function sanitizeIdentifier(identifier: string): string {
   }
   return identifier;
 }
-
-/**
- * Check available disk space (basic check)
- */
 async function checkDiskSpace(backupPath: string, requiredMB: number = 100): Promise<boolean> {
   try {
     // This is a simple check - in production you might want more sophisticated space checking
@@ -132,10 +116,6 @@ async function checkDiskSpace(backupPath: string, requiredMB: number = 100): Pro
     return true;
   }
 }
-
-/**
- * Create backup with version-specific optimizations
- */
 async function createBackup(
   containerName: string,
   dbName: string,
@@ -249,10 +229,6 @@ async function createBackup(
     });
   });
 }
-
-/**
- * Add version metadata to backup file
- */
 async function addBackupMetadata(
   backupPath: string,
   version: PostgreSQLVersion,
@@ -281,10 +257,6 @@ async function addBackupMetadata(
     console.warn('[WARNING] Could not add metadata to backup file');
   }
 }
-
-/**
- * Main backup function
- */
 async function backupDatabase(useTimestamp?: boolean) {
   try {
     // Check if Docker is available

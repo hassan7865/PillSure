@@ -9,8 +9,7 @@ export const orders = pgTable(
     patientId: uuid("patient_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** When set, this retail order is fulfilled by this pharmacy. Prescription-only carts may leave this null. */
-    medicalStoreId: uuid("medical_store_id").references(() => medicalStores.id, { onDelete: "set null" }),
+medicalStoreId: uuid("medical_store_id").references(() => medicalStores.id, { onDelete: "set null" }),
     status: varchar("status", { length: 30 }).notNull().default("placed"),
     paymentMethod: varchar("payment_method", { length: 20 }).notNull(),
     paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("pending"),

@@ -4,10 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { canAccessPublicArea, getDashboardHomeByRole } from "@/lib/role-routing";
-
-/**
- * Redirects dashboard-only roles away from public routes; mirrors previous PublicLayout / marketplace layout behavior.
- */
 export function usePublicAreaGate() {
   const { user, loading } = useAuth();
   const router = useRouter();

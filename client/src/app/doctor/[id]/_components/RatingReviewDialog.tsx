@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -141,7 +135,7 @@ export default function RatingReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[95vh] overflow-y-auto">
+      <AppDialogContent size="sm" className="max-w-[95vw] sm:max-w-md !max-h-[95vh]">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl font-bold">
             Rate Dr. {doctorName}
@@ -208,7 +202,7 @@ export default function RatingReviewDialog({
             {isSubmitting ? "Submitting..." : "Submit Rating"}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

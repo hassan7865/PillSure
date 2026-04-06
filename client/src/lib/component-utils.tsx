@@ -1,10 +1,6 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Video, Phone, User, Stethoscope } from "lucide-react";
-
-/**
- * Get status badge component with appropriate styling
- */
 export function getStatusBadge(status: string) {
   if (!status) return <Badge variant="outline">Unknown</Badge>;
   
@@ -26,10 +22,6 @@ export function getStatusBadge(status: string) {
       return <Badge variant="outline">{status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}</Badge>;
   }
 }
-
-/**
- * Get consultation mode icon
- */
 export function getConsultationModeIcon(mode: string) {
   const modeLower = mode?.toLowerCase();
   switch (modeLower) {

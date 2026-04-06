@@ -14,7 +14,6 @@ export interface ApiResponse<T = any> {
 }
 
 
-
 // User Types
 export interface User {
   id: string;
@@ -85,7 +84,6 @@ export type Hospital = {
 // =============================================================================
 // ONBOARDING TYPES
 // =============================================================================
-
 
 
 export interface OnboardingResponseData {

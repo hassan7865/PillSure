@@ -1,6 +1,3 @@
-/**
- * Utility functions for medicine image handling
- */
 import { sql } from "drizzle-orm";
 import { s3Service } from "../s3.service";
 
@@ -10,71 +7,23 @@ export interface ImageUpdateResult {
   uploadedImages: string[];
 }
 
-/**
- * Handle medicine image updates
- * @param currentImages - Current images in database
- * @param existingImageUrls - Image URLs to keep
- * @param newImages - New image files to upload
- * @param maxImages - Maximum number of images allowed (default: 4)
- * @returns Image update result with final images, images to delete, and uploaded images
- */
-export async function handleMedicineImageUpdate(
+async function handleImageUpdateWithFolder(
   currentImages: string[],
   existingImageUrls: string[],
   newImages: Express.Multer.File[],
-  maxImages: number = 4
+  opts: { folder: string; maxImages: number; overLimitLabel: string },
 ): Promise<ImageUpdateResult> {
-  // Validate total images (existing + new) <= maxImages
+  const { folder, maxImages, overLimitLabel } = opts;
   const totalImages = existingImageUrls.length + newImages.length;
   if (totalImages > maxImages) {
     throw new Error(
-      `Maximum ${maxImages} images allowed. You are trying to have ${totalImages} images.`
-    );
-  }
-
-  // Upload new images to S3
-  let uploadedImages: string[] = [];
-  if (newImages.length > 0) {
-    const uploadResults = await s3Service.uploadMultipleFiles(newImages, {
-      folder: "medicines",
-    });
-    uploadedImages = uploadResults.map((result) => result.url);
-  }
-
-  // Determine which images to delete
-  const imagesToDelete = currentImages.filter(
-    (imageUrl) => !existingImageUrls.includes(imageUrl)
-  );
-
-  // Combine existing and new images
-  const finalImages = [...existingImageUrls, ...uploadedImages];
-
-  return {
-    finalImages,
-    imagesToDelete,
-    uploadedImages,
-  };
-}
-
-/** Pack photos for medical store listings (folder: store-pack-images). */
-export async function handleListingPackImageUpdate(
-  currentImages: string[],
-  existingImageUrls: string[],
-  newImages: Express.Multer.File[],
-  maxImages: number = 4,
-): Promise<ImageUpdateResult> {
-  const totalImages = existingImageUrls.length + newImages.length;
-  if (totalImages > maxImages) {
-    throw new Error(
-      `Maximum ${maxImages} pack images allowed. You are trying to have ${totalImages} images.`,
+      `Maximum ${maxImages} ${overLimitLabel} allowed. You are trying to have ${totalImages} images.`,
     );
   }
 
   let uploadedImages: string[] = [];
   if (newImages.length > 0) {
-    const uploadResults = await s3Service.uploadMultipleFiles(newImages, {
-      folder: "store-pack-images",
-    });
+    const uploadResults = await s3Service.uploadMultipleFiles(newImages, { folder });
     uploadedImages = uploadResults.map((result) => result.url);
   }
 
@@ -89,6 +38,32 @@ export async function handleListingPackImageUpdate(
     imagesToDelete,
     uploadedImages,
   };
+}
+
+export async function handleMedicineImageUpdate(
+  currentImages: string[],
+  existingImageUrls: string[],
+  newImages: Express.Multer.File[],
+  maxImages: number = 4,
+): Promise<ImageUpdateResult> {
+  return handleImageUpdateWithFolder(currentImages, existingImageUrls, newImages, {
+    folder: "medicines",
+    maxImages,
+    overLimitLabel: "images",
+  });
+}
+
+export async function handleListingPackImageUpdate(
+  currentImages: string[],
+  existingImageUrls: string[],
+  newImages: Express.Multer.File[],
+  maxImages: number = 4,
+): Promise<ImageUpdateResult> {
+  return handleImageUpdateWithFolder(currentImages, existingImageUrls, newImages, {
+    folder: "store-pack-images",
+    maxImages,
+    overLimitLabel: "pack images",
+  });
 }
 
 export async function deleteOldImages(
@@ -110,9 +85,6 @@ export async function deleteOldImages(
   }
 }
 
-/**
- * Format images array for database storage (JSONB)
- */
 export function formatImagesForDB(images: string[]) {
   return sql`${JSON.stringify(images)}::jsonb`;
 }

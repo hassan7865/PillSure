@@ -18,13 +18,8 @@ import type { HospitalDoctorAppointmentRow, HospitalDoctorRow } from "@/app/appo
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/shell/app-dialog";
 import Loader from "@/components/ui/loader";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -98,8 +93,6 @@ const accentIconBox: Record<StatTileProps["accent"], string> = {
   rose: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
   violet: "bg-violet-500/15 text-violet-800 dark:text-violet-300",
 };
-
-/** Stat cell: stacked label + value; icon in corner — generous padding for readability at large dialog widths. */
 function StatTile({ label, value, icon, accent }: StatTileProps) {
   return (
     <div
@@ -193,12 +186,13 @@ export function HospitalDoctorDetailDialog({ open, onOpenChange, doctorId, docto
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+      <AppDialogContent
         showCloseButton
+        size="full"
         className={cn(
-          "flex min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border-border/80 bg-background p-0 shadow-2xl",
-          /* Beats default DialogContent `sm:max-w-lg` (~512px) — wide canvas for stats + schedule */
-          "w-[min(96vw,80rem)] !max-w-[min(96vw,80rem)] max-h-[min(96vh,1080px)]",
+          "!overflow-hidden",
+          "flex min-h-0 flex-col gap-0 rounded-2xl border-border/80 bg-background p-0 shadow-2xl",
+          "w-[min(96vw,80rem)] !max-w-[min(96vw,80rem)] !max-h-[min(96vh,1080px)]",
         )}
       >
         <div className="relative shrink-0 overflow-hidden border-b border-border/60 bg-gradient-to-br from-primary/[0.07] via-background to-muted/20 px-6 py-8 sm:px-10 sm:py-9">
@@ -418,7 +412,7 @@ export function HospitalDoctorDetailDialog({ open, onOpenChange, doctorId, docto
             </div>
           )}
         </div>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

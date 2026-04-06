@@ -196,8 +196,6 @@ function excelRowsToImportItems(rows: ExcelImportRow[]): {
   });
   return { items, mappingWarnings };
 }
-
-/** Used by manufacturer routes to download an empty template .xlsx */
 export function buildManufacturerImportTemplateBuffer(): Buffer {
   const headers = [
     "Medicine Name",
@@ -249,8 +247,7 @@ export interface ManufacturerListResponse {
 }
 
 export class ManufacturerService {
-  /** Keep serial sequence aligned with existing rows (important after DB restores). */
-  private async syncMedicinesIdSequence(): Promise<void> {
+private async syncMedicinesIdSequence(): Promise<void> {
     await db.execute(sql`
       SELECT setval(
         pg_get_serial_sequence('public.medicines', 'id'),
@@ -271,9 +268,7 @@ export class ManufacturerService {
     }
     return rows[0].id;
   }
-
-  /** Strip ILIKE wildcards so user search cannot break matching. */
-  private sanitizeMedicineSearch(raw: string): string {
+private sanitizeMedicineSearch(raw: string): string {
     return raw.trim().replace(/[%_\\]/g, " ").replace(/\s+/g, " ").trim();
   }
 
@@ -432,9 +427,7 @@ export class ManufacturerService {
           if (!medKey) {
             throw new Error("Medicine name must contain at least one letter or digit (a–z, 0–9)");
           }
-
-          /** Prefer an existing row on this manufacturer's list (same normalized name) so re-import updates instead of creating a second SKU. */
-          const existingMfrListing = await tx
+const existingMfrListing = await tx
             .select({
               listingId: manufacturerMedicines.id,
               medicineId: manufacturerMedicines.medicineId,

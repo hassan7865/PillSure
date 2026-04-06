@@ -5,18 +5,14 @@ import { cn } from "@/lib/utils";
 import { formatRetailPriceLine } from "@/lib/format-money";
 
 type StockSize = "default" | "large";
-
-/** Matches marketplace search listing + pharmacy catalog tone: green/red stock with clear labels. */
 export function MedicineStockStatus({
   inStock,
   size = "default",
   detail,
 }: {
   inStock: boolean;
-  /** `large`: hero product row (medicine PDP). */
-  size?: StockSize;
-  /** Shown after the status (e.g. quantity) — omit when out of stock. */
-  detail?: ReactNode;
+size?: StockSize;
+detail?: ReactNode;
 }) {
   const icon = size === "large" ? "h-5 w-5" : "h-4 w-4";
   return inStock ? (
@@ -38,8 +34,6 @@ export function MedicineStockStatus({
     </div>
   );
 }
-
-/** Compact “Rx” label — same treatment as medical store dashboard product tiles. */
 export function MedicineRxStamp({ className }: { className?: string }) {
   return (
     <span
@@ -67,8 +61,6 @@ type MedicineCatalogPriceProps = {
   discountPct: number;
   variant: "featured" | "compact";
 };
-
-/** PKR catalog line: tabular nums + strike + discount badge (aligned with search listing price weight). */
 export function MedicineCatalogPrice({
   finalPrice,
   originalPrice,
@@ -125,10 +117,6 @@ export function RagMatchBadge({
     </div>
   );
 }
-
-/** Base chrome for marketplace medicine tiles (search row, pharmacy grid, RAG cards). */
 export const marketplaceMedicineTileClassName =
   "rounded-2xl border border-border/60 bg-card shadow-sm transition-all duration-300 hover:border-primary/25 hover:shadow-md";
-
-/** Interactive catalog card (recommendation dialog). */
 export const medicineCatalogCardClassName = `cursor-pointer ${marketplaceMedicineTileClassName}`;
