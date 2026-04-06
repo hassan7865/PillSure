@@ -12,8 +12,11 @@ import { appointmentService } from "./appointment.service";
 import { stripeService } from "./stripe.service";
 import { ensureGuestUserForWhatsApp } from "./guestUser.service";
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3.5";
+
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.1";
+const OLLAMA_FALLBACK_MODEL = process.env.OLLAMA_FALLBACK_MODEL || "llama3.1";
+const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 120000);
 
 type GenerateContext = {
   ownerUserId: string;
@@ -33,12 +36,16 @@ export type ChatbotGenerateResult = {
   };
 };
 
-const callOllamaChat = async (messages: { role: string; content: string }[], options?: { temperature?: number; numPredict?: number }) => {
+const callOllamaChatWithModel = async (
+  model: string,
+  messages: { role: string; content: string }[],
+  options?: { temperature?: number; numPredict?: number }
+) => {
   const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: OLLAMA_MODEL,
+      model,
       messages,
       stream: false,
       options: {
@@ -46,10 +53,25 @@ const callOllamaChat = async (messages: { role: string; content: string }[], opt
         num_predict: options?.numPredict ?? 800,
       },
     }),
+    signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
   });
+  return res;
+};
+
+const callOllamaChat = async (messages: { role: string; content: string }[], options?: { temperature?: number; numPredict?: number }) => {
+  let res = await callOllamaChatWithModel(OLLAMA_MODEL, messages, options);
   if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Ollama error ${res.status}: ${t}`);
+    const errText = await res.text();
+    const isMissingModel = res.status === 404 || /model .* not found/i.test(errText);
+    if (isMissingModel && OLLAMA_FALLBACK_MODEL && OLLAMA_FALLBACK_MODEL !== OLLAMA_MODEL) {
+      res = await callOllamaChatWithModel(OLLAMA_FALLBACK_MODEL, messages, options);
+      if (!res.ok) {
+        const fallbackErr = await res.text();
+        throw new Error(`Ollama fallback error ${res.status}: ${fallbackErr}`);
+      }
+    } else {
+      throw new Error(`Ollama error ${res.status}: ${errText}`);
+    }
   }
   const data = (await res.json()) as { message?: { content?: string } };
   return (data.message?.content || "").trim();
