@@ -232,6 +232,13 @@
       "when": 1777000000000,
       "tag": "0032_medical_stores_opening_closing_time",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1777100000000,
+      "tag": "0033_patients_shipping_addresses",
+      "breakpoints": true
     }
   ]
 }

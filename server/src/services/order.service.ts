@@ -9,6 +9,15 @@ import { medicalStores } from "../schema/medicalStores";
 import { createError } from "../middleware/error.handler";
 import { cartService } from "./cart.service";
 import { stripeService } from "./stripe.service";
+import { patients } from "../schema/patient";
+
+export interface ShippingAddressEntry {
+  id: string;
+  label: string;
+  addressLine: string;
+  contactNo: string;
+  isDefault?: boolean;
+}
 
 type CheckoutLine = {
   id: string;
@@ -21,12 +30,124 @@ type CheckoutLine = {
 };
 
 export class OrderService {
-  private assertCheckoutContactInfo(payload: { shippingAddress?: string; contactNo?: string }) {
-    const shippingAddress = String(payload.shippingAddress || "").trim();
-    const contactNo = String(payload.contactNo || "").trim();
-    if (!shippingAddress) throw createError("shippingAddress is required", 400);
-    if (!contactNo) throw createError("contactNo is required", 400);
-    return { shippingAddress, contactNo };
+  private normalizeShippingAddresses(raw: unknown): ShippingAddressEntry[] {
+    if (!Array.isArray(raw)) return [];
+    const out: ShippingAddressEntry[] = [];
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as Record<string, unknown>;
+      const id = String(row.id ?? "").trim();
+      const label = String(row.label ?? "").trim();
+      const addressLine = String(row.addressLine ?? "").trim();
+      const contactNo = String(row.contactNo ?? "").trim();
+      if (!id || !label || !addressLine || !contactNo) continue;
+      out.push({ id, label, addressLine, contactNo, isDefault: Boolean(row.isDefault) });
+    }
+    if (!out.length) return out;
+    if (!out.some((a) => a.isDefault)) out[0].isDefault = true;
+    return out;
+  }
+
+  private async getPatientAddressBook(patientId: string): Promise<ShippingAddressEntry[]> {
+    const [row] = await db
+      .select({ shippingAddresses: patients.shippingAddresses })
+      .from(patients)
+      .where(eq(patients.userId, patientId))
+      .limit(1);
+    return this.normalizeShippingAddresses(row?.shippingAddresses);
+  }
+
+  async listPatientShippingAddresses(patientId: string): Promise<ShippingAddressEntry[]> {
+    return this.getPatientAddressBook(patientId);
+  }
+
+  async addPatientShippingAddress(
+    patientId: string,
+    payload: { label?: string; addressLine?: string; contactNo?: string; isDefault?: boolean },
+  ): Promise<ShippingAddressEntry[]> {
+    const label = String(payload.label ?? "").trim();
+    const addressLine = String(payload.addressLine ?? "").trim();
+    const contactNo = String(payload.contactNo ?? "").trim();
+    if (!label || !addressLine || !contactNo) throw createError("label, addressLine and contactNo are required", 400);
+    const current = await this.getPatientAddressBook(patientId);
+    const newRow: ShippingAddressEntry = {
+      id: `addr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      label,
+      addressLine,
+      contactNo,
+      isDefault: payload.isDefault === true || current.length === 0,
+    };
+    const next: ShippingAddressEntry[] = current.map((a) => ({
+      ...a,
+      isDefault: newRow.isDefault ? false : a.isDefault,
+    }));
+    next.push(newRow);
+    await db
+      .update(patients)
+      .set({ shippingAddresses: next, updatedAt: new Date() })
+      .where(eq(patients.userId, patientId));
+    return next;
+  }
+
+  async updatePatientShippingAddress(
+    patientId: string,
+    addressId: string,
+    payload: { label?: string; addressLine?: string; contactNo?: string; isDefault?: boolean },
+  ): Promise<ShippingAddressEntry[]> {
+    const current = await this.getPatientAddressBook(patientId);
+    const idx = current.findIndex((a) => a.id === addressId);
+    if (idx < 0) throw createError("Address not found", 404);
+    const updated = {
+      ...current[idx],
+      ...(payload.label !== undefined ? { label: String(payload.label).trim() } : null),
+      ...(payload.addressLine !== undefined ? { addressLine: String(payload.addressLine).trim() } : null),
+      ...(payload.contactNo !== undefined ? { contactNo: String(payload.contactNo).trim() } : null),
+      ...(payload.isDefault !== undefined ? { isDefault: Boolean(payload.isDefault) } : null),
+    };
+    if (!updated.label || !updated.addressLine || !updated.contactNo) {
+      throw createError("label, addressLine and contactNo are required", 400);
+    }
+    const next = current.map((a, i) => (i === idx ? updated : { ...a }));
+    if (updated.isDefault) {
+      for (const a of next) if (a.id !== updated.id) a.isDefault = false;
+    }
+    if (!next.some((a) => a.isDefault)) next[0].isDefault = true;
+    await db
+      .update(patients)
+      .set({ shippingAddresses: next, updatedAt: new Date() })
+      .where(eq(patients.userId, patientId));
+    return next;
+  }
+
+  async deletePatientShippingAddress(patientId: string, addressId: string): Promise<ShippingAddressEntry[]> {
+    const current = await this.getPatientAddressBook(patientId);
+    const next = current.filter((a) => a.id !== addressId);
+    if (next.length && !next.some((a) => a.isDefault)) next[0].isDefault = true;
+    await db
+      .update(patients)
+      .set({ shippingAddresses: next, updatedAt: new Date() })
+      .where(eq(patients.userId, patientId));
+    return next;
+  }
+
+  private async resolveCheckoutContactInfo(
+    patientId: string,
+    payload: { addressId?: string; shippingAddress?: string; contactNo?: string },
+  ) {
+    const addressId = String(payload.addressId ?? "").trim();
+    if (addressId) {
+      const book = await this.getPatientAddressBook(patientId);
+      const found = book.find((a) => a.id === addressId);
+      if (!found) throw createError("Selected shipping address not found", 400);
+      return { shippingAddress: found.addressLine, contactNo: found.contactNo };
+    }
+    const shippingAddress = String(payload.shippingAddress ?? "").trim();
+    const contactNo = String(payload.contactNo ?? "").trim();
+    if (shippingAddress && contactNo) return { shippingAddress, contactNo };
+    const book = await this.getPatientAddressBook(patientId);
+    const fallback = book.find((a) => a.isDefault) ?? book[0];
+    if (!fallback) throw createError("No shipping address found. Please add one before checkout.", 400);
+    return { shippingAddress: fallback.addressLine, contactNo: fallback.contactNo };
   }
 
   private async getCheckoutItems(patientId: string): Promise<{
@@ -198,8 +319,8 @@ export class OrderService {
     });
   }
 
-  async createCodOrder(patientId: string, payload: { shippingAddress?: string; contactNo?: string }) {
-    const contactInfo = this.assertCheckoutContactInfo(payload);
+  async createCodOrder(patientId: string, payload: { addressId?: string; shippingAddress?: string; contactNo?: string }) {
+    const contactInfo = await this.resolveCheckoutContactInfo(patientId, payload);
     const checkout = await this.getCheckoutItems(patientId);
 
     const order = await this.finalizeOrderInTransaction({
@@ -215,8 +336,11 @@ export class OrderService {
     return { orderId: order.id, status: order.status, paymentStatus: order.paymentStatus };
   }
 
-  async createOnlineCheckoutSession(patientId: string, payload: { shippingAddress?: string; contactNo?: string }) {
-    const contactInfo = this.assertCheckoutContactInfo(payload);
+  async createOnlineCheckoutSession(
+    patientId: string,
+    payload: { addressId?: string; shippingAddress?: string; contactNo?: string },
+  ) {
+    const contactInfo = await this.resolveCheckoutContactInfo(patientId, payload);
     const checkout = await this.getCheckoutItems(patientId);
     const session = await stripeService.createMedicineCheckoutSession({
       amountPkr: checkout.total,

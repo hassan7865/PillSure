@@ -55,6 +55,14 @@ type NavbarProps = {
   centerSearch?: NavbarCenterSearchProps;
 };
 
+type ShippingAddressEntry = {
+  id: string;
+  label: string;
+  addressLine: string;
+  contactNo: string;
+  isDefault?: boolean;
+};
+
 const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
   const { user, logout } = useAuth();
   const { showError, showSuccess } = useCustomToast();
@@ -64,11 +72,18 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
   const [cartData, setCartData] = useState<any>(null);
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [contactNo, setContactNo] = useState("");
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddressEntry[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressLabel, setAddressLabel] = useState("");
+  const [addressLineInput, setAddressLineInput] = useState("");
+  const [contactNoInput, setContactNoInput] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState<"cod" | "online" | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
-  const isCheckoutInfoValid = shippingAddress.trim().length > 0 && contactNo.trim().length > 0;
+  const isCheckoutInfoValid = selectedAddressId.trim().length > 0;
 
   const handleNavSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +167,106 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
     }
   }, [cartOpen]);
 
+  useEffect(() => {
+    if (!cartOpen) return;
+    if (!user || normalizeRole(user.role) !== "patient") {
+      setShippingAddresses([]);
+      setSelectedAddressId("");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setAddressLoading(true);
+        const rows = (await orderApi.getShippingAddresses()) as ShippingAddressEntry[];
+        const list = Array.isArray(rows) ? rows : [];
+        if (cancelled) return;
+        setShippingAddresses(list);
+        const defaultAddress = list.find((a) => a.isDefault) ?? list[0];
+        setSelectedAddressId(defaultAddress?.id ?? "");
+        if (!list.length) {
+          setShowAddressForm(true);
+        }
+      } catch (error) {
+        if (!cancelled) showError("Could not load addresses", getErrorMessage(error));
+      } finally {
+        if (!cancelled) setAddressLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cartOpen, user?.id, user?.role]);
+
+  const resetAddressForm = () => {
+    setAddressLabel("");
+    setAddressLineInput("");
+    setContactNoInput("");
+    setEditingAddressId(null);
+    setShowAddressForm(false);
+  };
+
+  const startCreateAddress = () => {
+    setEditingAddressId(null);
+    setAddressLabel("Home");
+    setAddressLineInput("");
+    setContactNoInput("");
+    setShowAddressForm(true);
+  };
+
+  const startEditAddress = (address: ShippingAddressEntry) => {
+    setEditingAddressId(address.id);
+    setAddressLabel(address.label);
+    setAddressLineInput(address.addressLine);
+    setContactNoInput(address.contactNo);
+    setShowAddressForm(true);
+  };
+
+  const saveAddress = async () => {
+    const payload = {
+      label: addressLabel.trim(),
+      addressLine: addressLineInput.trim(),
+      contactNo: contactNoInput.trim(),
+      isDefault: shippingAddresses.length === 0 || editingAddressId == null,
+    };
+    if (!payload.label || !payload.addressLine || !payload.contactNo) {
+      showError("Missing fields", "Label, address, and contact number are required.");
+      return;
+    }
+    try {
+      setAddressSaving(true);
+      const rows = editingAddressId
+        ? ((await orderApi.updateShippingAddress(editingAddressId, payload)) as ShippingAddressEntry[])
+        : ((await orderApi.createShippingAddress(payload)) as ShippingAddressEntry[]);
+      const list = Array.isArray(rows) ? rows : [];
+      setShippingAddresses(list);
+      const chosen =
+        (editingAddressId ? list.find((a) => a.id === editingAddressId) : list.find((a) => a.isDefault)) ??
+        list[0];
+      setSelectedAddressId(chosen?.id ?? "");
+      resetAddressForm();
+      showSuccess("Address saved", "Your shipping address has been updated.");
+    } catch (error) {
+      showError("Could not save address", getErrorMessage(error));
+    } finally {
+      setAddressSaving(false);
+    }
+  };
+
+  const removeAddress = async (addressId: string) => {
+    try {
+      const rows = (await orderApi.deleteShippingAddress(addressId)) as ShippingAddressEntry[];
+      const list = Array.isArray(rows) ? rows : [];
+      setShippingAddresses(list);
+      const nextDefault = list.find((a) => a.isDefault) ?? list[0];
+      setSelectedAddressId(nextDefault?.id ?? "");
+      if (!list.length) setShowAddressForm(true);
+      showSuccess("Address removed", "Shipping address removed successfully.");
+    } catch (error) {
+      showError("Could not remove address", getErrorMessage(error));
+    }
+  };
+
   const handleCheckout = async (paymentMethod: "cod" | "online") => {
     try {
       if (!isCheckoutInfoValid) {
@@ -161,8 +276,7 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
       setCheckoutLoading(paymentMethod);
       const data: any = await orderApi.checkout({
         paymentMethod,
-        shippingAddress: shippingAddress.trim(),
-        contactNo: contactNo.trim(),
+        addressId: selectedAddressId,
       });
 
       if (paymentMethod === "online" && data?.checkoutUrl) {
@@ -291,27 +405,89 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
                 </div>
                 {!!cartData?.items?.length && (
                   <SheetFooter className="grid grid-cols-1 gap-2 p-4">
-                    <Input
-                      placeholder="Shipping address"
-                      value={shippingAddress}
-                      onChange={(e) => setShippingAddress(e.target.value)}
-                      required
-                    />
-                    <Input
-                      placeholder="Contact number"
-                      value={contactNo}
-                      onChange={(e) => setContactNo(e.target.value)}
-                      required
-                    />
+                    <div className="rounded-xl border border-border/70 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold">Shipping address</p>
+                        <Button type="button" variant="ghost" size="sm" onClick={startCreateAddress}>
+                          Add new
+                        </Button>
+                      </div>
+                      {addressLoading ? (
+                        <p className="text-xs text-muted-foreground">Loading addresses...</p>
+                      ) : shippingAddresses.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          No address saved yet. Add one to continue checkout.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {shippingAddresses.map((a) => (
+                            <div
+                              key={a.id}
+                              className={`rounded-lg border p-2 ${
+                                selectedAddressId === a.id ? "border-primary bg-primary/5" : "border-border/70"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                className="w-full text-left"
+                                onClick={() => setSelectedAddressId(a.id)}
+                              >
+                                <p className="text-sm font-medium">
+                                  {a.label}
+                                  {a.isDefault ? <span className="ml-2 text-xs text-primary">(Default)</span> : null}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{a.addressLine}</p>
+                                <p className="text-xs text-muted-foreground">{a.contactNo}</p>
+                              </button>
+                              <div className="mt-1 flex gap-2">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => startEditAddress(a)}>
+                                  Edit
+                                </Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeAddress(a.id)}>
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {showAddressForm && (
+                      <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/70 p-3">
+                        <Input
+                          placeholder="Label (Home / Office)"
+                          value={addressLabel}
+                          onChange={(e) => setAddressLabel(e.target.value)}
+                        />
+                        <Input
+                          placeholder="Address line"
+                          value={addressLineInput}
+                          onChange={(e) => setAddressLineInput(e.target.value)}
+                        />
+                        <Input
+                          placeholder="Contact number"
+                          value={contactNoInput}
+                          onChange={(e) => setContactNoInput(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" onClick={saveAddress} disabled={addressSaving}>
+                            {addressSaving ? "Saving..." : editingAddressId ? "Update address" : "Save address"}
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={resetAddressForm}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <Button
                       variant="outline"
-                      disabled={checkoutLoading !== null || !isCheckoutInfoValid}
+                      disabled={checkoutLoading !== null || !isCheckoutInfoValid || addressLoading}
                       onClick={() => handleCheckout("cod")}
                     >
                       {checkoutLoading === "cod" ? "Placing..." : "Cash on Delivery"}
                     </Button>
                     <Button
-                      disabled={checkoutLoading !== null || !isCheckoutInfoValid}
+                      disabled={checkoutLoading !== null || !isCheckoutInfoValid || addressLoading}
                       onClick={() => handleCheckout("online")}
                     >
                       {checkoutLoading === "online" ? "Redirecting..." : "Pay Online"}

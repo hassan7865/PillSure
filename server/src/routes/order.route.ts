@@ -14,6 +14,10 @@ export class OrderRoute {
 
   private initializeRoutes() {
     this.router.post("/checkout", verifyToken, this.checkout);
+    this.router.get("/shipping-addresses", verifyToken, this.getShippingAddresses);
+    this.router.post("/shipping-addresses", verifyToken, this.createShippingAddress);
+    this.router.put("/shipping-addresses/:addressId", verifyToken, this.updateShippingAddress);
+    this.router.delete("/shipping-addresses/:addressId", verifyToken, this.deleteShippingAddress);
     this.router.get("/", verifyToken, this.getOrders);
     this.router.get("/:id", verifyToken, this.getOrderById);
   }
@@ -22,22 +26,68 @@ export class OrderRoute {
     try {
       if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can place orders"));
       const patientId = (req as any).user.userId;
-      const { paymentMethod, shippingAddress, contactNo } = req.body;
+      const { paymentMethod, shippingAddress, contactNo, addressId } = req.body;
       if (!paymentMethod) return next(BadRequestError("paymentMethod is required"));
-      if (!String(shippingAddress || "").trim()) return next(BadRequestError("shippingAddress is required"));
-      if (!String(contactNo || "").trim()) return next(BadRequestError("contactNo is required"));
 
       if (paymentMethod === "cod") {
-        const data = await orderService.createCodOrder(patientId, { shippingAddress, contactNo });
+        const data = await orderService.createCodOrder(patientId, { addressId, shippingAddress, contactNo });
         return res.status(200).json(ApiResponse(data, "COD order placed"));
       }
 
       if (paymentMethod === "online") {
-        const data = await orderService.createOnlineCheckoutSession(patientId, { shippingAddress, contactNo });
+        const data = await orderService.createOnlineCheckoutSession(patientId, { addressId, shippingAddress, contactNo });
         return res.status(200).json(ApiResponse(data, "Online checkout session created"));
       }
 
       return next(BadRequestError("Invalid paymentMethod"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private getShippingAddresses = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can manage addresses"));
+      const patientId = (req as any).user.userId;
+      const data = await orderService.listPatientShippingAddresses(patientId);
+      res.status(200).json(ApiResponse(data, "Shipping addresses retrieved"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private createShippingAddress = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can manage addresses"));
+      const patientId = (req as any).user.userId;
+      const data = await orderService.addPatientShippingAddress(patientId, req.body ?? {});
+      res.status(200).json(ApiResponse(data, "Shipping address saved"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private updateShippingAddress = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can manage addresses"));
+      const patientId = (req as any).user.userId;
+      const addressId = String(req.params.addressId || "").trim();
+      if (!addressId) return next(BadRequestError("addressId is required"));
+      const data = await orderService.updatePatientShippingAddress(patientId, addressId, req.body ?? {});
+      res.status(200).json(ApiResponse(data, "Shipping address updated"));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  private deleteShippingAddress = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can manage addresses"));
+      const patientId = (req as any).user.userId;
+      const addressId = String(req.params.addressId || "").trim();
+      if (!addressId) return next(BadRequestError("addressId is required"));
+      const data = await orderService.deletePatientShippingAddress(patientId, addressId);
+      res.status(200).json(ApiResponse(data, "Shipping address removed"));
     } catch (error) {
       next(error);
     }

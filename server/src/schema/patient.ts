@@ -10,6 +10,15 @@ export const patients = pgTable("patients", {
   mobile: varchar("mobile", { length: 20 }).notNull(),
   dateOfBirth: date("dateOfBirth").notNull(),
   address: text("address").notNull(),
+  shippingAddresses: jsonb("shipping_addresses").$type<
+    Array<{
+      id: string;
+      label: string;
+      addressLine: string;
+      contactNo: string;
+      isDefault?: boolean;
+    }>
+  >(),
   bloodGroup: varchar("bloodGroup", { length: 10 }).notNull(),
   hasCovid: boolean("hasCovid").default(false).notNull(),
   pastMedicalHistory: jsonb("pastMedicalHistory"),
