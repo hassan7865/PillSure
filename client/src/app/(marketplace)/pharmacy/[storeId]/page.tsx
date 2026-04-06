@@ -161,20 +161,15 @@ export default function PharmacyStorePage() {
   const addressLine = [store.addressLine, store.city, store.province, store.postalCode, store.country]
     .filter(Boolean)
     .join(" · ");
+  const operatingHours =
+    store.openingTime && store.closingTime ? `${store.openingTime} - ${store.closingTime}` : null;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <Navbar
-        centerSearch={{
-          value: search,
-          onChange: setSearch,
-          placeholder: "Search medicines in this store…",
-          onSubmit: () => {},
-        }}
-      />
+      <Navbar />
 
-      <div className={fixedNavbarOffsetPt}>
-      <header className="relative min-h-[240px] w-full overflow-hidden sm:min-h-0 sm:h-[280px] lg:h-[400px]">
+      <div className={cn("flex min-h-0 flex-1 flex-col", fixedNavbarOffsetPt)}>
+      <header className="relative min-h-[240px] w-full shrink-0 overflow-hidden sm:min-h-0 sm:h-[280px] lg:h-[400px]">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/20 to-muted" />
         <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/25 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8 lg:p-12">
@@ -218,9 +213,15 @@ export default function PharmacyStorePage() {
                     <Star className="h-4 w-4 shrink-0 fill-primary-foreground text-primary-foreground" />
                     New on PillSure
                   </span>
-                  {store.phone && (
+                  {operatingHours && (
                     <span className="inline-flex items-center gap-1.5">
                       <Clock className="h-4 w-4 shrink-0" />
+                      {operatingHours}
+                    </span>
+                  )}
+                  {store.phone && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Pill className="h-4 w-4 shrink-0" />
                       <a href={`tel:${store.phone}`} className="hover:underline">
                         {store.phone}
                       </a>
@@ -233,7 +234,7 @@ export default function PharmacyStorePage() {
         </div>
       </header>
 
-      <div className={cn(marketplaceContentWidthClass(), "flex-1 py-8 lg:py-10")}>
+      <div className={cn(marketplaceContentWidthClass(), "flex min-h-0 flex-1 flex-col py-4 lg:py-6")}>
         <div className="mb-10 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {categories.map((c) => (
             <button
@@ -252,81 +253,83 @@ export default function PharmacyStorePage() {
           ))}
         </div>
 
-        {!loading && filtered.length === 0 && (
-          <p className="mb-8 text-sm text-muted-foreground">No medicines match your filters.</p>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-8">
+          {!loading && filtered.length === 0 && (
+            <p className="mb-8 text-sm text-muted-foreground">No medicines match your filters.</p>
+          )}
 
-        <div className="space-y-16">
-          {Array.from(grouped.entries()).map(([catName, items]) => (
-            <section key={catName}>
-              <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-2xl font-black tracking-tight text-foreground lg:text-3xl">{catName}</h2>
-                <span className="text-sm font-bold uppercase tracking-widest text-primary">
-                  {items.length} {items.length === 1 ? "item" : "items"}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {items.map((row) => (
-                  <article
-                    key={`${catName}-${row.listingId}`}
-                    className={cn(
-                      "group flex min-w-0 flex-col rounded-[24px] p-4 transition-all hover:-translate-y-1 hover:shadow-elevated sm:p-5",
-                      marketplaceMedicineTileClassName,
-                    )}
-                  >
-                    <div className="relative mb-5 aspect-square w-full overflow-hidden rounded-2xl bg-muted">
-                      {row.displayImageUrl ? (
-                        <Image
-                          src={row.displayImageUrl}
-                          alt=""
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
-                          sizes="(min-width: 1536px) 25vw, (min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Pill className="h-16 w-16 text-muted-foreground/35" />
-                        </div>
+          <div className="space-y-16">
+            {Array.from(grouped.entries()).map(([catName, items]) => (
+              <section key={catName}>
+                <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-2xl font-black tracking-tight text-foreground lg:text-3xl">{catName}</h2>
+                  <span className="text-sm font-bold uppercase tracking-widest text-primary">
+                    {items.length} {items.length === 1 ? "item" : "items"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {items.map((row) => (
+                    <article
+                      key={`${catName}-${row.listingId}`}
+                      className={cn(
+                        "group flex min-w-0 flex-col rounded-[24px] p-4 transition-all hover:-translate-y-1 hover:shadow-elevated sm:p-5",
+                        marketplaceMedicineTileClassName,
                       )}
-                      {row.prescriptionRequired && (
-                        <span className="absolute left-3 top-3">
-                          <MedicineRxStamp className="rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="mb-4 flex-1 space-y-1">
-                      <h3 className="text-xl font-bold leading-tight text-foreground">{row.medicineName}</h3>
-                      {row.manufacturerName && (
-                        <p className="text-sm font-medium text-muted-foreground">{row.manufacturerName}</p>
-                      )}
-                      <div className="pt-1">
-                        <MedicineStockStatus
-                          inStock={row.isActive && row.listedQuantity > 0}
-                          detail={
-                            row.listedQuantity > 0
-                              ? `· ${row.listedQuantity} listed`
-                              : undefined
-                          }
-                        />
+                    >
+                      <div className="relative mb-5 aspect-square w-full overflow-hidden rounded-2xl bg-muted">
+                        {row.displayImageUrl ? (
+                          <Image
+                            src={row.displayImageUrl}
+                            alt=""
+                            fill
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            sizes="(min-width: 1536px) 25vw, (min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Pill className="h-16 w-16 text-muted-foreground/35" />
+                          </div>
+                        )}
+                        {row.prescriptionRequired && (
+                          <span className="absolute left-3 top-3">
+                            <MedicineRxStamp className="rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur" />
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-3 border-t border-border/50 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-xl font-black tabular-nums text-foreground sm:text-2xl">
-                        {formatRetailPriceLine(row.currency, row.retailPrice)}
-                      </span>
-                      <Link
-                        href={`/medicine/${row.medicineId}?${new URLSearchParams({ storeId, listingId: row.listingId }).toString()}`}
-                        className="inline-flex w-full items-center justify-center rounded-full bg-secondary px-5 py-2.5 text-center text-xs font-bold text-secondary-foreground transition-shadow hover:shadow-md sm:w-auto"
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
+                      <div className="mb-4 flex-1 space-y-1">
+                        <h3 className="text-xl font-bold leading-tight text-foreground">{row.medicineName}</h3>
+                        {row.manufacturerName && (
+                          <p className="text-sm font-medium text-muted-foreground">{row.manufacturerName}</p>
+                        )}
+                        <div className="pt-1">
+                          <MedicineStockStatus
+                            inStock={row.isActive && row.listedQuantity > 0}
+                            detail={
+                              row.listedQuantity > 0
+                                ? `· ${row.listedQuantity} listed`
+                                : undefined
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-3 border-t border-border/50 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-xl font-black tabular-nums text-foreground sm:text-2xl">
+                          {formatRetailPriceLine(row.currency, row.retailPrice)}
+                        </span>
+                        <Link
+                          href={`/medicine/${row.medicineId}?${new URLSearchParams({ storeId, listingId: row.listingId }).toString()}`}
+                          className="inline-flex w-full items-center justify-center rounded-full bg-secondary px-5 py-2.5 text-center text-xs font-bold text-secondary-foreground transition-shadow hover:shadow-md sm:w-auto"
+                        >
+                          View Details
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
       </div>

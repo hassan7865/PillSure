@@ -14,7 +14,7 @@ import {
   MedicalStoreFormValues,
 } from "../_components/_types";
 import OnboardingPage from "../_components/OnboardingPage";
-import { Building2, MapPin, Phone, Mail, Globe, FileText, MapPinned, LocateFixed } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Globe, FileText, Clock3, MapPinned, LocateFixed } from "lucide-react";
 import { useCustomToast } from "@/hooks/use-custom-toast";
 
 function parseRequiredCoord(value: string, label: string): number {
@@ -41,6 +41,8 @@ export default function MedicalStoreOnboardingPage() {
       licenseNumber: "",
       website: "",
       email: "",
+      openingTime: "",
+      closingTime: "",
       latitude: "",
       longitude: "",
     },
@@ -60,6 +62,8 @@ export default function MedicalStoreOnboardingPage() {
         licenseNumber: String(data.licenseNumber ?? ""),
         website: String(data.website ?? ""),
         email: String(data.email ?? ""),
+        openingTime: String(data.openingTime ?? ""),
+        closingTime: String(data.closingTime ?? ""),
         latitude:
           data.latitude != null && data.latitude !== ""
             ? String(data.latitude)
@@ -131,6 +135,8 @@ export default function MedicalStoreOnboardingPage() {
       licenseNumber: data.licenseNumber || undefined,
       website: data.website || undefined,
       email: data.email || undefined,
+      openingTime: data.openingTime || undefined,
+      closingTime: data.closingTime || undefined,
       latitude: lat,
       longitude: lng,
     };
@@ -299,6 +305,38 @@ export default function MedicalStoreOnboardingPage() {
                       </Label>
                       <FormControl>
                         <Input placeholder="https://..." {...field} className="h-9" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="openingTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <Clock3 className="h-3.5 w-3.5 text-primary" />
+                        Opening time
+                      </Label>
+                      <FormControl>
+                        <Input type="time" {...field} className="h-9" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="closingTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <Clock3 className="h-3.5 w-3.5 text-primary" />
+                        Closing time
+                      </Label>
+                      <FormControl>
+                        <Input type="time" {...field} className="h-9" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

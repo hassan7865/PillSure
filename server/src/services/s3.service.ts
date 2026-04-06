@@ -1,5 +1,5 @@
 import { PutObjectCommand, DeleteObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
-import { s3Client, s3Config } from "../config/s3.config";
+import { s3Client, s3Config, validateS3Config } from "../config/s3.config";
 import { v4 as uuidv4 } from "uuid";
 
 export interface UploadOptions {
@@ -34,6 +34,11 @@ export class S3Service {
     options: UploadOptions = {}
   ): Promise<UploadResult> {
     try {
+      if (!validateS3Config()) {
+        throw new Error(
+          "S3 credentials are not configured. Please set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME, and AWS_REGION in server/.env.",
+        );
+      }
       const fileBuffer = Buffer.isBuffer(file) ? file : file.buffer;
       const originalName = Buffer.isBuffer(file) ? options.fileName || "file" : file.originalname;
       const mimeType = Buffer.isBuffer(file) ? options.contentType : file.mimetype;
@@ -43,10 +48,29 @@ export class S3Service {
         throw new Error(`Only image uploads are allowed. Received: ${mimeType || "unknown"}`);
       }
 
-      const fileExtension = (originalName.split(".").pop() || "").toLowerCase();
-      const allowedExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
-      if (!allowedExtensions.has(fileExtension)) {
-        throw new Error(`Extension .${fileExtension || "(none)"} not allowed. Allowed: ${Array.from(allowedExtensions).join(", ")}`);
+      const mimeToExtension: Record<string, string> = {
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+        "image/heic": "heic",
+        "image/heif": "heif",
+        "image/avif": "avif",
+      };
+      const allowedExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif", "jfif"]);
+
+      // Keep extension policy centralized here for all uploads using s3Service.
+      const rawExt = (originalName.split(".").pop() || "").toLowerCase();
+      let fileExtension = rawExt;
+      if (!fileExtension || !allowedExtensions.has(fileExtension)) {
+        const fromMime = mimeToExtension[mimeType.toLowerCase()];
+        if (fromMime) fileExtension = fromMime;
+      }
+      if (!fileExtension || !allowedExtensions.has(fileExtension)) {
+        throw new Error(
+          `Image extension is not supported. Received extension "${rawExt || "(none)"}" and mimetype "${mimeType}".`,
+        );
       }
 
       // Block SVG explicitly if not desired (XSS risk if inlined)
@@ -154,9 +178,17 @@ export class S3Service {
    */
   extractKeyFromUrl(url: string): string | null {
     try {
-      const pattern = new RegExp(`https://${this.bucketName}\\.s3\\.${this.region}\\.amazonaws\\.com/(.+)`);
-      const match = url.match(pattern);
-      return match ? match[1] : null;
+      const escapedBucket = this.bucketName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const escapedRegion = this.region.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const patterns = [
+        new RegExp(`^https://${escapedBucket}\\.s3\\.amazonaws\\.com/(.+)$`),
+        new RegExp(`^https://${escapedBucket}\\.s3\\.${escapedRegion}\\.amazonaws\\.com/(.+)$`),
+      ];
+      for (const p of patterns) {
+        const match = url.match(p);
+        if (match) return match[1];
+      }
+      return null;
     } catch (error) {
       return null;
     }

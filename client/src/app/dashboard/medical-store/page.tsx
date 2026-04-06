@@ -20,6 +20,7 @@ import {
   Mail,
   FileText,
   Globe,
+  Clock3,
   Store,
   Sparkles,
   Package,
@@ -116,6 +117,15 @@ export default function MedicalStoreDashboardPage() {
   const storeName = String(row.storeName ?? "Your pharmacy");
   const storeId = String(row.id ?? "");
   const logoUrl = row.logoUrl != null && String(row.logoUrl).trim() !== "" ? String(row.logoUrl) : null;
+  const openingTime =
+    row.openingTime != null && String(row.openingTime).trim() !== "" && String(row.openingTime).trim() !== "-"
+      ? String(row.openingTime)
+      : null;
+  const closingTime =
+    row.closingTime != null && String(row.closingTime).trim() !== "" && String(row.closingTime).trim() !== "-"
+      ? String(row.closingTime)
+      : null;
+  const operatingHours = openingTime && closingTime ? `${openingTime} - ${closingTime}` : "Hours not set";
 
   return (
     <div className="w-full space-y-8">
@@ -244,6 +254,10 @@ export default function MedicalStoreDashboardPage() {
               <div className="flex items-center gap-2 text-sm">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 <span>{row.website ? String(row.website) : "—"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock3 className="h-4 w-4 text-muted-foreground" />
+                <span>{operatingHours}</span>
               </div>
             </CardContent>
           </Card>

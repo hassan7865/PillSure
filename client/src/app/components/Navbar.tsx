@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import cartApi from "@/app/cart/_api";
 import orderApi from "@/app/orders/_api";
 import { useCustomToast } from "@/hooks/use-custom-toast";
@@ -67,6 +67,7 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
   const [shippingAddress, setShippingAddress] = useState("");
   const [contactNo, setContactNo] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState<"cod" | "online" | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
   const isCheckoutInfoValid = shippingAddress.trim().length > 0 && contactNo.trim().length > 0;
 
   const handleNavSearchSubmit = (e: React.FormEvent) => {
@@ -88,6 +89,27 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const navEl = navRef.current;
+    if (!navEl) return;
+
+    const setNavbarHeightVar = () => {
+      const h = Math.ceil(navEl.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--app-navbar-height", `${h}px`);
+    };
+
+    setNavbarHeightVar();
+
+    const ro = new ResizeObserver(setNavbarHeightVar);
+    ro.observe(navEl);
+    window.addEventListener("resize", setNavbarHeightVar);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", setNavbarHeightVar);
+    };
+  }, [centerSearch]);
 
   const loadCart = async () => {
     if (!user || normalizeRole(user.role) !== "patient") {
@@ -161,6 +183,8 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
   
   return (
     <nav
+      ref={navRef}
+      data-app-navbar="true"
       className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
         scrolled
           ? "bg-background/95 shadow-sm shadow-foreground/5 backdrop-blur-xl"
@@ -199,20 +223,6 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
 
           {/* Right Side Actions */}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {/* Search Icon when no inline search */}
-            {!centerSearch && (
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                className="hidden text-foreground/70 hover:bg-primary/5 hover:text-primary md:inline-flex rounded-full transition-all duration-200"
-                onClick={() => router.push("/search")}
-                aria-label="Search medicines"
-              >
-                <Search className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            )}
-
             {/* Cart Icon */}
             <Sheet open={cartOpen} onOpenChange={setCartOpen}>
               <SheetTrigger asChild>

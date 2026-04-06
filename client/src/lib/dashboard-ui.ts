@@ -39,8 +39,8 @@ export function marketplaceMaxWidthClass(className?: string) {
 }
 
 /**
- * Padding-top / scroll-padding-top to clear the fixed marketplace `Navbar`
- * (`h-14` / `sm:h-16` / `lg:h-20`). Use on the first column below the bar.
+ * Dynamic navbar offsets.
+ * Populated from `Navbar` via `--app-navbar-height`.
  */
-export const fixedNavbarOffsetPt = "pt-14 sm:pt-16 lg:pt-20";
-export const fixedNavbarScrollPt = "scroll-pt-14 sm:scroll-pt-16 lg:scroll-pt-20";
+export const fixedNavbarOffsetPt = "app-navbar-offset";
+export const fixedNavbarScrollPt = "app-navbar-scroll-offset";

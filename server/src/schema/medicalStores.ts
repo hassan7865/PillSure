@@ -27,6 +27,8 @@ export const medicalStores = pgTable(
     email: varchar("email", { length: 255 }),
     licenseNumber: varchar("license_number", { length: 120 }),
     website: text("website"),
+    openingTime: varchar("opening_time", { length: 10 }),
+    closingTime: varchar("closing_time", { length: 10 }),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     /** Public URL for store logo (S3 or CDN); shown on marketplace & pharmacy page */

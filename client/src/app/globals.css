@@ -44,6 +44,7 @@
 }
 
 :root {
+  --app-navbar-height: 56px;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -172,6 +173,14 @@
 }
 
 @layer utilities {
+  .app-navbar-offset {
+    padding-top: var(--app-navbar-height);
+  }
+
+  .app-navbar-scroll-offset {
+    scroll-padding-top: var(--app-navbar-height);
+  }
+
   .shadow-elevated {
     box-shadow: var(--shadow-elevated);
   }

@@ -9,6 +9,8 @@ export interface PublicStoreSummary {
   city: string;
   province: string | null;
   country: string;
+  openingTime: string | null;
+  closingTime: string | null;
   latitude: number | null;
   longitude: number | null;
   logoUrl: string | null;
@@ -31,6 +33,8 @@ export interface PublicStoreDetail {
   postalCode: string | null;
   country: string;
   phone: string | null;
+  openingTime: string | null;
+  closingTime: string | null;
   latitude: number | null;
   longitude: number | null;
   logoUrl: string | null;

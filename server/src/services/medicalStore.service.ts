@@ -125,6 +125,8 @@ export interface PublicStoreSummary {
   city: string;
   province: string | null;
   country: string;
+  openingTime: string | null;
+  closingTime: string | null;
   latitude: number | null;
   longitude: number | null;
   logoUrl: string | null;
@@ -147,6 +149,8 @@ export interface PublicStoreDetail {
   postalCode: string | null;
   country: string;
   phone: string | null;
+  openingTime: string | null;
+  closingTime: string | null;
   latitude: number | null;
   longitude: number | null;
   logoUrl: string | null;
@@ -940,6 +944,8 @@ export class MedicalStoreService {
         city: medicalStores.city,
         province: medicalStores.province,
         country: medicalStores.country,
+        openingTime: medicalStores.openingTime,
+        closingTime: medicalStores.closingTime,
         latitude: medicalStores.latitude,
         longitude: medicalStores.longitude,
         logoUrl: medicalStores.logoUrl,
@@ -966,6 +972,8 @@ export class MedicalStoreService {
       city: r.city,
       province: r.province,
       country: r.country,
+      openingTime: r.openingTime ?? null,
+      closingTime: r.closingTime ?? null,
       latitude: r.latitude,
       longitude: r.longitude,
       logoUrl: r.logoUrl ?? null,
@@ -994,6 +1002,8 @@ export class MedicalStoreService {
         postalCode: medicalStores.postalCode,
         country: medicalStores.country,
         phone: medicalStores.phone,
+        openingTime: medicalStores.openingTime,
+        closingTime: medicalStores.closingTime,
         latitude: medicalStores.latitude,
         longitude: medicalStores.longitude,
         logoUrl: medicalStores.logoUrl,

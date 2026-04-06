@@ -519,6 +519,10 @@ export class OnboardingService {
         website: data.website !== undefined ? data.website?.trim() || null : current?.website ?? null,
         email:
           data.email !== undefined ? data.email.trim() : current?.email ?? userEmail,
+        openingTime:
+          data.openingTime !== undefined ? data.openingTime?.trim() || null : current?.openingTime ?? null,
+        closingTime:
+          data.closingTime !== undefined ? data.closingTime?.trim() || null : current?.closingTime ?? null,
         latitude: resolvedLat,
         longitude: resolvedLng,
       };
@@ -555,6 +559,8 @@ export class OnboardingService {
             email: finalData.email || null,
             licenseNumber: finalData.licenseNumber,
             website: finalData.website,
+            openingTime: finalData.openingTime,
+            closingTime: finalData.closingTime,
             latitude: finalData.latitude,
             longitude: finalData.longitude,
             updatedAt: new Date(),
@@ -573,6 +579,8 @@ export class OnboardingService {
           email: finalData.email || null,
           licenseNumber: finalData.licenseNumber,
           website: finalData.website,
+          openingTime: finalData.openingTime,
+          closingTime: finalData.closingTime,
           latitude: finalData.latitude,
           longitude: finalData.longitude,
         });

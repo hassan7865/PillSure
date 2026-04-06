@@ -118,6 +118,8 @@ export interface MedicalStoreOnboardingRequest {
   licenseNumber?: string;
   website?: string;
   email?: string;
+  openingTime?: string;
+  closingTime?: string;
   /** WGS84; required together with longitude for onboarding completion */
   latitude?: number;
   longitude?: number;

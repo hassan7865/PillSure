@@ -58,6 +58,8 @@ export interface PatientOnboardingRequest {
     licenseNumber?: string;
     website?: string;
     email?: string;
+    openingTime?: string;
+    closingTime?: string;
     latitude: number;
     longitude: number;
   }
@@ -124,6 +126,8 @@ export interface PatientOnboardingRequest {
     licenseNumber?: string;
     website?: string;
     email?: string;
+    openingTime?: string;
+    closingTime?: string;
     latitude: string;
     longitude: string;
   }
