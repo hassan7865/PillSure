@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppDialogContent } from "@/components/shell/app-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -315,14 +314,15 @@ export function ManageListingsTab({
   }, [searchQ]);
 
   useEffect(() => {
-    if (!debouncedQ.trim()) {
+    if (!manufacturerFilterId.trim() || !debouncedQ.trim()) {
       setSearchResults([]);
+      setSearchLoading(false);
       return;
     }
     let cancelled = false;
     setSearchLoading(true);
     medicineApi
-      .searchMedicines(debouncedQ, 20, manufacturerFilterId || undefined)
+      .searchMedicines(debouncedQ, 20, manufacturerFilterId)
       .then((r) => {
         if (!cancelled) setSearchResults(r);
       })
@@ -451,6 +451,10 @@ export function ManageListingsTab({
   }, [editRow]);
 
   const handleCreate = async () => {
+    if (!manufacturerFilterId.trim()) {
+      setFormError("Select a manufacturer first.");
+      return;
+    }
     if (!selectedMedicine) {
       setFormError("Select a medicine from search results.");
       return;
@@ -465,13 +469,15 @@ export function ManageListingsTab({
       setFormError("Stock quantity must be a whole number ≥ 0.");
       return;
     }
-    if (manufacturerFilterId.trim() && batchLinkLoading) {
+    if (batchLinkLoading) {
       setFormError("Wait for the manufacturer batch link to finish loading.");
       return;
     }
-    const mid: string | null = manufacturerFilterId.trim()
-      ? resolvedManufacturerMedicineId
-      : null;
+    if (!resolvedManufacturerMedicineId) {
+      setFormError("This medicine is not linked to the selected manufacturer's active catalog.");
+      return;
+    }
+    const mid: string = resolvedManufacturerMedicineId;
     const faqNorm = normalizeFaqsForApi(faqsAdd);
     if (!faqNorm.ok) {
       setFormError(faqNorm.message);
@@ -572,6 +578,7 @@ export function ManageListingsTab({
 
   const thClass =
     "sticky top-0 z-10 border-b border-border/60 bg-muted/95 px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground shadow-sm backdrop-blur supports-[backdrop-filter]:bg-muted/80";
+  const hasManufacturerSelected = manufacturerFilterId.trim().length > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -734,14 +741,13 @@ export function ManageListingsTab({
             <div className="space-y-2">
               <Label htmlFor="ms-manufacturer">Manufacturer</Label>
               <Select
-                value={manufacturerFilterId || "__all__"}
-                onValueChange={(v) => setManufacturerFilterId(v === "__all__" ? "" : v)}
+                value={manufacturerFilterId}
+                onValueChange={(v) => setManufacturerFilterId(v)}
               >
                 <SelectTrigger id="ms-manufacturer" className="w-full max-w-full">
-                  <SelectValue placeholder="All manufacturers" />
+                  <SelectValue placeholder="Select manufacturer" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All manufacturers</SelectItem>
                   {manufacturers.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {(m.shortName && m.shortName.trim()) || m.legalName}
@@ -750,10 +756,17 @@ export function ManageListingsTab({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Optional: limit search to that manufacturer&apos;s catalog. If you add a listing with a manufacturer
-                selected, we link it to their wholesale batch automatically when one exists.
+                Search is restricted to the selected manufacturer&apos;s active catalog and auto-links the listing to
+                that wholesale batch.
               </p>
             </div>
+            {!hasManufacturerSelected ? (
+              <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                Select a manufacturer to continue with medicine search and listing details.
+              </div>
+            ) : null}
+            {hasManufacturerSelected ? (
+              <>
             <div className="space-y-2">
               <Label htmlFor="ms-search">Search medicines</Label>
               <div className="relative">
@@ -766,6 +779,9 @@ export function ManageListingsTab({
                   onChange={(e) => setSearchQ(e.target.value)}
                 />
               </div>
+              {!manufacturerFilterId.trim() ? (
+                <p className="text-xs text-muted-foreground">Select a manufacturer before searching medicines.</p>
+              ) : null}
               {debouncedQ.trim() && searchLoading ? (
                 <p className="text-xs text-muted-foreground">Searching…</p>
               ) : null}
@@ -773,7 +789,7 @@ export function ManageListingsTab({
                 <p className="text-xs text-muted-foreground">No matches for that search.</p>
               ) : null}
               {searchResults.length > 0 ? (
-                <ScrollArea className="max-h-[min(240px,40vh)] rounded-md border border-border/80">
+                <div className="max-h-[min(240px,40vh)] overflow-y-auto rounded-md border border-border/80">
                   <div className="space-y-1 p-2">
                     {searchResults.map((m) => (
                       <button
@@ -791,7 +807,7 @@ export function ManageListingsTab({
                       </button>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               ) : null}
               {selectedMedicine ? (
                 <p className="text-xs text-primary">
@@ -908,6 +924,8 @@ export function ManageListingsTab({
             <div className="rounded-xl border border-border/80 bg-muted/15 p-4">
               <ListingFaqEditor idPrefix="ms" items={faqsAdd} onChange={setFaqsAdd} disabled={submitting} />
             </div>
+            </>
+            ) : null}
             {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
           </div>
           <DialogFooter>
@@ -917,7 +935,7 @@ export function ManageListingsTab({
             <Button
               type="button"
               onClick={handleCreate}
-              disabled={submitting || (!!manufacturerFilterId.trim() && batchLinkLoading)}
+              disabled={submitting || !hasManufacturerSelected || (!!manufacturerFilterId.trim() && batchLinkLoading)}
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create listing"}
             </Button>

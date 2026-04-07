@@ -30,7 +30,7 @@ export function AppDialogContent({
     <DialogContent
       className={cn(
         APP_DIALOG_SIZE[size],
-        "flex max-h-[min(92dvh,900px)] flex-col overflow-y-auto overscroll-contain",
+        "flex max-h-[min(92dvh,900px)] flex-col overflow-hidden overscroll-contain",
         className,
       )}
       {...props}

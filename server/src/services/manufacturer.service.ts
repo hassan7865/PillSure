@@ -231,6 +231,7 @@ export interface ManufacturerListingRow {
   listedQuantity: number;
   currency: string;
   isActive: boolean;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -323,6 +324,7 @@ private sanitizeMedicineSearch(raw: string): string {
         listedQuantity: manufacturerMedicines.listedQuantity,
         currency: manufacturerMedicines.currency,
         isActive: manufacturerMedicines.isActive,
+        createdAt: manufacturerMedicines.createdAt,
         updatedAt: manufacturerMedicines.updatedAt,
       })
       .from(manufacturerMedicines)
@@ -341,6 +343,8 @@ private sanitizeMedicineSearch(raw: string): string {
       listedQuantity: Number(r.listedQuantity) || 0,
       currency: r.currency,
       isActive: r.isActive,
+      createdAt:
+        r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
       updatedAt:
         r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
     }));
@@ -503,6 +507,7 @@ const existingMfrListing = await tx
               .where(eq(manufacturerMedicines.id, existing[0].id));
             summary.updatedListings += 1;
           } else {
+            const now = new Date();
             await tx.insert(manufacturerMedicines).values({
               manufacturerId,
               medicineId,
@@ -511,6 +516,8 @@ const existingMfrListing = await tx
               listedQuantity,
               currency: "PKR",
               isActive: true,
+              createdAt: now,
+              updatedAt: now,
             });
             summary.createdListings += 1;
           }
@@ -565,6 +572,7 @@ const existingMfrListing = await tx
         listedQuantity: manufacturerMedicines.listedQuantity,
         currency: manufacturerMedicines.currency,
         isActive: manufacturerMedicines.isActive,
+        createdAt: manufacturerMedicines.createdAt,
         updatedAt: manufacturerMedicines.updatedAt,
       });
 
@@ -588,6 +596,8 @@ const existingMfrListing = await tx
       listedQuantity: Number(row.listedQuantity) || 0,
       currency: row.currency,
       isActive: row.isActive,
+      createdAt:
+        row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
       updatedAt:
         row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
     };
