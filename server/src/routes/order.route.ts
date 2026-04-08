@@ -3,6 +3,7 @@ import { verifyToken } from "../middleware/jwt.handler";
 import { BadRequestError } from "../middleware/error.handler";
 import { ApiResponse } from "../core/api-response";
 import { orderService } from "../services/order.service";
+import { isUuid } from "../utils/uuid";
 
 export class OrderRoute {
   private router: Router;
@@ -16,11 +17,21 @@ export class OrderRoute {
     this.router.post("/checkout", verifyToken, this.checkout);
     this.router.get("/shipping-addresses", verifyToken, this.getShippingAddresses);
     this.router.post("/shipping-addresses", verifyToken, this.createShippingAddress);
-    this.router.put("/shipping-addresses/:addressId", verifyToken, this.updateShippingAddress);
-    this.router.delete("/shipping-addresses/:addressId", verifyToken, this.deleteShippingAddress);
+    this.router.put("/shipping-addresses/:addressId", verifyToken, this.validateUuidParam("addressId"), this.updateShippingAddress);
+    this.router.delete("/shipping-addresses/:addressId", verifyToken, this.validateUuidParam("addressId"), this.deleteShippingAddress);
     this.router.get("/", verifyToken, this.getOrders);
-    this.router.get("/:id", verifyToken, this.getOrderById);
+    this.router.get("/:id", verifyToken, this.validateUuidParam("id"), this.getOrderById);
   }
+
+  private validateUuidParam = (paramName: "id" | "addressId") => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const value = String(req.params[paramName] ?? "").trim();
+      if (!isUuid(value)) {
+        return next(BadRequestError(`Invalid ${paramName}`));
+      }
+      next();
+    };
+  };
 
   private checkout = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -108,7 +119,8 @@ export class OrderRoute {
     try {
       if ((req as any).user.role !== "patient") return next(BadRequestError("Only patients can view orders"));
       const patientId = (req as any).user.userId;
-      const data = await orderService.getPatientOrderById(patientId, req.params.id);
+      const orderId = String(req.params.id ?? "").trim();
+      const data = await orderService.getPatientOrderById(patientId, orderId);
       res.status(200).json(ApiResponse(data, "Order retrieved successfully"));
     } catch (error) {
       next(error);

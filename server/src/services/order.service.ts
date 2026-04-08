@@ -10,6 +10,7 @@ import { createError } from "../middleware/error.handler";
 import { cartService } from "./cart.service";
 import { stripeService } from "./stripe.service";
 import { patients } from "../schema/patient";
+import { isUuid } from "../utils/uuid";
 
 export interface ShippingAddressEntry {
   id: string;
@@ -395,6 +396,10 @@ export class OrderService {
   }
 
   async getPatientOrderById(patientId: string, orderId: string) {
+    if (!isUuid(String(orderId ?? "").trim())) {
+      throw createError("Invalid order id", 400);
+    }
+
     const order = await db
       .select({
         order: orders,

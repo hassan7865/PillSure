@@ -173,6 +173,13 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
       setSelectedAddressId("");
       return;
     }
+    const hasCartItems = Array.isArray(cartData?.items) && cartData.items.length > 0;
+    if (!hasCartItems) {
+      setShippingAddresses([]);
+      setSelectedAddressId("");
+      setAddressLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -195,7 +202,7 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
     return () => {
       cancelled = true;
     };
-  }, [cartOpen, user?.id, user?.role]);
+  }, [cartOpen, cartData?.items?.length, user?.id, user?.role]);
 
   const resetAddressForm = () => {
     setAddressLabel("");
