@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { MapPin, Star, Clock, Pill, Building2, Map as MapIcon } from "lucide-react";
+import { MapPin, Star, Clock, Pill, Building2, Map as MapIcon, Search } from "lucide-react";
 import { marketplaceApi, type MedicalStoreCatalogRow, type PublicStoreDetail } from "@/lib/marketplace-api";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ export default function PharmacyStorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("All");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(["All"]);
 
   const load = useCallback(async () => {
     if (!storeId) return;
@@ -72,20 +72,36 @@ export default function PharmacyStorePage() {
     return ["All", ...Array.from(names).sort((a, b) => a.localeCompare(b))];
   }, [catalog]);
 
+  const allSelected = selectedCategories.includes("All");
+
+  const toggleCategory = useCallback((nextCategory: string) => {
+    setSelectedCategories((prev) => {
+      if (nextCategory === "All") return ["All"];
+
+      const base = prev.filter((c) => c !== "All");
+      if (base.includes(nextCategory)) {
+        const removed = base.filter((c) => c !== nextCategory);
+        return removed.length > 0 ? removed : ["All"];
+      }
+
+      return [...base, nextCategory];
+    });
+  }, []);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return catalog.filter((row) => {
       const rowCats = row.categories?.length
         ? row.categories.map((c) => c.name.trim() || "Other")
         : ["Uncategorized"];
-      if (category !== "All" && !rowCats.includes(category)) return false;
+      if (!allSelected && !rowCats.some((rowCat) => selectedCategories.includes(rowCat))) return false;
       if (!q) return true;
       return (
         row.medicineName.toLowerCase().includes(q) ||
         (row.manufacturerName?.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [catalog, search, category]);
+  }, [allSelected, catalog, search, selectedCategories]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, MedicalStoreCatalogRow[]>();
@@ -95,14 +111,14 @@ export default function PharmacyStorePage() {
           ? row.categories.map((c) => c.name.trim() || "Other")
           : ["Uncategorized"];
       for (const key of keys) {
-        if (category !== "All" && key !== category) continue;
+        if (!allSelected && !selectedCategories.includes(key)) continue;
         const list = m.get(key) ?? [];
         list.push(row);
         m.set(key, list);
       }
     }
     return m;
-  }, [filtered, category]);
+  }, [allSelected, filtered, selectedCategories]);
 
   if (!storeId) {
     return (
@@ -235,18 +251,36 @@ export default function PharmacyStorePage() {
       </header>
 
       <div className={cn(marketplaceContentWidthClass(), "flex min-h-0 flex-1 flex-col py-4 lg:py-6")}>
+        <div className="mb-4">
+          <label htmlFor="store-medicine-search" className="sr-only">
+            Search medicine in this store
+          </label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              id="store-medicine-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search medicine in this store"
+              className="h-11 w-full rounded-full border border-border bg-background pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary"
+            />
+          </div>
+        </div>
+
         <div className="mb-10 -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {categories.map((c) => (
             <button
               key={c}
               type="button"
-              onClick={() => setCategory(c)}
+              onClick={() => toggleCategory(c)}
               className={cn(
                 "snap-start shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition-colors sm:px-5",
-                category === c
+                selectedCategories.includes(c)
                   ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                   : "bg-muted text-muted-foreground hover:bg-muted/80",
               )}
+              aria-pressed={selectedCategories.includes(c)}
             >
               {c === "All" ? "All items" : c}
             </button>

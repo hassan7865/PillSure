@@ -17,12 +17,22 @@ export default function MedicalStoreListingsPage() {
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  const loadCatalog = useCallback(async (p: number) => {
+  const loadCatalog = useCallback(async () => {
     setCatalogLoading(true);
     setCatalogError(null);
     try {
-      const res = await medicalStoreApi.listCatalog(p, PAGE_SIZE);
-      setCatalog(res);
+      const first = await medicalStoreApi.listCatalog(1, PAGE_SIZE);
+      const totalPages = Math.max(1, Math.ceil(first.total / PAGE_SIZE));
+
+      let allItems = [...first.items];
+      if (totalPages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, index) => medicalStoreApi.listCatalog(index + 2, PAGE_SIZE)),
+        );
+        allItems = allItems.concat(...rest.flatMap((r) => r.items));
+      }
+
+      setCatalog({ ...first, items: allItems, total: allItems.length, page: 1, limit: PAGE_SIZE });
     } catch (e) {
       setCatalogError(getErrorMessage(e));
       setCatalog(null);
@@ -32,16 +42,16 @@ export default function MedicalStoreListingsPage() {
   }, []);
 
   useEffect(() => {
-    loadCatalog(page);
-  }, [loadCatalog, page]);
+    loadCatalog();
+  }, [loadCatalog]);
 
-  const totalPages = catalog ? Math.max(1, Math.ceil(catalog.total / PAGE_SIZE)) : 1;
+  const totalPages = catalog ? Math.max(1, Math.ceil(catalog.items.length / PAGE_SIZE)) : 1;
 
   return (
     <DashboardScrollWorkspace
       header={
         <PageHeader
-          title="Manage listings"
+          title="Manage products"
           description={
             <>
               Add medicines from the PillSure catalog to your store, set prices and stock, and control visibility. Shelf
@@ -59,10 +69,10 @@ export default function MedicalStoreListingsPage() {
         error={catalogError}
         page={page}
         totalPages={totalPages}
-        total={catalog?.total ?? 0}
+        total={catalog?.items.length ?? 0}
         catalogLoading={catalogLoading}
         onPageChange={setPage}
-        onRefresh={() => loadCatalog(page)}
+        onRefresh={loadCatalog}
         compactCatalogHeader
       />
     </DashboardScrollWorkspace>

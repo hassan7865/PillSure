@@ -211,7 +211,7 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
             />
             {formError && createOpen ? <p className="text-sm text-destructive">{formError}</p> : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4 border-t border-border/60 pt-3">
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={submitting}>
               Cancel
             </Button>
@@ -232,7 +232,7 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
             <Input id="cat-edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
             {formError && editRow ? <p className="text-sm text-destructive">{formError}</p> : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4 border-t border-border/60 pt-3">
             <Button type="button" variant="outline" onClick={() => setEditRow(null)} disabled={submitting}>
               Cancel
             </Button>
@@ -252,7 +252,7 @@ export function StoreCategoriesCard({ onCategoriesChanged }: StoreCategoriesCard
             Listings will simply lose this label; medicines stay in your catalog.
           </p>
           {formError && deleteRow ? <p className="text-sm text-destructive">{formError}</p> : null}
-          <DialogFooter>
+          <DialogFooter className="mt-4 border-t border-border/60 pt-3">
             <Button type="button" variant="outline" onClick={() => setDeleteRow(null)} disabled={submitting}>
               Cancel
             </Button>

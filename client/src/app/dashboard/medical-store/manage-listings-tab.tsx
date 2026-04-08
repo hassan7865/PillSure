@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListingPanel } from "@/components/shell/listing-panel";
 import { Button } from "@/components/ui/button";
@@ -273,6 +273,8 @@ export function ManageListingsTab({
   const [faqsAdd, setFaqsAdd] = useState<FaqDraft[]>([]);
   const [drugDescriptionEdit, setDrugDescriptionEdit] = useState("");
   const [faqsEdit, setFaqsEdit] = useState<FaqDraft[]>([]);
+  const [showLive, setShowLive] = useState(true);
+  const [showHidden, setShowHidden] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -579,6 +581,27 @@ export function ManageListingsTab({
   const thClass =
     "sticky top-0 z-10 border-b border-border/60 bg-muted/95 px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground shadow-sm backdrop-blur supports-[backdrop-filter]:bg-muted/80";
   const hasManufacturerSelected = manufacturerFilterId.trim().length > 0;
+  const liveCount = useMemo(() => rows.filter((row) => row.isActive).length, [rows]);
+  const hiddenCount = useMemo(() => rows.filter((row) => !row.isActive).length, [rows]);
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => (row.isActive ? showLive : showHidden));
+  }, [rows, showHidden, showLive]);
+  const pageSize = useMemo(() => {
+    if (totalPages > 0 && total > 0) return Math.max(1, Math.ceil(total / totalPages));
+    return 12;
+  }, [total, totalPages]);
+  const filteredTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredRows.length / pageSize)),
+    [filteredRows.length, pageSize],
+  );
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page, pageSize]);
+
+  useEffect(() => {
+    if (page > filteredTotalPages) onPageChange(filteredTotalPages);
+  }, [filteredTotalPages, onPageChange, page]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -588,18 +611,18 @@ export function ManageListingsTab({
           <CardHeader className="shrink-0 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {compactCatalogHeader ? (
               <CardDescription className="text-sm">
-                <span className="font-medium text-foreground">{total}</span> listing{total === 1 ? "" : "s"} — add, edit,
+                <span className="font-medium text-foreground">{total}</span> product{total === 1 ? "" : "s"} — add, edit,
                 or remove products below
               </CardDescription>
             ) : (
               <div>
                 <CardTitle className="text-lg">Your catalog</CardTitle>
-                <CardDescription>Create, edit, or remove store listings ({total} total)</CardDescription>
+                <CardDescription>Create, edit, or remove store products ({total} total)</CardDescription>
               </div>
             )}
             <Button type="button" className="gap-2 shrink-0" onClick={openAdd}>
               <Plus className="h-4 w-4" />
-              List new medicine
+              Add new product
             </Button>
           </CardHeader>
         }
@@ -607,18 +630,18 @@ export function ManageListingsTab({
         onRetry={onRefresh}
         isLoading={Boolean(loading && !rows.length)}
         loadingTitle="Loading catalog"
-        loadingDescription="Fetching your listings…"
+        loadingDescription="Fetching your products…"
         isEmpty={!loading && !error && rows.length === 0}
         empty={
           <p className="shrink-0 py-8 text-center text-sm text-muted-foreground">
-            No listings yet. Add a medicine to get started.
+            No products yet. Add a medicine to get started.
           </p>
         }
         footer={
-          totalPages > 1 ? (
+          filteredTotalPages > 1 ? (
             <div className="flex w-full items-center justify-between gap-2 border-t border-border/60 pt-4">
               <p className="text-xs text-muted-foreground">
-                Page {page} / {totalPages}
+                Page {page} / {filteredTotalPages}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -634,7 +657,7 @@ export function ManageListingsTab({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={page >= totalPages || catalogLoading}
+                  disabled={page >= filteredTotalPages || catalogLoading}
                   onClick={() => onPageChange(page + 1)}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -644,6 +667,23 @@ export function ManageListingsTab({
           ) : null
         }
       >
+        <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-border/70 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Status filter</span>
+          <div className="flex items-center gap-2">
+            <Checkbox id="filter-live" checked={showLive} onCheckedChange={(v) => setShowLive(v === true)} />
+            <Label htmlFor="filter-live" className="cursor-pointer text-sm font-normal">
+              Live ({liveCount})
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="filter-hidden" checked={showHidden} onCheckedChange={(v) => setShowHidden(v === true)} />
+            <Label htmlFor="filter-hidden" className="cursor-pointer text-sm font-normal">
+              Hidden ({hiddenCount})
+            </Label>
+          </div>
+          <span className="ml-auto text-xs text-muted-foreground">Showing {filteredRows.length} of {rows.length} products</span>
+        </div>
+
         <div className="rounded-lg border border-border/80">
           <Table className="min-w-[640px]">
             <TableHeader>
@@ -657,68 +697,76 @@ export function ManageListingsTab({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.listingId}>
-                  <TableCell>
-                    <div className="font-medium leading-snug">{row.medicineName}</div>
-                    {row.categories?.length ? (
-                      <div className="text-xs text-muted-foreground">
-                        {row.categories.map((c) => c.name).join(" · ")}
-                      </div>
-                    ) : null}
-                    {row.prescriptionRequired ? (
-                      <span className="mt-1 inline-block">
-                        <MedicineRxStamp className="text-[10px] py-px" />
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {row.currency}{" "}
-                    {Number(row.retailPrice).toLocaleString(undefined, {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{row.listedQuantity}</TableCell>
-                  <TableCell>
-                    {row.isActive ? (
-                      <Badge className="bg-primary text-primary-foreground hover:bg-primary/90">Live</Badge>
-                    ) : (
-                      <Badge variant="secondary">Hidden</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
-                    {new Date(row.updatedAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEdit(row)}
-                        aria-label="Edit listing"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => {
-                          setFormError(null);
-                          setDeleteRow(row);
-                        }}
-                        aria-label="Remove listing"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {paginatedRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                    No products match the selected status filters.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paginatedRows.map((row) => (
+                  <TableRow key={row.listingId}>
+                    <TableCell>
+                      <div className="font-medium leading-snug">{row.medicineName}</div>
+                      {row.categories?.length ? (
+                        <div className="text-xs text-muted-foreground">
+                          {row.categories.map((c) => c.name).join(" · ")}
+                        </div>
+                      ) : null}
+                      {row.prescriptionRequired ? (
+                        <span className="mt-1 inline-block">
+                          <MedicineRxStamp className="text-[10px] py-px" />
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {row.currency}{" "}
+                      {Number(row.retailPrice).toLocaleString(undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                    <TableCell className="tabular-nums">{row.listedQuantity}</TableCell>
+                    <TableCell>
+                      {row.isActive ? (
+                        <Badge className="bg-primary text-primary-foreground hover:bg-primary/90">Live</Badge>
+                      ) : (
+                        <Badge variant="secondary">Hidden</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
+                      {new Date(row.updatedAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEdit(row)}
+                          aria-label="Edit listing"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setFormError(null);
+                            setDeleteRow(row);
+                          }}
+                          aria-label="Remove listing"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -737,7 +785,7 @@ export function ManageListingsTab({
             <DialogTitle>List a new medicine</DialogTitle>
             <DialogDescription>Search the catalog, then set price and availability for your store.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 pb-6 sm:pb-8">
             <div className="space-y-2">
               <Label htmlFor="ms-manufacturer">Manufacturer</Label>
               <Select
@@ -756,15 +804,9 @@ export function ManageListingsTab({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Search is restricted to the selected manufacturer&apos;s active catalog and auto-links the listing to
-                that wholesale batch.
+                Choose a manufacturer to enable medicine search.
               </p>
             </div>
-            {!hasManufacturerSelected ? (
-              <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                Select a manufacturer to continue with medicine search and listing details.
-              </div>
-            ) : null}
             {hasManufacturerSelected ? (
               <>
             <div className="space-y-2">
@@ -954,7 +996,7 @@ export function ManageListingsTab({
             </DialogDescription>
           </DialogHeader>
           {editRow ? (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-6 sm:pb-8">
               <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
                 <p className="font-medium">{editRow.medicineName}</p>
                 {editRow.categories?.length ? (

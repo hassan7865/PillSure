@@ -121,7 +121,7 @@ function getNavItems(user: AuthUser | null) {
         isActive: false
       },
       {
-        title: 'Manage listings',
+        title: 'Manage products',
         url: '/dashboard/medical-store/listings',
         icon: LayoutList,
         isActive: false
