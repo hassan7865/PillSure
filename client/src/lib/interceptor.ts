@@ -9,7 +9,7 @@ if (!apiBaseUrl) {
 // Create axios instance
 const api = axios.create({
   baseURL: `${apiBaseUrl}/api`,
-  timeout: 10000,
+  timeout: 5000000,
 });
 
 // Request interceptor

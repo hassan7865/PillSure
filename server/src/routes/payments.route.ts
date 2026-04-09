@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { stripeService } from "../services/stripe.service";
 import { appointmentService } from "../services/appointment.service";
 import { orderService } from "../services/order.service";
+import { whatsappWebhookService } from "../services/whatsappWebhook.service";
 import { ApiResponse } from "../core/api-response";
 import { BadRequestError } from "../middleware/error.handler";
 
@@ -75,7 +76,25 @@ export class PaymentsRoute {
               patientNotes: metadata.patientNotes || undefined,
               amountPaid: amountTotal / 100,
               currency: session.currency || "pkr",
+              durationMinutes: metadata.durationMinutes
+                ? parseInt(String(metadata.durationMinutes), 10)
+                : undefined,
             });
+          }
+
+          if (metadata.whatsappCustomerPhone && metadata.whatsappOwnerUserId) {
+            try {
+              await whatsappWebhookService.notifyAppointmentPaidOnWhatsApp({
+                ownerUserId: metadata.whatsappOwnerUserId,
+                customerPhone: metadata.whatsappCustomerPhone,
+                appointmentDate: metadata.appointmentDate,
+                appointmentTime: metadata.appointmentTime,
+                consultationMode: metadata.consultationMode,
+                doctorDisplayName: metadata.bookingDoctorDisplayName || undefined,
+              });
+            } catch (e) {
+              console.error("[Payments] WhatsApp payment confirmation failed", e);
+            }
           }
         }
       }

@@ -23,6 +23,8 @@ export type ChatbotBusinessInfo = {
 export type ChatbotServiceSlot = {
   startTime: string;
   endTime: string;
+  /** If set (e.g. "Thursday", "mon"), this window applies only on that weekday (clinic timezone). Omit = any day. */
+  day?: string;
   location?: string;
   isAvailable?: boolean;
 };

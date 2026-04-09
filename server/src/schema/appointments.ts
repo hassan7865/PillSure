@@ -10,6 +10,7 @@ import {
   jsonb,
   uniqueIndex,
   numeric,
+  integer,
 } from "drizzle-orm/pg-core";
   import { users } from "./users";
   import { doctors } from "./doctor";
@@ -29,6 +30,7 @@ import {
   
       appointmentDate: date("appointment_date").notNull(),
       appointmentTime: varchar("appointment_time", { length: 10 }).notNull(),
+      durationMinutes: integer("duration_minutes").notNull().default(30),
       status: varchar("status", { length: 20 }).notNull().default("pending"),
       consultationMode: varchar("consultation_mode", { length: 20 }).notNull(),
       meetingId: varchar("meeting_id", { length: 100 }),

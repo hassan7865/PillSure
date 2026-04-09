@@ -201,6 +201,116 @@ export class WhatsAppWebhookService {
       });
     }
   }
+
+  /**
+   * After Stripe marks the appointment paid, notify the WhatsApp thread that started the booking.
+   * Best-effort: logs and returns on missing account or send failure (does not throw).
+   */
+  async notifyAppointmentPaidOnWhatsApp(params: {
+    ownerUserId: string;
+    customerPhone: string;
+    appointmentDate: string;
+    appointmentTime: string;
+    consultationMode: string;
+    doctorDisplayName?: string;
+  }): Promise<void> {
+    const accounts = await db
+      .select()
+      .from(whatsappBusinessAccounts)
+      .where(eq(whatsappBusinessAccounts.ownerUserId, params.ownerUserId))
+      .limit(1);
+
+    const account = accounts[0];
+    if (!account) {
+      console.warn(
+        "[WhatsApp] notifyAppointmentPaid: no business account for owner",
+        params.ownerUserId
+      );
+      return;
+    }
+
+    const doctorPart = params.doctorDisplayName
+      ? ` with ${params.doctorDisplayName}`
+      : "";
+    const modeLabel =
+      params.consultationMode === "online"
+        ? "online"
+        : params.consultationMode === "inperson"
+          ? "in person"
+          : params.consultationMode;
+
+    const body = `Payment received — your appointment${doctorPart} is confirmed for ${params.appointmentDate} at ${params.appointmentTime} (${modeLabel}). Thank you!`;
+
+    const send = await sendWhatsAppTextMessage({
+      phoneNumberId: account.phoneNumberId,
+      accessToken: account.accessToken,
+      to: params.customerPhone,
+      body,
+    });
+
+    if (!send.success) {
+      console.error("[WhatsApp] notifyAppointmentPaid send failed", send.error);
+      return;
+    }
+
+    await db
+      .update(whatsappBusinessAccounts)
+      .set({
+        totalMessagesSent: account.totalMessagesSent + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(whatsappBusinessAccounts.id, account.id));
+
+    await this.saveHistory({
+      ownerUserId: params.ownerUserId,
+      accountId: account.id,
+      customerPhone: params.customerPhone,
+      direction: "outgoing",
+      body,
+      phoneNumberId: account.phoneNumberId,
+      metadata: { paymentConfirmation: true },
+    });
+
+    const convRows = await db
+      .select()
+      .from(whatsappConversations)
+      .where(
+        and(
+          eq(whatsappConversations.ownerUserId, params.ownerUserId),
+          eq(whatsappConversations.customerPhone, params.customerPhone),
+          eq(whatsappConversations.isActive, true)
+        )
+      )
+      .limit(1);
+
+    const nowIso = new Date().toISOString();
+    const botEntry: WhatsAppConversationMessage = {
+      response: body,
+      sender: "bot",
+      timestamp: nowIso,
+    };
+
+    if (convRows.length) {
+      const prev = (convRows[0].messagesHistory as WhatsAppConversationMessage[]) || [];
+      const hist = [...prev, botEntry].slice(-200);
+      await db
+        .update(whatsappConversations)
+        .set({
+          messagesHistory: hist,
+          metadata: { ...((convRows[0].metadata as object) || {}), lastMessageAt: nowIso },
+          updatedAt: new Date(),
+        })
+        .where(eq(whatsappConversations.id, convRows[0].id));
+    } else {
+      await db.insert(whatsappConversations).values({
+        ownerUserId: params.ownerUserId,
+        customerPhone: params.customerPhone,
+        messagesHistory: [botEntry],
+        metadata: { lastMessageAt: nowIso },
+        isActive: true,
+      });
+    }
+  }
 }
 
 export const whatsappWebhookService = new WhatsAppWebhookService();

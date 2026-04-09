@@ -26,6 +26,12 @@ export interface AppointmentCheckoutMetadata {
   patientNotes: string;
   /** When set, webhook updates this row instead of inserting a new appointment */
   appointmentId?: string;
+  /** If set with whatsappOwnerUserId, payment webhook notifies this WhatsApp thread */
+  whatsappCustomerPhone?: string;
+  whatsappOwnerUserId?: string;
+  /** Shown in the post-payment WhatsApp message (e.g. "Dr. Jane Doe") */
+  bookingDoctorDisplayName?: string;
+  durationMinutes?: string;
 }
 
 export interface MedicineCheckoutMetadata {
@@ -112,6 +118,18 @@ export class StripeService {
     };
     if (params.metadata.appointmentId) {
       metadata.appointmentId = params.metadata.appointmentId;
+    }
+    if (params.metadata.whatsappCustomerPhone) {
+      metadata.whatsappCustomerPhone = params.metadata.whatsappCustomerPhone;
+    }
+    if (params.metadata.whatsappOwnerUserId) {
+      metadata.whatsappOwnerUserId = params.metadata.whatsappOwnerUserId;
+    }
+    if (params.metadata.bookingDoctorDisplayName) {
+      metadata.bookingDoctorDisplayName = params.metadata.bookingDoctorDisplayName;
+    }
+    if (params.metadata.durationMinutes != null && params.metadata.durationMinutes !== "") {
+      metadata.durationMinutes = String(params.metadata.durationMinutes);
     }
 
     const session = await this.stripe.checkout.sessions.create({
