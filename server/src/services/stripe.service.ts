@@ -135,6 +135,9 @@ export class StripeService {
     const session = await this.stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
+      ...(params.metadata.appointmentId
+        ? { client_reference_id: params.metadata.appointmentId }
+        : {}),
       line_items: [
         {
           quantity: 1,

@@ -38,6 +38,19 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 120000);
 const CONFIDENCE_MIN = 70;
 const BOOKING_CONFIRM_MIN = 78;
 
+/** Hosted Checkout URLs from prior turns must not be fed back to the model or echoed — each booking gets a new session URL appended only in extras. */
+const STRIPE_HOSTED_CHECKOUT_URL_RE =
+  /https:\/\/checkout\.stripe\.com\/[^\s<>"')]+/gi;
+
+const stripHostedStripeCheckoutUrls = (text: string): string => {
+  if (!text) return text;
+  return text
+    .replace(STRIPE_HOSTED_CHECKOUT_URL_RE, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
 type GenerateContext = {
   ownerUserId: string;
   defaultDoctorId: string | null;
@@ -284,7 +297,7 @@ const transcriptFromHistory = (
       lines.push(`User: ${msg.message}`);
     }
     if (msg.sender === "bot" && msg.response) {
-      lines.push(`Assistant: ${msg.response}`);
+      lines.push(`Assistant: ${stripHostedStripeCheckoutUrls(msg.response)}`);
     }
   }
   lines.push(`User: ${latestUser}`);
@@ -411,7 +424,10 @@ UTC now (reference): ${new Date().toISOString()}.`;
         out.push({ role: "user", content: msg.message });
       }
       if (msg.sender === "bot" && msg.response) {
-        out.push({ role: "assistant", content: msg.response });
+        out.push({
+          role: "assistant",
+          content: stripHostedStripeCheckoutUrls(msg.response),
+        });
       }
       return out;
     });
@@ -420,6 +436,8 @@ UTC now (reference): ${new Date().toISOString()}.`;
       [{ role: "system", content: systemPrompt }, ...conversationMessages, { role: "user", content: userMessage }],
       { temperature: 0.72, numPredict: 900 }
     );
+
+    assistantReply = stripHostedStripeCheckoutUrls((assistantReply || "").trim());
 
     if (!assistantReply) {
       assistantReply = "I could not process that just now. Could you please repeat your request?";
