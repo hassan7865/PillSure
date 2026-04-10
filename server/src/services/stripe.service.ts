@@ -24,6 +24,14 @@ export interface AppointmentCheckoutMetadata {
   appointmentTime: string;
   consultationMode: "inperson" | "online";
   patientNotes: string;
+  /** When set, webhook updates this row instead of inserting a new appointment */
+  appointmentId?: string;
+  /** If set with whatsappOwnerUserId, payment webhook notifies this WhatsApp thread */
+  whatsappCustomerPhone?: string;
+  whatsappOwnerUserId?: string;
+  /** Shown in the post-payment WhatsApp message (e.g. "Dr. Jane Doe") */
+  bookingDoctorDisplayName?: string;
+  durationMinutes?: string;
 }
 
 export interface MedicineCheckoutMetadata {
@@ -108,10 +116,28 @@ export class StripeService {
       consultationMode: params.metadata.consultationMode,
       patientNotes: params.metadata.patientNotes,
     };
+    if (params.metadata.appointmentId) {
+      metadata.appointmentId = params.metadata.appointmentId;
+    }
+    if (params.metadata.whatsappCustomerPhone) {
+      metadata.whatsappCustomerPhone = params.metadata.whatsappCustomerPhone;
+    }
+    if (params.metadata.whatsappOwnerUserId) {
+      metadata.whatsappOwnerUserId = params.metadata.whatsappOwnerUserId;
+    }
+    if (params.metadata.bookingDoctorDisplayName) {
+      metadata.bookingDoctorDisplayName = params.metadata.bookingDoctorDisplayName;
+    }
+    if (params.metadata.durationMinutes != null && params.metadata.durationMinutes !== "") {
+      metadata.durationMinutes = String(params.metadata.durationMinutes);
+    }
 
     const session = await this.stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
+      ...(params.metadata.appointmentId
+        ? { client_reference_id: params.metadata.appointmentId }
+        : {}),
       line_items: [
         {
           quantity: 1,

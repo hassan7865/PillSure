@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { stripeService } from "../services/stripe.service";
 import { appointmentService } from "../services/appointment.service";
 import { orderService } from "../services/order.service";
+import { whatsappWebhookService } from "../services/whatsappWebhook.service";
 import { ApiResponse } from "../core/api-response";
 import { BadRequestError } from "../middleware/error.handler";
 
@@ -57,17 +58,44 @@ export class PaymentsRoute {
           }
 
           const amountTotal = session.amount_total ?? 0;
-          await appointmentService.createAppointmentFromStripeSession({
-            stripeSessionId: session.id,
-            patientId: metadata.patientId,
-            doctorId: metadata.doctorId,
-            appointmentDate: metadata.appointmentDate,
-            appointmentTime: metadata.appointmentTime,
-            consultationMode: metadata.consultationMode as "inperson" | "online",
-            patientNotes: metadata.patientNotes || undefined,
-            amountPaid: amountTotal / 100,
-            currency: session.currency || "pkr",
-          });
+          if (metadata.appointmentId) {
+            await appointmentService.markAppointmentPaidFromStripeSession({
+              appointmentId: metadata.appointmentId,
+              stripeSessionId: session.id,
+              amountPaid: amountTotal / 100,
+              currency: session.currency || "pkr",
+            });
+          } else {
+            await appointmentService.createAppointmentFromStripeSession({
+              stripeSessionId: session.id,
+              patientId: metadata.patientId,
+              doctorId: metadata.doctorId,
+              appointmentDate: metadata.appointmentDate,
+              appointmentTime: metadata.appointmentTime,
+              consultationMode: metadata.consultationMode as "inperson" | "online",
+              patientNotes: metadata.patientNotes || undefined,
+              amountPaid: amountTotal / 100,
+              currency: session.currency || "pkr",
+              durationMinutes: metadata.durationMinutes
+                ? parseInt(String(metadata.durationMinutes), 10)
+                : undefined,
+            });
+          }
+
+          if (metadata.whatsappCustomerPhone && metadata.whatsappOwnerUserId) {
+            try {
+              await whatsappWebhookService.notifyAppointmentPaidOnWhatsApp({
+                ownerUserId: metadata.whatsappOwnerUserId,
+                customerPhone: metadata.whatsappCustomerPhone,
+                appointmentDate: metadata.appointmentDate,
+                appointmentTime: metadata.appointmentTime,
+                consultationMode: metadata.consultationMode,
+                doctorDisplayName: metadata.bookingDoctorDisplayName || undefined,
+              });
+            } catch (e) {
+              console.error("[Payments] WhatsApp payment confirmation failed", e);
+            }
+          }
         }
       }
 

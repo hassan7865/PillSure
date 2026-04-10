@@ -6,33 +6,73 @@ import { patients } from "../schema/patient";
 import { hospitals } from "../schema/hospitals";
 import { orders } from "../schema/orders";
 import { orderItems } from "../schema/orderItems";
-import { eq, and, or, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { doctorService } from "./doctor.service";
 import { alias } from "drizzle-orm/pg-core";
 
+import { hmToMinutes } from "../utils/whatsappBookingSlots.util";
+import {
+  canModifyAppointmentByCalendarDayRule,
+  getWhatsAppClinicTimeZone,
+  isAppointmentUpcoming,
+  normalizeHm,
+} from "../utils/clinicTime.util";
+
 export class AppointmentService {
-  async assertSlotAvailable(doctorId: string, appointmentDate: string, appointmentTime: string) {
-    const existingAppointment = await db
-      .select()
+  async getBookedIntervalsForDate(
+    doctorId: string,
+    appointmentDate: string,
+    excludeAppointmentId?: string
+  ): Promise<{ startMin: number; endMin: number }[]> {
+    const rows = await db
+      .select({
+        id: appointments.id,
+        appointmentTime: appointments.appointmentTime,
+        durationMinutes: appointments.durationMinutes,
+      })
       .from(appointments)
       .where(
         and(
           eq(appointments.doctorId, doctorId),
           eq(appointments.appointmentDate, appointmentDate),
-          eq(appointments.appointmentTime, appointmentTime),
           eq(appointments.isActive, true),
-          or(
-            eq(appointments.status, "pending"),
-            eq(appointments.status, "confirmed"),
-            eq(appointments.status, "completed"),
-            eq(appointments.status, "in_progress")
-          )
+          sql`${appointments.status} NOT IN ('cancelled', 'rejected')`
         )
-      )
-      .limit(1);
+      );
 
-    if (existingAppointment.length > 0) {
+    const out: { startMin: number; endMin: number }[] = [];
+    for (const row of rows) {
+      if (excludeAppointmentId && row.id === excludeAppointmentId) continue;
+      const start = hmToMinutes(normalizeHm(row.appointmentTime));
+      if (start == null) continue;
+      const dur = row.durationMinutes != null ? Number(row.durationMinutes) : 30;
+      const safeDur = Number.isFinite(dur) && dur > 0 ? dur : 30;
+      out.push({ startMin: start, endMin: start + safeDur });
+    }
+    return out;
+  }
+
+  async assertSlotAvailable(
+    doctorId: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    opts?: { durationMinutes?: number; excludeAppointmentId?: string }
+  ) {
+    const duration = opts?.durationMinutes ?? 30;
+    const start = hmToMinutes(normalizeHm(appointmentTime));
+    if (start == null) {
+      throw createError("Invalid appointment time", 400);
+    }
+    const end = start + duration;
+    const intervals = await this.getBookedIntervalsForDate(
+      doctorId,
+      appointmentDate,
+      opts?.excludeAppointmentId
+    );
+    const { intervalsOverlap } = await import("../utils/whatsappBookingSlots.util");
+    const clash = intervals.some((b) => intervalsOverlap(start, end, b.startMin, b.endMin));
+    if (clash) {
       throw createError("This time slot is already booked", 400);
     }
   }
@@ -77,7 +117,14 @@ export class AppointmentService {
   }
 
   async createAppointment(patientId: string, data: any) {
-    await this.assertSlotAvailable(data.doctorId, data.appointmentDate, data.appointmentTime);
+    const durationMinutes =
+      data.durationMinutes != null && Number.isFinite(Number(data.durationMinutes)) && Number(data.durationMinutes) > 0
+        ? Math.floor(Number(data.durationMinutes))
+        : 30;
+
+    await this.assertSlotAvailable(data.doctorId, data.appointmentDate, data.appointmentTime, {
+      durationMinutes,
+    });
 
     const meetingId = this.generateMeetingId(data.consultationMode);
 
@@ -88,6 +135,7 @@ export class AppointmentService {
         doctorId: data.doctorId,
         appointmentDate: data.appointmentDate,
         appointmentTime: data.appointmentTime,
+        durationMinutes,
         consultationMode: data.consultationMode,
         patientNotes: data.patientNotes || null,
         meetingId: meetingId,
@@ -103,6 +151,53 @@ export class AppointmentService {
     return newAppointment[0];
   }
 
+  async markAppointmentPaidFromStripeSession(params: {
+    appointmentId: string;
+    stripeSessionId: string;
+    amountPaid: number;
+    currency: string;
+  }) {
+    const row = await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.id, params.appointmentId))
+      .limit(1);
+
+    if (!row.length) {
+      throw createError("Appointment not found", 404);
+    }
+
+    const apt = row[0];
+    if (apt.stripeSessionId && apt.stripeSessionId !== params.stripeSessionId) {
+      throw createError("Appointment already linked to a different payment", 400);
+    }
+
+    const updated = await db
+      .update(appointments)
+      .set({
+        paymentProvider: "stripe",
+        paymentStatus: "paid",
+        stripeSessionId: params.stripeSessionId,
+        amountPaid: params.amountPaid.toFixed(2),
+        currency: params.currency.toLowerCase(),
+        status: "confirmed",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(appointments.id, params.appointmentId),
+          eq(appointments.isActive, true)
+        )
+      )
+      .returning();
+
+    if (!updated.length) {
+      throw createError("Failed to update appointment payment", 500);
+    }
+
+    return updated[0];
+  }
+
   async createAppointmentFromStripeSession(params: {
     stripeSessionId: string;
     patientId: string;
@@ -113,6 +208,7 @@ export class AppointmentService {
     patientNotes?: string;
     amountPaid: number;
     currency: string;
+    durationMinutes?: number;
   }) {
     const existingBySession = await db
       .select()
@@ -124,7 +220,16 @@ export class AppointmentService {
       return existingBySession[0];
     }
 
-    await this.assertSlotAvailable(params.doctorId, params.appointmentDate, params.appointmentTime);
+    const durationMinutes =
+      params.durationMinutes != null &&
+      Number.isFinite(Number(params.durationMinutes)) &&
+      Number(params.durationMinutes) > 0
+        ? Math.floor(Number(params.durationMinutes))
+        : 30;
+
+    await this.assertSlotAvailable(params.doctorId, params.appointmentDate, params.appointmentTime, {
+      durationMinutes,
+    });
     const meetingId = this.generateMeetingId(params.consultationMode);
 
     const created = await db
@@ -134,10 +239,11 @@ export class AppointmentService {
         doctorId: params.doctorId,
         appointmentDate: params.appointmentDate,
         appointmentTime: params.appointmentTime,
+        durationMinutes,
         consultationMode: params.consultationMode,
         patientNotes: params.patientNotes || null,
         meetingId,
-        status: "pending",
+        status: "confirmed",
         paymentProvider: "stripe",
         paymentStatus: "paid",
         stripeSessionId: params.stripeSessionId,
@@ -662,6 +768,261 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
       doctorId: doctor.id,
       hospitalId: doctor.hospitalId || null,
     };
+  }
+
+  async getHospitalDashboardStatsByUserId(userId: string) {
+    const hospital = await db
+      .select({
+        id: hospitals.id,
+        hospitalName: hospitals.hospitalName,
+      })
+      .from(hospitals)
+      .where(eq(hospitals.userId, userId))
+      .limit(1);
+
+    if (!hospital.length) {
+      throw createError("Hospital profile not found", 404);
+    }
+
+    const hospitalId = hospital[0].id;
+
+    const statusCounts = await db
+      .select({
+        status: appointments.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(appointments)
+      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .where(and(eq(doctors.hospitalId, hospitalId), eq(appointments.isActive, true)))
+      .groupBy(appointments.status);
+
+    const byStatus: Record<string, number> = {};
+    statusCounts.forEach((row) => {
+      byStatus[row.status] = Number(row.count) || 0;
+    });
+    const totalAppointments = Object.values(byStatus).reduce((sum, v) => sum + v, 0);
+
+    // Hospital revenue = completed appointments fee totals for affiliated doctors.
+    const revenueResult = await db
+      .select({
+        total: sql<string>`coalesce(sum(cast(${doctors.feePkr} as numeric)), 0)::text`,
+      })
+      .from(appointments)
+      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .where(
+        and(
+          eq(doctors.hospitalId, hospitalId),
+          eq(appointments.isActive, true),
+          eq(appointments.status, "completed")
+        )
+      );
+
+    return {
+      hospitalId,
+      hospitalName: hospital[0].hospitalName,
+      totalAppointments,
+      byStatus,
+      totalEarned: Number(revenueResult[0]?.total || 0),
+      currency: "pkr",
+    };
+  }
+
+  async hasUnpaidUpcomingAppointmentForPatientDoctor(params: {
+    patientUserId: string;
+    doctorId: string;
+    timeZone: string;
+  }): Promise<boolean> {
+    const rows = await db
+      .select({
+        appointmentDate: appointments.appointmentDate,
+        appointmentTime: appointments.appointmentTime,
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.patientId, params.patientUserId),
+          eq(appointments.doctorId, params.doctorId),
+          eq(appointments.isActive, true),
+          eq(appointments.paymentStatus, "unpaid"),
+          sql`${appointments.status} NOT IN ('cancelled', 'rejected')`
+        )
+      );
+
+    for (const r of rows) {
+      const raw = r.appointmentDate as unknown;
+      const ymd =
+        raw instanceof Date ? raw.toISOString().slice(0, 10) : String(raw).slice(0, 10);
+      if (isAppointmentUpcoming(ymd, r.appointmentTime, params.timeZone)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async listUpcomingForWhatsAppPatient(params: {
+    patientUserId: string;
+    doctorIdFilter?: string | null;
+    allowedDoctorIds?: string[] | null;
+  }) {
+    const tz = getWhatsAppClinicTimeZone();
+    const conditions = [
+      eq(appointments.patientId, params.patientUserId),
+      eq(appointments.isActive, true),
+      sql`${appointments.status} NOT IN ('cancelled', 'rejected', 'completed')`,
+    ];
+    const allowed =
+      params.allowedDoctorIds && params.allowedDoctorIds.length
+        ? params.allowedDoctorIds
+        : params.doctorIdFilter
+          ? [params.doctorIdFilter]
+          : null;
+    if (allowed?.length) {
+      conditions.push(inArray(appointments.doctorId, allowed));
+    }
+
+    const rows = await db
+      .select({
+        id: appointments.id,
+        appointmentDate: appointments.appointmentDate,
+        appointmentTime: appointments.appointmentTime,
+        status: appointments.status,
+        consultationMode: appointments.consultationMode,
+        paymentStatus: appointments.paymentStatus,
+        doctorId: appointments.doctorId,
+        doctorName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        patientNotes: appointments.patientNotes,
+        durationMinutes: appointments.durationMinutes,
+      })
+      .from(appointments)
+      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .innerJoin(users, eq(doctors.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
+
+    return rows.filter((r) =>
+      isAppointmentUpcoming(String(r.appointmentDate), r.appointmentTime, tz)
+    );
+  }
+
+  async rescheduleAppointmentForWhatsAppPatient(params: {
+    patientUserId: string;
+    appointmentId: string;
+    newDate: string;
+    newTime: string;
+    durationMinutes?: number;
+  }) {
+    const tz = getWhatsAppClinicTimeZone();
+    const row = await db
+      .select()
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.id, params.appointmentId),
+          eq(appointments.patientId, params.patientUserId),
+          eq(appointments.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!row.length) {
+      throw createError("Appointment not found", 404);
+    }
+
+    const apt = row[0];
+    if (apt.status === "cancelled" || apt.status === "rejected") {
+      throw createError("This appointment cannot be rescheduled", 400);
+    }
+
+    if (apt.status === "completed") {
+      throw createError("This appointment is already completed. Book a new appointment if you need another visit.", 400);
+    }
+
+    if (!canModifyAppointmentByCalendarDayRule(String(apt.appointmentDate), tz)) {
+      throw createError(
+        "Rescheduling via WhatsApp is only allowed when your appointment is more than one full day away. Please call the clinic for shorter notice.",
+        400
+      );
+    }
+
+    const dur =
+      params.durationMinutes != null &&
+      Number.isFinite(Number(params.durationMinutes)) &&
+      Number(params.durationMinutes) > 0
+        ? Math.floor(Number(params.durationMinutes))
+        : apt.durationMinutes != null && Number(apt.durationMinutes) > 0
+          ? Number(apt.durationMinutes)
+          : 30;
+
+    await this.assertSlotAvailable(apt.doctorId, params.newDate, params.newTime, {
+      durationMinutes: dur,
+      excludeAppointmentId: apt.id,
+    });
+
+    const newHm = normalizeHm(params.newTime);
+    const meetingId = this.generateMeetingId(apt.consultationMode);
+
+    await db
+      .update(appointments)
+      .set({
+        appointmentDate: params.newDate,
+        appointmentTime: newHm,
+        durationMinutes: dur,
+        meetingId: apt.consultationMode?.toLowerCase() === "online" ? meetingId : apt.meetingId,
+        updatedAt: new Date(),
+      })
+      .where(eq(appointments.id, apt.id));
+
+    return { id: apt.id, appointmentDate: params.newDate, appointmentTime: newHm };
+  }
+
+  async cancelAppointmentForWhatsAppPatient(params: {
+    patientUserId: string;
+    appointmentId: string;
+    reason?: string;
+  }) {
+    const tz = getWhatsAppClinicTimeZone();
+    const row = await db
+      .select()
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.id, params.appointmentId),
+          eq(appointments.patientId, params.patientUserId),
+          eq(appointments.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!row.length) {
+      throw createError("Appointment not found", 404);
+    }
+
+    const apt = row[0];
+    if (apt.status === "cancelled" || apt.status === "rejected") {
+      throw createError("This appointment is already cancelled", 400);
+    }
+
+    if (apt.status === "completed") {
+      throw createError("This appointment is already completed and cannot be cancelled.", 400);
+    }
+
+    if (!canModifyAppointmentByCalendarDayRule(String(apt.appointmentDate), tz)) {
+      throw createError(
+        "Cancellation via WhatsApp is only allowed when your appointment is more than one full day away. Please call the clinic for shorter notice.",
+        400
+      );
+    }
+
+    await db
+      .update(appointments)
+      .set({
+        status: "cancelled",
+        cancellationReason: params.reason?.trim() || "Cancelled via WhatsApp",
+        updatedAt: new Date(),
+      })
+      .where(eq(appointments.id, apt.id));
+
+    return { id: apt.id };
   }
 
   async getPrescriptionByAppointmentId(appointmentId: string) {

@@ -20,6 +20,10 @@ import { HospitalRoute } from "./src/routes/hospital.route";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
 import { requestLogger } from "./src/middleware/request.logger";
 import { validateS3Config } from "./src/config/s3.config";
+import { db } from "./src/config/database";
+import { whatsappRouter } from "./src/routes/whatsapp.route";
+import { WhatsAppSettingsRoute } from "./src/routes/whatsappSettings.route";
+import { ChatbotPersonaRoute } from "./src/routes/chatbotPersona.route";
 
 // Load environment variables
 dotenv.config();
@@ -35,6 +39,8 @@ app.use("/api/payments", express.raw({ type: "application/json" }), paymentsRout
 app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/whatsapp", whatsappRouter);
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -76,6 +82,8 @@ const initializeApp = async () => {
     const medicalStoreRoutes = new MedicalStoreRoute();
     const marketplaceRoutes = new MarketplaceRoute();
     const hospitalRoutes = new HospitalRoute();
+    const whatsappSettingsRoutes = new WhatsAppSettingsRoute();
+    const chatbotPersonaRoutes = new ChatbotPersonaRoute();
 
     // Mount routes
     app.use("/api/auth", authRoutes.getRouter());
@@ -92,6 +100,8 @@ const initializeApp = async () => {
     app.use("/api/medical-store", medicalStoreRoutes.getRouter());
     app.use("/api/marketplace", marketplaceRoutes.getRouter());
     app.use("/api/hospital", hospitalRoutes.getRouter());
+    app.use("/api/settings", whatsappSettingsRoutes.getRouter());
+    app.use("/api/chatbot", chatbotPersonaRoutes.getRouter());
 
     // Health check endpoint
     app.get("/health", (req, res) => {

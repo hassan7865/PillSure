@@ -19,3 +19,8 @@ export * from './medicalStoreMedicineCategories';
 export * from './medicalStoreMedicines';
 export * from './manufacturerWholesaleOrders';
 export * from './manufacturerWholesaleOrderItems';
+export * from './whatsappBusinessAccounts';
+export * from './whatsappMessageHistory';
+export * from './whatsappConversations';
+export * from './chatbotPersonas';
+export * from './doctorAvailabilityExceptions';

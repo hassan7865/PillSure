@@ -40,7 +40,9 @@ import {
   LayoutList,
   ShoppingCart,
   ClipboardList,
-  FolderOpen
+  FolderOpen,
+  Layers,
+  MessageCircle
 } from 'lucide-react';
 import * as React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -69,6 +71,11 @@ function getNavItems(user: AuthUser | null) {
         title: 'Appointments',
         url: '/dashboard/appointments',
         icon: CalendarClock
+      },
+      {
+        title: 'WhatsApp',
+        url: '/dashboard/settings/whatsapp',
+        icon: MessageCircle
       }
     ];
   }
@@ -136,7 +143,12 @@ function getNavItems(user: AuthUser | null) {
         title: 'Order from manufacturer',
         url: '/dashboard/medical-store/wholesale-order',
         icon: ShoppingCart,
-        isActive: false
+        isActive: false,
+      },
+      {
+        title: 'WhatsApp',
+        url: '/dashboard/settings/whatsapp',
+        icon: MessageCircle
       }
     ];
   }
