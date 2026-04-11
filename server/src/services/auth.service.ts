@@ -1,40 +1,10 @@
-import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "../config/database";
 import { users, roles } from "../schema";
 import { LoginRequest, RegisterRequest, GoogleLoginRequest, UserRole } from "../core/types";
 import { generateToken } from "../middleware/jwt.handler";
 import { createError } from "../middleware/error.handler";
-
-// ---------------------------------------------------------------------------
-// Password (bcrypt + legacy plaintext)
-// ---------------------------------------------------------------------------
-
-const BCRYPT_ROUNDS = 10;
-
-function isBcryptHash(stored: string | null | undefined): boolean {
-  if (!stored) return false;
-  return (
-    stored.startsWith("$2a$") ||
-    stored.startsWith("$2b$") ||
-    stored.startsWith("$2y$")
-  );
-}
-
-async function hashPassword(plain: string): Promise<string> {
-  return bcrypt.hash(plain, BCRYPT_ROUNDS);
-}
-
-async function verifyPassword(
-  plain: string,
-  stored: string | null | undefined,
-): Promise<boolean> {
-  if (!stored) return false;
-  if (isBcryptHash(stored)) {
-    return bcrypt.compare(plain, stored);
-  }
-  return plain === stored;
-}
+import { hashPassword, isBcryptHash, verifyPassword } from "../utils/password.util";
 
 // ---------------------------------------------------------------------------
 // User + role lookups
