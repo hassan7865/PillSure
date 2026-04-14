@@ -8,7 +8,7 @@ import { medicalStoreMedicines } from "../schema/medicalStoreMedicines";
 import { medicalStores } from "../schema/medicalStores";
 import { createError } from "../middleware/error.handler";
 import { cartService } from "./cart.service";
-import { stripeService } from "./stripe.service";
+import { safepayService } from "./safepay.service";
 import { patients } from "../schema/patient";
 import { isUuid } from "../utils/uuid";
 
@@ -269,8 +269,10 @@ export class OrderService {
     shippingAddress: string | null;
     contactNo: string | null;
     checkout: Awaited<ReturnType<OrderService["getCheckoutItems"]>>;
+    shouldMutateInventoryAndCart?: boolean;
   }) {
     const { checkout } = params;
+    const shouldMutateInventoryAndCart = params.shouldMutateInventoryAndCart ?? true;
 
     return await db.transaction(async (tx) => {
       const [order] = await tx
@@ -302,19 +304,20 @@ export class OrderService {
         })),
       );
 
-      for (const item of checkout.items) {
-        if (item.medicalStoreMedicineId) {
-          await tx
-            .update(medicalStoreMedicines)
-            .set({
-              listedQuantity: sql`${medicalStoreMedicines.listedQuantity} - ${item.quantity}`,
-              updatedAt: new Date(),
-            })
-            .where(eq(medicalStoreMedicines.id, item.medicalStoreMedicineId));
+      if (shouldMutateInventoryAndCart) {
+        for (const item of checkout.items) {
+          if (item.medicalStoreMedicineId) {
+            await tx
+              .update(medicalStoreMedicines)
+              .set({
+                listedQuantity: sql`${medicalStoreMedicines.listedQuantity} - ${item.quantity}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(medicalStoreMedicines.id, item.medicalStoreMedicineId));
+          }
         }
+        await tx.delete(cartItems).where(eq(cartItems.cartId, checkout.cartId));
       }
-
-      await tx.delete(cartItems).where(eq(cartItems.cartId, checkout.cartId));
 
       return order;
     });
@@ -343,18 +346,75 @@ export class OrderService {
   ) {
     const contactInfo = await this.resolveCheckoutContactInfo(patientId, payload);
     const checkout = await this.getCheckoutItems(patientId);
-    const session = await stripeService.createMedicineCheckoutSession({
-      amountPkr: checkout.total,
-      metadata: {
-        type: "medicine_order",
-        patientId,
-        cartId: checkout.cartId,
-        shippingAddress: contactInfo.shippingAddress,
-        contactNo: contactInfo.contactNo,
-      },
+    const pendingOrder = await this.finalizeOrderInTransaction({
+      patientId,
+      paymentMethod: "online",
+      paymentStatus: "pending_online",
+      stripeSessionId: null,
+      shippingAddress: contactInfo.shippingAddress,
+      contactNo: contactInfo.contactNo,
+      checkout,
+      shouldMutateInventoryAndCart: false,
     });
 
+    const session = await safepayService.createMedicineCheckoutSession({
+      amountPkr: checkout.total,
+      orderId: `med_${pendingOrder.id}`,
+    });
+
+    await db.delete(cartItems).where(eq(cartItems.cartId, checkout.cartId));
     return { sessionId: session.id, checkoutUrl: session.url };
+  }
+
+  async finalizePaidOrderFromSafepay(params: {
+    orderRef: string;
+    paymentSessionId: string;
+    paymentState?: string;
+  }) {
+    if (params.paymentState && params.paymentState.toUpperCase() !== "PAID") {
+      return null;
+    }
+    if (!params.orderRef.startsWith("med_")) {
+      throw createError("Invalid Safepay order reference", 400);
+    }
+    const orderId = params.orderRef.slice(4);
+    if (!isUuid(orderId)) {
+      throw createError("Invalid Safepay order id", 400);
+    }
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) {
+      throw createError("Order not found", 404);
+    }
+    if (order.paymentStatus === "paid") {
+      return order;
+    }
+
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+    return db.transaction(async (tx) => {
+      for (const item of items) {
+        if (item.medicalStoreMedicineId) {
+          await tx
+            .update(medicalStoreMedicines)
+            .set({
+              listedQuantity: sql`${medicalStoreMedicines.listedQuantity} - ${item.quantity}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(medicalStoreMedicines.id, item.medicalStoreMedicineId));
+        }
+      }
+
+      const [paidOrder] = await tx
+        .update(orders)
+        .set({
+          paymentStatus: "paid",
+          stripeSessionId: params.paymentSessionId,
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, order.id))
+        .returning();
+      return paidOrder;
+    });
   }
 
   async finalizePaidOrderFromStripe(params: {

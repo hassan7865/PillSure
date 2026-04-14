@@ -9,7 +9,7 @@ import {
   type WhatsAppConversationMessage,
 } from "../schema/whatsappConversations";
 import { appointmentService } from "./appointment.service";
-import { stripeService } from "./stripe.service";
+import { safepayService } from "./safepay.service";
 import { ensureGuestUserForWhatsApp } from "./guestUser.service";
 import {
   getEnglishWeekdayLongForYmd,
@@ -749,22 +749,9 @@ Rules:
             });
 
             const fee = await appointmentService.getDoctorFeeAndName(doctorId);
-            const session = await stripeService.createAppointmentCheckoutSession({
+            const session = await safepayService.createAppointmentCheckoutSession({
               amountPkr: fee.feePkr,
-              doctorName: fee.doctorName,
-              metadata: {
-                patientId: guestId,
-                doctorId,
-                appointmentDate: b.appointmentDate,
-                appointmentTime: validated.normalizedTime,
-                consultationMode: b.consultationMode as "inperson" | "online",
-                patientNotes,
-                appointmentId: apt.id,
-                whatsappCustomerPhone: customerPhone,
-                whatsappOwnerUserId: ctx.ownerUserId,
-                bookingDoctorDisplayName: `Dr. ${fee.doctorName}`,
-                durationMinutes: String(durationMinutes),
-              },
+              orderId: `apt_${apt.id}`,
             });
 
             bookingResult = {

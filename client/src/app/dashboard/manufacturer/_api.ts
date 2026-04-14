@@ -124,6 +124,11 @@ export interface WholesaleOrderSummaryRow {
   manufacturerId: string;
   medicalStoreId: string;
   status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  paymentProvider: string | null;
+  gatewaySessionId: string | null;
+  paidAt: string | null;
   currency: string;
   subtotal: string;
   total: string;

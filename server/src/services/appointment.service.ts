@@ -255,6 +255,43 @@ export class AppointmentService {
     return created[0];
   }
 
+  async markAppointmentPaidFromSafepay(params: {
+    appointmentId: string;
+    paymentSessionId: string;
+    amountPaid?: number;
+    currency?: string;
+  }) {
+    const row = await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.id, params.appointmentId))
+      .limit(1);
+    if (!row.length) {
+      throw createError("Appointment not found", 404);
+    }
+
+    const apt = row[0];
+    if (apt.paymentStatus === "paid") {
+      return apt;
+    }
+
+    const updated = await db
+      .update(appointments)
+      .set({
+        paymentProvider: "sfpy",
+        paymentStatus: "paid",
+        stripeSessionId: params.paymentSessionId,
+        amountPaid: Number.isFinite(params.amountPaid) ? Number(params.amountPaid).toFixed(2) : apt.amountPaid,
+        currency: (params.currency || apt.currency || "pkr").toLowerCase(),
+        status: "confirmed",
+        updatedAt: new Date(),
+      })
+      .where(eq(appointments.id, params.appointmentId))
+      .returning();
+
+    return updated[0];
+  }
+
   async getAppointmentsByPatient(patientId: string, status?: string) {
     const conditions = [eq(appointments.patientId, patientId), eq(appointments.isActive, true)];
     

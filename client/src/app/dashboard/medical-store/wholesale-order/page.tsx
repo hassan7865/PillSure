@@ -42,6 +42,29 @@ function parseMoney(s: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function paymentBadgeVariant(
+  paymentStatus: string,
+): "default" | "secondary" | "outline" | "destructive" {
+  const k = String(paymentStatus || "").toLowerCase();
+  if (k === "paid") return "default";
+  if (k.includes("pending")) return "secondary";
+  if (k.includes("failed")) return "destructive";
+  return "outline";
+}
+
+function formatPaymentLabel(raw: string) {
+  return String(raw || "—")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatPaymentMethodLabel(raw: string) {
+  const key = String(raw || "").trim().toLowerCase();
+  if (key === "safepay" || key === "online") return "Online";
+  if (key === "offline_terms" || key === "cod") return "COD";
+  return "COD";
+}
+
 export default function MedicalStoreWholesaleOrderPage() {
   const [tab, setTab] = useState("place");
 
@@ -71,6 +94,7 @@ export default function MedicalStoreWholesaleOrderPage() {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"safepay" | "offline_terms">("safepay");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -210,15 +234,21 @@ export default function MedicalStoreWholesaleOrderPage() {
     }
     setSubmitting(true);
     try {
-      await medicalStoreApi.createWholesaleOrder({
+      const created = await medicalStoreApi.createWholesaleOrder({
         manufacturerId,
         items: cartLines.map(({ row, qty }) => ({
           manufacturerMedicineId: row.listingId,
           quantity: qty,
         })),
         notes: notes.trim() || undefined,
+        paymentMethod,
       });
-      toast.success("Wholesale order placed.");
+      if (created.payment.method === "safepay") {
+        toast.success("Redirecting to secure checkout...");
+        window.location.href = created.payment.checkoutUrl;
+        return;
+      }
+      toast.success("Wholesale order placed on offline terms.");
       setConfirmOpen(false);
       setNotes("");
       setQuantities({});
@@ -477,6 +507,8 @@ export default function MedicalStoreWholesaleOrderPage() {
                             <TableHead className="font-medium">Date</TableHead>
                             <TableHead className="font-medium">Manufacturer</TableHead>
                             <TableHead className="font-medium">Status</TableHead>
+                            <TableHead className="font-medium">Payment</TableHead>
+                            <TableHead className="font-medium">Method</TableHead>
                             <TableHead className="text-right font-medium">Total</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -491,6 +523,14 @@ export default function MedicalStoreWholesaleOrderPage() {
                                 <Badge variant="secondary" className="font-normal capitalize">
                                   {o.status}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={paymentBadgeVariant(o.paymentStatus)}>
+                                  {formatPaymentLabel(o.paymentStatus)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="capitalize text-muted-foreground">
+                                {formatPaymentMethodLabel(o.paymentMethod)}
                               </TableCell>
                               <TableCell className="text-right tabular-nums">
                                 {o.currency} {o.total}
@@ -582,6 +622,22 @@ export default function MedicalStoreWholesaleOrderPage() {
               {currency} {cartTotals.subtotal.toFixed(2)}.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="wholesale-payment-method">Payment method</Label>
+            <Select
+              value={paymentMethod}
+              onValueChange={(v) => setPaymentMethod(v as "safepay" | "offline_terms")}
+              disabled={submitting}
+            >
+              <SelectTrigger id="wholesale-payment-method" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="safepay">Pay online</SelectItem>
+                <SelectItem value="offline_terms">Offline terms / COD</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="order-notes">Notes for manufacturer (optional)</Label>
             <Textarea

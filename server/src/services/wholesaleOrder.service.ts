@@ -9,6 +9,7 @@ import { medicines } from "../schema/medicine";
 import { manufacturerWholesaleOrders } from "../schema/manufacturerWholesaleOrders";
 import { manufacturerWholesaleOrderItems } from "../schema/manufacturerWholesaleOrderItems";
 import { medicalStores } from "../schema/medicalStores";
+import { safepayService } from "./safepay.service";
 import { buildSearchConditions } from "./utils/search.utils";
 import { calculateOffset, normalizeLimit, normalizePage } from "./utils/pagination.utils";
 import { isUuid } from "../utils/uuid";
@@ -59,6 +60,22 @@ export interface CreateWholesaleOrderInput {
   manufacturerId: string;
   items: CreateWholesaleOrderLineInput[];
   notes?: string | null;
+  paymentMethod?: "safepay" | "offline_terms";
+}
+
+export interface CreateWholesaleOrderResult {
+  order: WholesaleOrderSummaryRow;
+  payment:
+    | {
+        method: "offline_terms";
+        status: "pending";
+      }
+    | {
+        method: "safepay";
+        status: "pending";
+        sessionId: string;
+        checkoutUrl: string;
+      };
 }
 
 export interface WholesaleOrderSummaryRow {
@@ -66,6 +83,11 @@ export interface WholesaleOrderSummaryRow {
   manufacturerId: string;
   medicalStoreId: string;
   status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  paymentProvider: string | null;
+  gatewaySessionId: string | null;
+  paidAt: string | null;
   currency: string;
   subtotal: string;
   total: string;
@@ -112,6 +134,14 @@ export interface WholesaleOrderDetailResponse {
 }
 
 export class WholesaleOrderService {
+  private normalizePaymentMethod(raw: unknown): "safepay" | "offline_terms" {
+    const method = String(raw ?? "offline_terms").trim().toLowerCase();
+    if (method === "safepay" || method === "offline_terms") {
+      return method;
+    }
+    throw BadRequestError("paymentMethod must be one of: safepay, offline_terms");
+  }
+
   async listManufacturersForMedicalStore(_userId: string): Promise<WholesaleManufacturerRow[]> {
     await medicalStoreService.resolveMedicalStoreIdForUser(_userId);
     const rows = await db
@@ -224,7 +254,7 @@ export class WholesaleOrderService {
     return map;
   }
 
-  async createOrder(userId: string, input: CreateWholesaleOrderInput): Promise<WholesaleOrderSummaryRow> {
+  async createOrder(userId: string, input: CreateWholesaleOrderInput): Promise<CreateWholesaleOrderResult> {
     const medicalStoreId = await medicalStoreService.resolveMedicalStoreIdForUser(userId);
     const manufacturerId = String(input.manufacturerId ?? "").trim();
     if (!isUuid(manufacturerId)) {
@@ -318,6 +348,7 @@ export class WholesaleOrderService {
       input.notes != null && String(input.notes).trim() !== ""
         ? String(input.notes).trim().slice(0, 5000)
         : null;
+    const paymentMethod = this.normalizePaymentMethod(input.paymentMethod);
 
     const [created] = await db.transaction(async (tx) => {
       const [orderRow] = await tx
@@ -326,6 +357,11 @@ export class WholesaleOrderService {
           medicalStoreId,
           manufacturerId,
           status: "pending",
+          paymentMethod,
+          paymentStatus: "pending",
+          paymentProvider: paymentMethod === "safepay" ? "sfpy" : null,
+          gatewaySessionId: null,
+          paidAt: null,
           currency,
           subtotal,
           total,
@@ -353,7 +389,89 @@ export class WholesaleOrderService {
       return [orderRow];
     });
 
-    return this.mapOrderRow(created);
+    const mapped = this.mapOrderRow(created);
+    if (paymentMethod === "offline_terms") {
+      return {
+        order: mapped,
+        payment: { method: "offline_terms", status: "pending" },
+      };
+    }
+
+    const session = await safepayService.createWholesaleCheckoutSession({
+      amountPkr: Number(mapped.total),
+      orderId: `whl_${mapped.id}`,
+    });
+    return {
+      order: mapped,
+      payment: {
+        method: "safepay",
+        status: "pending",
+        sessionId: session.id,
+        checkoutUrl: session.url,
+      },
+    };
+  }
+
+  async finalizePaidWholesaleOrderFromSafepay(params: {
+    orderRef: string;
+    paymentSessionId: string;
+    paymentState?: string;
+  }) {
+    if (params.paymentState && params.paymentState.toUpperCase() !== "PAID") {
+      return null;
+    }
+    if (!params.orderRef.startsWith("whl_")) {
+      throw BadRequestError("Invalid wholesale order reference");
+    }
+    const orderId = params.orderRef.slice(4);
+    if (!isUuid(orderId)) {
+      throw BadRequestError("Invalid wholesale order id");
+    }
+    const paymentSessionId = String(params.paymentSessionId ?? "").trim();
+    if (!paymentSessionId) {
+      throw BadRequestError("Missing Safepay tracker");
+    }
+
+    const [existingBySession] = await db
+      .select()
+      .from(manufacturerWholesaleOrders)
+      .where(eq(manufacturerWholesaleOrders.gatewaySessionId, paymentSessionId))
+      .limit(1);
+    if (existingBySession) {
+      return this.mapOrderRow(existingBySession);
+    }
+
+    const [order] = await db
+      .select()
+      .from(manufacturerWholesaleOrders)
+      .where(eq(manufacturerWholesaleOrders.id, orderId))
+      .limit(1);
+    if (!order) {
+      throw createError("Wholesale order not found", 404);
+    }
+    if (order.paymentMethod !== "safepay") {
+      throw BadRequestError("This wholesale order is not payable via Safepay");
+    }
+    if (order.paymentStatus === "paid") {
+      return this.mapOrderRow(order);
+    }
+
+    const [updated] = await db
+      .update(manufacturerWholesaleOrders)
+      .set({
+        paymentStatus: "paid",
+        paymentProvider: "sfpy",
+        gatewaySessionId: paymentSessionId,
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(manufacturerWholesaleOrders.id, order.id))
+      .returning();
+
+    if (!updated) {
+      throw createError("Failed to update wholesale payment state", 500);
+    }
+    return this.mapOrderRow(updated);
   }
 
   async listOrdersForMedicalStore(
@@ -557,6 +675,16 @@ export class WholesaleOrderService {
     }
 
     const cur = existing.status as WholesaleOrderStatus;
+    const paymentMethod = String(existing.paymentMethod || "offline_terms");
+    const paymentStatus = String(existing.paymentStatus || "pending");
+
+    if (st === "confirmed" || st === "fulfilled") {
+      const canProceed = paymentMethod === "offline_terms" || paymentStatus === "paid";
+      if (!canProceed) {
+        throw BadRequestError("Order must be paid before it can be confirmed or fulfilled");
+      }
+    }
+
     if (cur === "cancelled" || cur === "fulfilled") {
       throw BadRequestError("Order cannot change status from its current state");
     }
@@ -598,6 +726,11 @@ export class WholesaleOrderService {
       manufacturerId: order.manufacturerId,
       medicalStoreId: order.medicalStoreId,
       status: order.status,
+      paymentMethod: String(order.paymentMethod ?? "offline_terms"),
+      paymentStatus: String(order.paymentStatus ?? "pending"),
+      paymentProvider: order.paymentProvider ?? null,
+      gatewaySessionId: order.gatewaySessionId ?? null,
+      paidAt: order.paidAt ? (order.paidAt instanceof Date ? order.paidAt.toISOString() : String(order.paidAt)) : null,
       currency: order.currency,
       subtotal: String(order.subtotal),
       total: String(order.total),

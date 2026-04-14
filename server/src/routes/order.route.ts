@@ -45,12 +45,12 @@ export class OrderRoute {
         return res.status(200).json(ApiResponse(data, "COD order placed"));
       }
 
-      if (paymentMethod === "online") {
+      if (paymentMethod === "online" || paymentMethod === "safepay") {
         const data = await orderService.createOnlineCheckoutSession(patientId, { addressId, shippingAddress, contactNo });
-        return res.status(200).json(ApiResponse(data, "Online checkout session created"));
+        return res.status(200).json(ApiResponse(data, "Safepay checkout session created"));
       }
 
-      return next(BadRequestError("Invalid paymentMethod"));
+      return next(BadRequestError("Invalid paymentMethod. Use 'cod' or 'safepay'."));
     } catch (error) {
       next(error);
     }

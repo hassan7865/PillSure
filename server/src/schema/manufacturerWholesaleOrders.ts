@@ -6,6 +6,7 @@ import {
   numeric,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { medicalStores } from "./medicalStores";
 import { manufacturers } from "./manufacturers";
@@ -21,6 +22,11 @@ export const manufacturerWholesaleOrders = pgTable(
       .notNull()
       .references(() => manufacturers.id, { onDelete: "cascade" }),
     status: varchar("status", { length: 30 }).notNull().default("pending"),
+    paymentMethod: varchar("payment_method", { length: 30 }).notNull().default("offline_terms"),
+    paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("pending"),
+    paymentProvider: varchar("payment_provider", { length: 20 }),
+    gatewaySessionId: varchar("gateway_session_id", { length: 255 }),
+    paidAt: timestamp("paid_at", { withTimezone: false }),
     currency: varchar("currency", { length: 10 }).notNull().default("PKR"),
     subtotal: numeric("subtotal", { precision: 14, scale: 2 }).notNull(),
     total: numeric("total", { precision: 14, scale: 2 }).notNull(),
@@ -38,5 +44,7 @@ export const manufacturerWholesaleOrders = pgTable(
       table.createdAt,
     ),
     idxStatus: index("idx_mfr_wholesale_orders_status").on(table.status),
+    idxPaymentStatus: index("idx_mfr_wholesale_orders_payment_status").on(table.paymentStatus),
+    uqGatewaySessionId: uniqueIndex("uq_mfr_wholesale_orders_gateway_session_id").on(table.gatewaySessionId),
   }),
 );

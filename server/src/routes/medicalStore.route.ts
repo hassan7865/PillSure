@@ -448,8 +448,9 @@ export class MedicalStoreRoute {
         manufacturerId: String(body.manufacturerId ?? ""),
         items: Array.isArray(body.items) ? body.items : [],
         notes: body.notes,
+        paymentMethod: body.paymentMethod,
       });
-      res.status(201).json(ApiResponse(result, "Wholesale order created."));
+      res.status(201).json(ApiResponse(result, "Wholesale order created. Complete payment if required."));
     } catch (error) {
       next(error);
     }

@@ -244,14 +244,21 @@
       "idx": 34,
       "version": "7",
       "when": 1777200000000,
-      "tag": "0016_whatsapp_agent_tables",
+      "tag": "0034_whatsapp_agent_tables",
       "breakpoints": true
     },
     {
       "idx": 35,
       "version": "7",
       "when": 1777300000000,
-      "tag": "0017_appointment_duration_minutes",
+      "tag": "0035_appointment_duration_minutes",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1777400000000,
+      "tag": "0036_wholesale_order_payment_flow",
       "breakpoints": true
     }
   ]

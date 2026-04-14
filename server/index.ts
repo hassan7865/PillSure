@@ -32,15 +32,10 @@ const app = express();
 const PORT = Number(process.env.PORT) || 7154;
 const paymentsRoutes = new PaymentsRoute();
 
-// Stripe webhook must receive raw body before JSON parser.
-app.use("/api/payments", express.raw({ type: "application/json" }), paymentsRoutes.getRouter());
-
 // Middleware
 app.use(requestLogger);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use("/whatsapp", whatsappRouter);
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -54,6 +49,10 @@ app.use((req, res, next) => {
     next();
   }
 });
+
+app.use("/api/payments", paymentsRoutes.getRouter());
+
+app.use("/whatsapp", whatsappRouter);
 
 // Initialize services and routes
 const initializeApp = async () => {

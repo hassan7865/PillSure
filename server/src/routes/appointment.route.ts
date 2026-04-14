@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { appointmentService } from '../services/appointment.service';
 import { doctorService } from '../services/doctor.service';
-import { stripeService } from '../services/stripe.service';
+import { safepayService } from '../services/safepay.service';
 import { verifyToken } from '../middleware/jwt.handler';
 import { BadRequestError } from '../middleware/error.handler';
 import { ApiResponse } from '../core/api-response';
@@ -58,20 +58,12 @@ export class AppointmentRoute {
         return next(BadRequestError("Missing required fields"));
       }
 
-      await appointmentService.assertSlotAvailable(data.doctorId, data.appointmentDate, data.appointmentTime);
       const doctor = await appointmentService.getDoctorFeeAndName(data.doctorId);
+      const appointment = await appointmentService.createAppointment(patientId, data);
 
-      const session = await stripeService.createAppointmentCheckoutSession({
+      const session = await safepayService.createAppointmentCheckoutSession({
         amountPkr: doctor.feePkr,
-        doctorName: doctor.doctorName || "Doctor",
-        metadata: {
-          patientId,
-          doctorId: data.doctorId,
-          appointmentDate: data.appointmentDate,
-          appointmentTime: data.appointmentTime,
-          consultationMode: data.consultationMode,
-          patientNotes: data.patientNotes || "",
-        },
+        orderId: `apt_${appointment.id}`,
       });
 
       res.status(200).json(

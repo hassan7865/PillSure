@@ -47,6 +47,29 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+function paymentBadgeVariant(
+  paymentStatus: string,
+): "default" | "secondary" | "outline" | "destructive" {
+  const k = String(paymentStatus || "").toLowerCase();
+  if (k === "paid") return "default";
+  if (k.includes("pending")) return "secondary";
+  if (k.includes("failed")) return "destructive";
+  return "outline";
+}
+
+function formatPaymentLabel(raw: string) {
+  return String(raw || "—")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatPaymentMethodLabel(raw: string) {
+  const key = String(raw || "").trim().toLowerCase();
+  if (key === "safepay" || key === "online") return "Online";
+  if (key === "offline_terms" || key === "cod") return "COD";
+  return "COD";
+}
+
 export default function ManufacturerWholesaleOrdersPage() {
   const [data, setData] = useState<ManufacturerWholesaleOrdersListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +238,8 @@ export default function ManufacturerWholesaleOrdersPage() {
                     <TableHead className="font-semibold">Date</TableHead>
                     <TableHead className="font-semibold">Medical store</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Payment</TableHead>
+                    <TableHead className="font-semibold">Method</TableHead>
                     <TableHead className="text-right font-semibold">Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -233,6 +258,14 @@ export default function ManufacturerWholesaleOrdersPage() {
                         <Badge variant="secondary" className="font-normal capitalize">
                           {row.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={paymentBadgeVariant(row.paymentStatus)}>
+                          {formatPaymentLabel(row.paymentStatus)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">
+                        {formatPaymentMethodLabel(row.paymentMethod)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {row.currency} {row.total}
@@ -275,6 +308,18 @@ export default function ManufacturerWholesaleOrdersPage() {
                     <p className="text-sm font-medium">Status</p>
                     <Badge className="capitalize">{detail.order.status}</Badge>
                   </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">Payment</p>
+                    <Badge variant={paymentBadgeVariant(detail.order.paymentStatus)}>
+                      {formatPaymentLabel(detail.order.paymentStatus)}
+                    </Badge>
+                  </div>
+                  <p className="text-sm">
+                    Method{" "}
+                    <span className="font-medium text-muted-foreground">
+                      {formatPaymentMethodLabel(detail.order.paymentMethod)}
+                    </span>
+                  </p>
                   <p className="text-muted-foreground text-xs">
                     Placed {format(new Date(detail.order.createdAt), "MMM d, yyyy HH:mm")}
                   </p>

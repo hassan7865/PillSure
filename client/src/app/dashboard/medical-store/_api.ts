@@ -219,8 +219,8 @@ export const medicalStoreApi = {
     return extractApiData(response);
   },
 
-  createWholesaleOrder: async (body: CreateWholesaleOrderBody): Promise<WholesaleOrderSummaryRow> => {
-    const response = await api.post<ApiResponse<WholesaleOrderSummaryRow>>("/medical-store/wholesale/orders", body);
+  createWholesaleOrder: async (body: CreateWholesaleOrderBody): Promise<CreateWholesaleOrderResponse> => {
+    const response = await api.post<ApiResponse<CreateWholesaleOrderResponse>>("/medical-store/wholesale/orders", body);
     return extractApiData(response);
   },
 
@@ -280,6 +280,7 @@ export interface CreateWholesaleOrderBody {
   manufacturerId: string;
   items: { manufacturerMedicineId: string; quantity: number }[];
   notes?: string | null;
+  paymentMethod?: "safepay" | "offline_terms";
 }
 
 export interface WholesaleOrderSummaryRow {
@@ -287,6 +288,11 @@ export interface WholesaleOrderSummaryRow {
   manufacturerId: string;
   medicalStoreId: string;
   status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  paymentProvider: string | null;
+  gatewaySessionId: string | null;
+  paidAt: string | null;
   currency: string;
   subtotal: string;
   total: string;
@@ -301,6 +307,13 @@ export interface WholesaleOrdersListResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface CreateWholesaleOrderResponse {
+  order: WholesaleOrderSummaryRow;
+  payment:
+    | { method: "offline_terms"; status: "pending" }
+    | { method: "safepay"; status: "pending"; sessionId: string; checkoutUrl: string };
 }
 
 export interface RetailOrderLine {
