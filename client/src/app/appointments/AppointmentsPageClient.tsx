@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AppDialogContent } from "@/components/shell/app-dialog";
 import { usePatientAppointments } from "@/app/appointments/use-appointments";
 import Loader from "@/components/ui/loader";
 import EmptyState from "@/components/ui/empty-state";
@@ -22,7 +21,6 @@ import { cardSectionClass, publicWidePageClass, surfaceListItemClass } from "@/l
 import { cn } from "@/lib/utils";
 import { getStatusBadge, getConsultationModeIcon } from "@/lib/component-utils";
 import { useCustomToast } from "@/hooks/use-custom-toast";
-import cartApi from "@/app/cart/_api";
 import { appointmentApi } from "@/app/appointments/components/_api";
 
 export default function AppointmentsPageClient() {
@@ -37,8 +35,6 @@ export default function AppointmentsPageClient() {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [appointmentsList, setAppointmentsList] = useState<any[]>([]);
   const [prescription, setPrescription] = useState<any>(null);
-  const [showOrderPrescriptionDialog, setShowOrderPrescriptionDialog] = useState(false);
-  const [selectedPrescriptionItems, setSelectedPrescriptionItems] = useState<Record<number, boolean>>({});
   const [orderingPrescription, setOrderingPrescription] = useState(false);
   const [listScope, setListScope] = useState<"active" | "history">("active");
 
@@ -190,38 +186,15 @@ export default function AppointmentsPageClient() {
     };
   }, [activeTab, selected?.id]);
 
-  const handleOpenPrescriptionOrder = () => {
-    const initial: Record<number, boolean> = {};
-    (prescription || []).forEach((item: any, idx: number) => {
-      initial[idx] = true;
-    });
-    setSelectedPrescriptionItems(initial);
-    setShowOrderPrescriptionDialog(true);
-  };
-
-  const handleAddPrescriptionToCart = async () => {
-    if (!selected?.id || !Array.isArray(prescription)) return;
-    const chosen = prescription.filter((_: any, idx: number) => selectedPrescriptionItems[idx]);
-    if (!chosen.length) {
-      showError("No medicine selected", "Please select at least one prescribed medicine.");
-      return;
-    }
+  const handleOrderMedicines = async () => {
+    if (!selected?.id || !Array.isArray(prescription) || prescription.length === 0) return;
 
     try {
       setOrderingPrescription(true);
-      for (const item of chosen) {
-        if (!item?.medicineId) continue;
-        await cartApi.addItem({
-          medicineId: Number(item.medicineId),
-          quantity: Number(item.quantity) || 1,
-          sourceType: "prescription",
-          appointmentId: selected.id,
-        });
-      }
-      showSuccess("Added to cart", "Selected prescribed medicines were added to your cart.");
-      setShowOrderPrescriptionDialog(false);
+      showSuccess("Choose a pharmacy", "Select a pharmacy first, then add the medicines to your cart.");
+      router.push(`/cart/pharmacy-selection?appointmentId=${encodeURIComponent(selected.id)}`);
     } catch (error: any) {
-      showError("Failed to add prescribed medicines", error?.response?.data?.error || "Please try again.");
+      showError("Failed to open pharmacy selection", error?.response?.data?.error || "Please try again.");
     } finally {
       setOrderingPrescription(false);
     }
@@ -514,7 +487,9 @@ export default function AppointmentsPageClient() {
                               </p>
                             </div>
                           ) : (
-                            <Button onClick={handleOpenPrescriptionOrder}>Order Medicines</Button>
+                            <Button onClick={handleOrderMedicines} disabled={orderingPrescription}>
+                              {orderingPrescription ? "Adding..." : "Order Medicines"}
+                            </Button>
                           )}
                         </div>
                       ) : (
@@ -562,33 +537,7 @@ export default function AppointmentsPageClient() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showOrderPrescriptionDialog} onOpenChange={setShowOrderPrescriptionDialog}>
-          <AppDialogContent size="md">
-            <DialogHeader>
-              <DialogTitle>Select Medicines To Add To Cart</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              {(prescription || []).map((item: any, idx: number) => (
-                <label key={idx} className="flex items-center justify-between border rounded px-3 py-2">
-                  <div>
-                    <p className="font-medium">{item.medicineName}</p>
-                    <p className="text-sm text-muted-foreground">Qty: {item.quantity} {item.dose ? `| Dose: ${item.dose}` : ""}</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={!!selectedPrescriptionItems[idx]}
-                    onChange={(e) =>
-                      setSelectedPrescriptionItems((prev) => ({ ...prev, [idx]: e.target.checked }))
-                    }
-                  />
-                </label>
-              ))}
-              <Button disabled={orderingPrescription} onClick={handleAddPrescriptionToCart} className="w-full">
-                {orderingPrescription ? "Adding..." : "Add Selected To Cart"}
-              </Button>
-            </div>
-          </AppDialogContent>
-        </Dialog>
+
       </div>
     </PublicLayout>
   );

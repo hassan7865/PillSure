@@ -83,6 +83,9 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
   const [checkoutLoading, setCheckoutLoading] = useState<"cod" | "online" | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const isCheckoutInfoValid = selectedAddressId.trim().length > 0;
+  const hasPrescriptionItemsWithoutListing =
+    Array.isArray(cartData?.items) &&
+    cartData.items.some((item: any) => !item?.medicalStoreMedicineId);
 
   const handleNavSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,9 +139,7 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
       setCartLoading(true);
       const data: any = await cartApi.getCart();
       setCartData(data);
-      const count = Array.isArray(data?.items)
-        ? data.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0)
-        : 0;
+      const count = Array.isArray(data?.items) ? data.items.length : 0;
       setCartCount(count);
     } catch {
       setCartCount(0);
@@ -487,17 +488,38 @@ const Navbar: React.FC<NavbarProps> = ({ centerSearch }) => {
                     )}
                     <Button
                       variant="outline"
-                      disabled={checkoutLoading !== null || !isCheckoutInfoValid || addressLoading}
+                      disabled={
+                        checkoutLoading !== null ||
+                        !isCheckoutInfoValid ||
+                        addressLoading ||
+                        hasPrescriptionItemsWithoutListing
+                      }
                       onClick={() => handleCheckout("cod")}
                     >
                       {checkoutLoading === "cod" ? "Placing..." : "Cash on Delivery"}
                     </Button>
                     <Button
-                      disabled={checkoutLoading !== null || !isCheckoutInfoValid || addressLoading}
+                      disabled={
+                        checkoutLoading !== null ||
+                        !isCheckoutInfoValid ||
+                        addressLoading ||
+                        hasPrescriptionItemsWithoutListing
+                      }
                       onClick={() => handleCheckout("online")}
                     >
                       {checkoutLoading === "online" ? "Redirecting..." : "Pay Online"}
                     </Button>
+                    {hasPrescriptionItemsWithoutListing ? (
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setCartOpen(false);
+                          router.push("/cart/pharmacy-selection");
+                        }}
+                      >
+                        Choose Pharmacy for Cart
+                      </Button>
+                    ) : null}
                   </SheetFooter>
                 )}
               </SheetContent>
