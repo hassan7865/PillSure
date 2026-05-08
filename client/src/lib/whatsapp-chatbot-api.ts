@@ -10,6 +10,8 @@ export type WhatsAppSettingsAccount = {
   wabaId: string | null;
   doctorId: string | null;
   hospitalId: string | null;
+  /** When set, WhatsApp bookings attach to this active practice affiliation. */
+  defaultPracticeAffiliationId: string | null;
   allowedDoctorIds: string[] | null;
   isSetupComplete: boolean;
 };
@@ -46,8 +48,9 @@ export type SuggestedChatbotService = {
   serviceName: string;
   price?: number;
   currency?: string;
+  slotDuration?: string;
   description?: string;
-  availabilitySlots?: { startTime: string; endTime: string; isAvailable?: boolean }[];
+  availabilitySlots?: { day?: string; startTime: string; endTime: string; isAvailable?: boolean }[];
 };
 
 export type ChatbotPersonaGetResponse = {
@@ -67,7 +70,7 @@ export const chatbotPersonaApi = {
     const res = await api.put("/chatbot/persona", body);
     return extractApiData(res);
   },
-  generate: async (body: { businessName: string; ownerName: string; businessType?: string; about?: string }) => {
+  generate: async (body: { businessName: string; ownerName: string; businessType?: string; about?: string; services?: unknown[] }) => {
     const res = await api.post("/chatbot/persona/generate", body);
     return extractApiData<{ persona: string }>(res);
   },

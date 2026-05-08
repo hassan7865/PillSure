@@ -35,6 +35,16 @@ export interface PatientOnboardingRequest {
     adminName: string;
   }
 
+  export interface ClinicOnboardingRequest {
+    clinicName: string;
+    clinicAddress: string;
+    clinicContactNo: string;
+    clinicEmail: string;
+    websiteClinic?: string;
+    licenseNo: string;
+    adminName: string;
+  }
+
   export interface ManufacturerOnboardingRequest {
     legalName: string;
     shortName?: string;
@@ -98,6 +108,16 @@ export interface PatientOnboardingRequest {
     hospitalContactNo: string;
     hospitalEmail: string;
     websiteHospital?: string;
+    licenseNo: string;
+    adminName: string;
+  }
+
+  export interface ClinicFormValues {
+    clinicName: string;
+    clinicAddress: string;
+    clinicContactNo: string;
+    clinicEmail: string;
+    websiteClinic?: string;
     licenseNo: string;
     adminName: string;
   }

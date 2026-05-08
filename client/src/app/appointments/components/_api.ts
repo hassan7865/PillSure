@@ -7,8 +7,14 @@ import {
   CheckoutSessionResponse,
   DoctorDashboardStats,
   HospitalDashboardStats,
+  ClinicDashboardStats,
   HospitalDoctorsPayload,
+  ClinicDoctorsPayload,
   HospitalDoctorAppointmentsPayload,
+  HospitalDoctorOfferRow,
+  HospitalOfferHistoryRow,
+  HospitalDoctorOfferService,
+  HospitalCatalogService,
 } from './_types';
 import { extractApiData, buildStatusParam, buildQueryString } from '@/lib/api-utils';
 
@@ -68,6 +74,11 @@ export const appointmentApi = {
     return extractApiData(response);
   },
 
+  getCurrentClinicDashboardStats: async (): Promise<ClinicDashboardStats> => {
+    const response = await api.get(`/clinic/dashboard-stats`);
+    return extractApiData(response);
+  },
+
   getHospitalDoctors: async (): Promise<HospitalDoctorsPayload> => {
     const response = await api.get(`/hospital/doctors`);
     return extractApiData(response);
@@ -77,13 +88,109 @@ export const appointmentApi = {
     const response = await api.get(`/hospital/doctors/${encodeURIComponent(doctorId)}/appointments`);
     return extractApiData(response);
   },
-createHospitalDoctor: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
+
+  getHospitalDoctorOffers: async (doctorId: string): Promise<HospitalDoctorOfferRow[]> => {
+    const response = await api.get(`/hospital/doctors/${encodeURIComponent(doctorId)}/offers`);
+    return extractApiData(response);
+  },
+
+  getHospitalOffersHistory: async (): Promise<HospitalOfferHistoryRow[]> => {
+    const response = await api.get(`/hospital/offers`);
+    return extractApiData(response);
+  },
+
+  upsertHospitalDoctorOffer: async (
+    doctorId: string,
+    body: { practiceAffiliationId: string; offer: HospitalDoctorOfferService },
+  ): Promise<HospitalDoctorOfferRow> => {
+    const response = await api.post(`/hospital/doctors/${encodeURIComponent(doctorId)}/offers`, body);
+    return extractApiData(response);
+  },
+
+  listHospitalServices: async (): Promise<HospitalCatalogService[]> => {
+    const response = await api.get(`/hospital/services`);
+    return extractApiData(response);
+  },
+
+  createHospitalService: async (body: {
+    serviceName: string;
+    description?: string;
+    durationMinutes: number;
+    rate: number;
+    currency: "PKR";
+  }): Promise<HospitalCatalogService> => {
+    const response = await api.post(`/hospital/services`, body);
+    return extractApiData(response);
+  },
+
+  updateHospitalService: async (serviceId: string, body: {
+    serviceName: string;
+    description?: string;
+    durationMinutes: number;
+    rate: number;
+    currency: "PKR";
+    isActive?: boolean;
+  }): Promise<HospitalCatalogService> => {
+    const response = await api.patch(`/hospital/services/${encodeURIComponent(serviceId)}`, body);
+    return extractApiData(response);
+  },
+
+  setHospitalServiceActive: async (serviceId: string, isActive: boolean): Promise<HospitalCatalogService> => {
+    const response = await api.patch(`/hospital/services/${encodeURIComponent(serviceId)}/active`, { isActive });
+    return extractApiData(response);
+  },
+
+  getClinicDoctors: async (): Promise<ClinicDoctorsPayload> => {
+    const response = await api.get(`/clinic/doctors`);
+    return extractApiData(response);
+  },
+
+  getClinicDoctorAppointments: async (doctorId: string): Promise<HospitalDoctorAppointmentsPayload> => {
+    const response = await api.get(`/clinic/doctors/${encodeURIComponent(doctorId)}/appointments`);
+    return extractApiData(response);
+  },
+
+  createHospitalDoctor: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
     const response = await api.post(`/hospital/doctors`, data);
+    return extractApiData(response);
+  },
+
+  inviteHospitalDoctor: async (
+    email: string,
+  ): Promise<{ affiliationId: string; status: string; message?: string }> => {
+    const response = await api.post(`/hospital/doctors/invite`, { email });
     return extractApiData(response);
   },
 
   patchHospitalDoctorActive: async (doctorId: string, isActive: boolean) => {
     const response = await api.patch(`/hospital/doctors/${encodeURIComponent(doctorId)}`, { isActive });
+    return extractApiData(response);
+  },
+
+  patchHospitalAffiliation: async (affiliationId: string, status: string) => {
+    const response = await api.patch(`/hospital/affiliations/${encodeURIComponent(affiliationId)}`, { status });
+    return extractApiData(response);
+  },
+
+  createClinicDoctor: async (data: { firstName: string; lastName: string; email: string; password: string }) => {
+    const response = await api.post(`/clinic/doctors`, data);
+    return extractApiData(response);
+  },
+
+  inviteClinicDoctor: async (
+    email: string,
+  ): Promise<{ affiliationId: string; status: string; message?: string }> => {
+    const response = await api.post(`/clinic/doctors/invite`, { email });
+    return extractApiData(response);
+  },
+
+  patchClinicDoctorActive: async (doctorId: string, isActive: boolean) => {
+    const response = await api.patch(`/clinic/doctors/${encodeURIComponent(doctorId)}`, { isActive });
+    return extractApiData(response);
+  },
+
+  patchClinicAffiliation: async (affiliationId: string, status: string) => {
+    const response = await api.patch(`/clinic/affiliations/${encodeURIComponent(affiliationId)}`, { status });
     return extractApiData(response);
   },
 
@@ -94,6 +201,31 @@ createHospitalDoctor: async (data: { firstName: string; lastName: string; email:
 
   getPrescriptionByAppointmentId: async (appointmentId: string): Promise<any[]> => {
     const response = await api.get(`/appointments/${appointmentId}/prescription`);
+    return extractApiData(response);
+  },
+
+  getDoctorOffers: async (): Promise<HospitalDoctorOfferRow[]> => {
+    const response = await api.get(`/doctor/practice/offers`);
+    return extractApiData(response);
+  },
+
+  acceptDoctorOffer: async (offerId: string): Promise<{ id: string; status: string }> => {
+    const response = await api.post(`/doctor/practice/offers/${encodeURIComponent(offerId)}/accept`, {});
+    return extractApiData(response);
+  },
+
+  recheckDoctorOfferConflicts: async (
+    offerId: string,
+  ): Promise<{ id: string; status: string; conflicts: unknown[]; isReadyToAccept: boolean }> => {
+    const response = await api.post(
+      `/doctor/practice/offers/${encodeURIComponent(offerId)}/recheck-conflicts`,
+      {},
+    );
+    return extractApiData(response);
+  },
+
+  rejectDoctorOffer: async (offerId: string): Promise<{ id: string; status: string }> => {
+    const response = await api.post(`/doctor/practice/offers/${encodeURIComponent(offerId)}/reject`, {});
     return extractApiData(response);
   },
 };

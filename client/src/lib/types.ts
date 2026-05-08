@@ -26,6 +26,19 @@ export interface User {
   isOnboardingComplete?: boolean;
 }
 
+/** Active practice sites returned from public doctor APIs for booking. */
+export type BookablePracticeAffiliation = {
+  id: string;
+  kind: string;
+  label: string;
+  feePkr: string | null;
+  availableDays: string[];
+  openingTime: string | null;
+  closingTime: string | null;
+  /** When set, only these 30-minute starts (HH:mm) per weekday are bookable at this site. */
+  halfHourSlotsByWeekday?: Record<string, string[]> | null;
+};
+
 //  Doctor Types
 export type Doctor = {
   id: string;
@@ -50,6 +63,8 @@ export type Doctor = {
   availableDays?: string[] | null;
   openingTime?: string | null;
   closingTime?: string | null;
+  /** When present, patient booking should pick a site (or the only site is implied). */
+  bookableAffiliations?: BookablePracticeAffiliation[];
   createdAt: string;
   updatedAt: string;
   // Computed fields for UI

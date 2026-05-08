@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppDialogContent } from "@/components/shell/app-dialog";
@@ -11,10 +11,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar as CalendarIcon, Clock, Video, User as UserIcon, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Doctor } from "@/lib/types";
 import { useCreateAppointment, useBookedSlots } from "../use-appointments";
 import Loader from "@/components/ui/loader";
+import { useCustomToast } from "@/hooks/use-custom-toast";
 
 interface BookAppointmentModalProps {
   open: boolean;
@@ -31,10 +39,63 @@ interface AppointmentFormValues {
 
 export default function BookAppointmentModal({ open, onClose, doctor }: BookAppointmentModalProps) {
   const createAppointmentMutation = useCreateAppointment();
+  const { showError } = useCustomToast();
 
-  const availableDays = Array.isArray((doctor as any).availableDays) ? (doctor as any).availableDays : [];
-  const openingTime = (doctor as any).openingTime || "09:00";
-  const closingTime = (doctor as any).closingTime || "18:00";
+  const bookableAffiliations = useMemo(
+    () => (Array.isArray(doctor.bookableAffiliations) ? doctor.bookableAffiliations : []),
+    [doctor.bookableAffiliations],
+  );
+
+  const [selectedPracticeAffiliationId, setSelectedPracticeAffiliationId] = useState<string | null>(null);
+
+  const activeAffiliation = useMemo(() => {
+    if (bookableAffiliations.length === 0) {
+      return null;
+    }
+    if (bookableAffiliations.length === 1) {
+      return bookableAffiliations[0];
+    }
+    if (!selectedPracticeAffiliationId) {
+      return null;
+    }
+    return bookableAffiliations.find((a) => a.id === selectedPracticeAffiliationId) ?? null;
+  }, [bookableAffiliations, selectedPracticeAffiliationId]);
+
+  const schedule = useMemo(() => {
+    if (activeAffiliation) {
+      const daysFromAff =
+        activeAffiliation.availableDays?.length > 0
+          ? activeAffiliation.availableDays
+          : Array.isArray(doctor.availableDays)
+            ? doctor.availableDays
+            : [];
+      return {
+        availableDays: Array.isArray(daysFromAff) ? daysFromAff : [],
+        openingTime: activeAffiliation.openingTime || doctor.openingTime || "09:00",
+        closingTime: activeAffiliation.closingTime || doctor.closingTime || "18:00",
+      };
+    }
+    return {
+      availableDays: Array.isArray(doctor.availableDays) ? doctor.availableDays : [],
+      openingTime: doctor.openingTime || "09:00",
+      closingTime: doctor.closingTime || "18:00",
+    };
+  }, [activeAffiliation, doctor.availableDays, doctor.openingTime, doctor.closingTime]);
+
+  const availableDays = schedule.availableDays;
+  const openingTime = schedule.openingTime;
+  const closingTime = schedule.closingTime;
+
+  const displayFeePkr = useMemo(() => {
+    if (activeAffiliation?.feePkr != null && activeAffiliation.feePkr !== "") {
+      const n = parseFloat(activeAffiliation.feePkr);
+      if (!Number.isNaN(n) && n > 0) {
+        return n;
+      }
+    }
+    return doctor.fee;
+  }, [activeAffiliation, doctor.fee]);
+
   const consultationModes = Array.isArray((doctor as any).consultationModes) 
     ? (doctor as any).consultationModes 
     : ["inperson"];
@@ -75,6 +136,11 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
 
   useEffect(() => {
     if (open) {
+      if (bookableAffiliations.length === 1) {
+        setSelectedPracticeAffiliationId(bookableAffiliations[0].id);
+      } else {
+        setSelectedPracticeAffiliationId(null);
+      }
       form.reset({
         appointmentDate: undefined,
         appointmentTime: "",
@@ -84,7 +150,7 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
         patientNotes: "",
       });
     }
-  }, [open, form, consultationModes]);
+  }, [open, form, consultationModes, bookableAffiliations]);
 
   const isDayAvailable = (date: Date): boolean => {
     if (availableDayNumbers.length === 0) return true;
@@ -114,10 +180,36 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
     return slots;
   };
 
-  const availableSlots = generateTimeSlots(openingTime, closingTime);
+  const availableSlots = useMemo(() => {
+    let slots = generateTimeSlots(openingTime, closingTime);
+    if (!selectedDate) {
+      return slots;
+    }
+    const wd = selectedDate.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+    const hmList = activeAffiliation?.halfHourSlotsByWeekday?.[wd];
+    if (hmList && hmList.length > 0) {
+      const allow = new Set(hmList.map((h) => String(h).slice(0, 5)));
+      slots = slots.filter((s) => allow.has(s));
+    }
+    return slots;
+  }, [openingTime, closingTime, selectedDate, activeAffiliation]);
 
   const onSubmit = async (data: AppointmentFormValues) => {
     if (!data.appointmentDate) return;
+
+    if (bookableAffiliations.length > 1 && !selectedPracticeAffiliationId) {
+      showError("Choose a practice", "Select where you want to be seen before booking.");
+      return;
+    }
+
+    let practiceAffiliationId: string | null | undefined;
+    if (bookableAffiliations.length === 1) {
+      practiceAffiliationId = bookableAffiliations[0].id;
+    } else if (bookableAffiliations.length > 1) {
+      practiceAffiliationId = selectedPracticeAffiliationId;
+    } else {
+      practiceAffiliationId = undefined;
+    }
 
     const appointmentData = {
       doctorId: doctor.id,
@@ -125,6 +217,7 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
       appointmentTime: data.appointmentTime,
       consultationMode: data.consultationMode,
       patientNotes: data.patientNotes.trim() || undefined,
+      ...(practiceAffiliationId ? { practiceAffiliationId } : {}),
     };
 
     try {
@@ -163,10 +256,36 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                     <span className="text-sm sm:text-base font-semibold">{doctor.name}</span>
                   </div>
                   <div className="text-xs sm:text-sm text-muted-foreground">{doctor.specialization}</div>
-                  <div className="text-xs sm:text-sm font-semibold text-primary">PKR {doctor.fee} per consultation</div>
+                  <div className="text-xs sm:text-sm font-semibold text-primary">PKR {displayFeePkr} per consultation</div>
                 </div>
 
                 <Separator />
+
+                {bookableAffiliations.length > 1 ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="practice-site" className="text-sm sm:text-base font-semibold">
+                      Practice location
+                    </Label>
+                    <Select
+                      value={selectedPracticeAffiliationId ?? ""}
+                      onValueChange={(v) => setSelectedPracticeAffiliationId(v || null)}
+                    >
+                      <SelectTrigger id="practice-site" className="h-10 w-full" aria-label="Practice location">
+                        <SelectValue placeholder="Select hospital, clinic, or private practice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bookableAffiliations.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Hours and fee may differ by site. Choose where you will attend.
+                    </p>
+                  </div>
+                ) : null}
 
                 <div className="space-y-3 sm:space-y-4">
                   <FormField
@@ -201,6 +320,9 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);
                                 if (date < today) return true;
+                                if (bookableAffiliations.length > 1 && !activeAffiliation) {
+                                  return true;
+                                }
                                 if (availableDays.length > 0) {
                                   return !isDayAvailable(date);
                                 }
@@ -430,7 +552,10 @@ export default function BookAppointmentModal({ open, onClose, doctor }: BookAppo
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createAppointmentMutation.isLoading}
+                  disabled={
+                    createAppointmentMutation.isLoading ||
+                    (bookableAffiliations.length > 1 && !selectedPracticeAffiliationId)
+                  }
                   className="flex-1 h-10 sm:h-11 text-xs sm:text-sm bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
                 >
                   {createAppointmentMutation.isLoading ? (

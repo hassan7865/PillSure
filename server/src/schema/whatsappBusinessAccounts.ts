@@ -13,6 +13,7 @@ import {
 import { users } from "./users";
 import { hospitals } from "./hospitals";
 import { doctors } from "./doctor";
+import { doctorPracticeAffiliations } from "./doctorPracticeAffiliations";
 
 export const whatsappBusinessAccounts = pgTable(
   "whatsapp_business_accounts",
@@ -27,6 +28,10 @@ export const whatsappBusinessAccounts = pgTable(
     doctorId: uuid("doctor_id").references(() => doctors.id, {
       onDelete: "set null",
     }),
+    defaultPracticeAffiliationId: uuid("default_practice_affiliation_id").references(
+      () => doctorPracticeAffiliations.id,
+      { onDelete: "set null" }
+    ),
     allowedDoctorIds: jsonb("allowed_doctor_ids").$type<string[]>(),
     phoneNumberId: varchar("phone_number_id", { length: 64 }).notNull(),
     displayPhoneNumber: varchar("display_phone_number", { length: 32 }),

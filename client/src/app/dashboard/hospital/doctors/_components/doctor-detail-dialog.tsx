@@ -14,18 +14,28 @@ import {
 } from "lucide-react";
 
 import { useHospitalDoctorAppointments } from "@/app/appointments/use-appointments";
-import type { HospitalDoctorAppointmentRow, HospitalDoctorRow } from "@/app/appointments/components/_types";
+import { appointmentApi } from "@/app/appointments/components/_api";
+import type {
+  HospitalDoctorAppointmentRow,
+  HospitalDoctorOfferRow,
+  HospitalDoctorOfferService,
+  OfferSlot,
+  HospitalDoctorRow,
+} from "@/app/appointments/components/_types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppDialogContent } from "@/components/shell/app-dialog";
 import Loader from "@/components/ui/loader";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { surfaceInsetClass } from "@/lib/dashboard-ui";
 import { getErrorMessage } from "@/lib/error-utils";
 import { cn } from "@/lib/utils";
+import { useCustomToast } from "@/hooks/use-custom-toast";
 
 function dateKey(raw: unknown): string {
   if (raw == null) return "";
@@ -79,6 +89,9 @@ function initials(first?: string, last?: string): string {
   return (a + b).toUpperCase() || "?";
 }
 
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+const DURATION_OPTIONS = [15, 30, 45, 60] as const;
+
 type StatTileProps = {
   label: string;
   value: string | number;
@@ -124,14 +137,124 @@ type Props = {
 };
 
 export function HospitalDoctorDetailDialog({ open, onOpenChange, doctorId, doctorSummary }: Props) {
+  const { showError, showSuccess } = useCustomToast();
   const [statusTab, setStatusTab] = useState<string>("all");
   const { data, isLoading, error } = useHospitalDoctorAppointments(doctorId ?? undefined);
+  const [offers, setOffers] = useState<HospitalDoctorOfferRow[]>([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [offersSubmitting, setOffersSubmitting] = useState(false);
+  const [catalogServices, setCatalogServices] = useState<
+    Array<{ id: string; serviceName: string; description: string | null; rate: string; currency: "PKR"; isActive: boolean }>
+  >([]);
+  const [selectedCatalogServiceIds, setSelectedCatalogServiceIds] = useState<string[]>([]);
+  const [offeredSlots, setOfferedSlots] = useState<OfferSlot[]>([]);
+  const [slotDraft, setSlotDraft] = useState<OfferSlot>({
+    day: "monday",
+    startTime: "",
+    endTime: "",
+    isAvailable: true,
+    catalogServiceIds: [],
+  });
 
   useEffect(() => {
     if (open && doctorId) {
       setStatusTab("all");
     }
   }, [open, doctorId]);
+
+  useEffect(() => {
+    const loadOffers = async () => {
+      if (!open || !doctorId) return;
+      setOffersLoading(true);
+      try {
+        const [rows, services] = await Promise.all([
+          appointmentApi.getHospitalDoctorOffers(doctorId),
+          appointmentApi.listHospitalServices(),
+        ]);
+        setOffers(rows);
+        setCatalogServices(services.filter((s) => s.isActive));
+      } catch (e) {
+        showError("Could not load offers", getErrorMessage(e));
+      } finally {
+        setOffersLoading(false);
+      }
+    };
+    void loadOffers();
+  }, [doctorId, open, showError]);
+
+  const handleAddSlotDraft = () => {
+    if (!slotDraft.day || !slotDraft.startTime || !slotDraft.endTime) {
+      showError("Missing slot fields", "Day, start time, and end time are required.");
+      return;
+    }
+    const slotServiceIds = slotDraft.catalogServiceIds.length
+      ? slotDraft.catalogServiceIds
+      : selectedCatalogServiceIds;
+    if (!slotServiceIds.length) {
+      showError("Missing services", "Assign at least one service to the slot.");
+      return;
+    }
+    setOfferedSlots((prev) => [...prev, { ...slotDraft, catalogServiceIds: slotServiceIds }]);
+    setSlotDraft({ day: "monday", startTime: "", endTime: "", isAvailable: true, catalogServiceIds: [] });
+  };
+
+  const handleRemoveSlotDraft = (index: number) => {
+    setOfferedSlots((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSaveOffer = async () => {
+    if (!doctorId) return;
+    const practiceAffiliationId = doctorSummary?.hospitalAffiliationId || "";
+    if (!practiceAffiliationId) {
+      showError("Affiliation missing", "Hospital affiliation is required before sending offers.");
+      return;
+    }
+    if (!selectedCatalogServiceIds.length) {
+      showError("Missing services", "Select at least one service from catalog.");
+      return;
+    }
+    if (!offeredSlots.length) {
+      showError("Missing slots", "Add at least one slot.");
+      return;
+    }
+    if (doctorSummary?.hospitalAffiliationStatus !== "active") {
+      showError(
+        "Affiliation not accepted",
+        "Doctor must accept the invitation first. Offers are allowed only for active affiliations.",
+      );
+      return;
+    }
+    setOffersSubmitting(true);
+    try {
+      const offeredServices = catalogServices
+        .filter((s) => selectedCatalogServiceIds.includes(s.id))
+        .map((s) => ({
+          catalogServiceId: s.id,
+          serviceName: s.serviceName,
+          description: s.description || "",
+          durationMinutes: 30,
+        }));
+      const payload: HospitalDoctorOfferService = {
+        offeredServices,
+        offeredSlots: offeredSlots.map((slot) => ({
+          ...slot,
+          catalogServiceIds: slot.catalogServiceIds.filter((id) => selectedCatalogServiceIds.includes(id)),
+        })),
+      };
+      const saved = await appointmentApi.upsertHospitalDoctorOffer(doctorId, {
+        practiceAffiliationId,
+        offer: payload,
+      });
+      setOffers([saved]);
+      setSelectedCatalogServiceIds([]);
+      setOfferedSlots([]);
+      showSuccess("Offer sent", "Doctor can review this schedule offer now.");
+    } catch (e) {
+      showError("Could not save offer", getErrorMessage(e));
+    } finally {
+      setOffersSubmitting(false);
+    }
+  };
 
   const appointments = data?.appointments ?? [];
 
@@ -279,6 +402,165 @@ export function HospitalDoctorDetailDialog({ open, onOpenChange, doctorId, docto
                   />
                 </div>
               </section>
+
+              <Card className="min-w-0 border-border/60 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">Service offer</CardTitle>
+                  <CardDescription>
+                    Send/refresh a schedule offer for this doctor. Doctor can accept only when conflicts are resolved.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className={surfaceInsetClass("space-y-3 p-3")}>
+                    <p className="text-sm font-medium">Select catalog services</p>
+                    {catalogServices.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        No active catalog services. Add services in Hospital &gt; Services first.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {catalogServices.map((service) => {
+                          const checked = selectedCatalogServiceIds.includes(service.id);
+                          return (
+                            <label key={service.id} className="flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-xs">
+                              <span>
+                                {service.serviceName}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const enabled = e.target.checked;
+                                  setSelectedCatalogServiceIds((prev) =>
+                                    enabled ? [...prev, service.id] : prev.filter((id) => id !== service.id),
+                                  );
+                                }}
+                                disabled={offersSubmitting}
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={surfaceInsetClass("space-y-3 p-3")}>
+                    <p className="text-sm font-medium">Add slot</p>
+                    <div className="grid gap-2 md:grid-cols-4">
+                      <select
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        value={slotDraft.day}
+                        onChange={(e) => setSlotDraft((prev) => ({ ...prev, day: e.target.value }))}
+                        disabled={offersSubmitting}
+                      >
+                        {DAYS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        type="time"
+                        value={slotDraft.startTime}
+                        onChange={(e) => setSlotDraft((prev) => ({ ...prev, startTime: e.target.value }))}
+                        disabled={offersSubmitting}
+                      />
+                      <Input
+                        type="time"
+                        value={slotDraft.endTime}
+                        onChange={(e) => setSlotDraft((prev) => ({ ...prev, endTime: e.target.value }))}
+                        disabled={offersSubmitting}
+                      />
+                      <Button type="button" variant="secondary" onClick={handleAddSlotDraft} disabled={offersSubmitting}>
+                        Add slot
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Each slot will be assigned to all currently selected catalog services.
+                    </p>
+                    {offeredSlots.length ? (
+                      <div className="space-y-2">
+                        {offeredSlots.map((slot, idx) => (
+                          <div key={`${slot.day}-${slot.startTime}-${slot.endTime}-${idx}`} className="flex items-center justify-between rounded-md border px-2 py-1 text-xs">
+                            <span className="capitalize">
+                              {slot.day} · {slot.startTime} - {slot.endTime}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSlotDraft(idx)}
+                              disabled={offersSubmitting}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No slots added yet.</p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleSaveOffer}
+                      disabled={offersSubmitting || doctorSummary?.hospitalAffiliationStatus !== "active"}
+                    >
+                      {offersSubmitting ? "Saving…" : "Send offer"}
+                    </Button>
+                  </div>
+                  {doctorSummary?.hospitalAffiliationStatus !== "active" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Offer sending is enabled after doctor accepts invitation (active affiliation).
+                    </p>
+                  ) : null}
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Offer and affiliation & services history</p>
+                    {doctorSummary?.hospitalAffiliationId ? (
+                      <p className="text-xs text-muted-foreground">
+                        Affiliation: {doctorSummary.hospitalAffiliationId} · Status: {doctorSummary.hospitalAffiliationStatus || "—"}
+                      </p>
+                    ) : null}
+                    {offersLoading ? (
+                      <p className="text-xs text-muted-foreground">Loading offers…</p>
+                    ) : offers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No offers sent yet.</p>
+                    ) : (
+                      offers.map((offer) => (
+                        <div key={offer.id} className={surfaceInsetClass("space-y-2 p-3 text-xs")}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">Status: {offer.status}</span>
+                            <span>{new Date(offer.updatedAt).toLocaleString()}</span>
+                          </div>
+                          {(offer.services?.offeredServices || []).map((service, idx) => (
+                            <div key={`${offer.id}-svc-${idx}`} className="rounded-md border border-border/60 p-2">
+                              <p className="font-medium">
+                                {service.serviceName} · {service.durationMinutes}m
+                              </p>
+                              {service.description ? <p className="text-muted-foreground">{service.description}</p> : null}
+                            </div>
+                          ))}
+                          {(offer.services?.offeredSlots || []).length ? (
+                            <div className="rounded-md border border-border/60 p-2">
+                              <p className="mb-1 font-medium">Schedule slots</p>
+                              <div className="flex flex-wrap gap-1">
+                                {(offer.services?.offeredSlots || []).map((slot, idx) => (
+                                  <span key={`${offer.id}-slot-${idx}`} className="rounded bg-muted px-2 py-0.5 capitalize">
+                                    {slot.day} {slot.startTime}-{slot.endTime}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               <Separator className="bg-border/60" />
 

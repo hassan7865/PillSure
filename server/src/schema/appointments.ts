@@ -12,10 +12,12 @@ import {
   numeric,
   integer,
 } from "drizzle-orm/pg-core";
-  import { users } from "./users";
-  import { doctors } from "./doctor";
-  
-  export const appointments = pgTable(
+import { users } from "./users";
+import { doctors } from "./doctor";
+import { doctorPracticeAffiliations } from "./doctorPracticeAffiliations";
+import { doctorServices } from "./doctorServices";
+
+export const appointments = pgTable(
     "appointments",
     {
       id: uuid("id").defaultRandom().primaryKey(),
@@ -27,7 +29,15 @@ import {
       doctorId: uuid("doctor_id")
         .notNull()
         .references(() => doctors.id, { onDelete: "cascade" }),
-  
+
+      practiceAffiliationId: uuid("practice_affiliation_id").references(
+        () => doctorPracticeAffiliations.id,
+        { onDelete: "set null" }
+      ),
+      doctorServiceId: uuid("doctor_service_id").references(() => doctorServices.id, {
+        onDelete: "set null",
+      }),
+
       appointmentDate: date("appointment_date").notNull(),
       appointmentTime: varchar("appointment_time", { length: 10 }).notNull(),
       durationMinutes: integer("duration_minutes").notNull().default(30),
@@ -64,6 +74,10 @@ import {
       return {
         idxPatientId: index("idx_appointments_patient_id").on(table.patientId),
         idxDoctorId: index("idx_appointments_doctor_id").on(table.doctorId),
+        idxPracticeAffiliationId: index("idx_appointments_practice_affiliation_id").on(
+          table.practiceAffiliationId
+        ),
+        idxDoctorServiceId: index("idx_appointments_doctor_service_id").on(table.doctorServiceId),
         idxAppointmentDate: index("idx_appointments_date").on(table.appointmentDate),
         idxStatus: index("idx_appointments_status").on(table.status),
         idxCreatedAt: index("idx_appointments_created_at").on(table.createdAt),

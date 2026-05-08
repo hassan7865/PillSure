@@ -18,6 +18,7 @@ const transformDoctor = (doctor: any): Doctor => {
     availableDays: doctor.availableDays || null,
     openingTime: doctor.openingTime || null,
     closingTime: doctor.closingTime || null,
+    bookableAffiliations: Array.isArray(doctor.bookableAffiliations) ? doctor.bookableAffiliations : [],
     hospital: doctor.hospitalId ? {
       id: doctor.hospitalId,
       name: doctor.hospitalName,

@@ -1,0 +1,357 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useClinicOnboarding, useGetClinicOnboarding } from "../hooks/use-onboarding";
+import { ClinicOnboardingRequest, ClinicFormValues } from "../_components/_types";
+import OnboardingPage from "../_components/OnboardingPage";
+import { 
+  Building2, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Globe, 
+  FileText, 
+  User
+} from "lucide-react";
+
+export default function ClinicOnboarding() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  const [step, setStep] = useState(1);
+  const clinicOnboardingMutation = useClinicOnboarding();
+
+  // Fetch saved onboarding data
+  const { data: savedData, isLoading: loadingSavedData } = useGetClinicOnboarding();
+
+  // Sync step with URL
+  useEffect(() => {
+    const urlStep = parseInt(searchParams.get('step') || '1');
+    if (urlStep !== step) {
+      setStep(urlStep);
+    }
+  }, [searchParams]);
+  
+  const form = useForm<ClinicFormValues>({
+    defaultValues: {
+      clinicName: "",
+      clinicAddress: "",
+      clinicContactNo: "",
+      clinicEmail: "",
+      websiteClinic: "",
+      licenseNo: "",
+      adminName: "",
+    },
+    mode: "onChange",
+  });
+
+  // Prepopulate form with saved data
+  useEffect(() => {
+    if (savedData && !loadingSavedData && savedData !== null) {
+      const data: any = savedData;
+      const formData: any = {
+        clinicName: data.clinicName || "",
+        clinicAddress: data.clinicAddress || "",
+        clinicContactNo: data.clinicContactNo || "",
+        clinicEmail: data.clinicEmail || "",
+        websiteClinic: data.websiteClinic || "",
+        licenseNo: data.licenseNo || "",
+        adminName: data.adminName || "",
+      };
+
+      form.reset(formData);
+    }
+  }, [savedData, loadingSavedData, form]);
+
+  const {
+    handleSubmit,
+    trigger,
+    control,
+    formState: { errors },
+    setError,
+  } = form;
+
+  const onSubmit = (data: ClinicFormValues) => {
+    // Step 2 validation
+    let valid = true;
+    if (!data.licenseNo) {
+      setError("licenseNo", { type: "manual", message: "License number is required" });
+      valid = false;
+    }
+    if (!data.adminName) {
+      setError("adminName", { type: "manual", message: "Admin/Owner name is required" });
+      valid = false;
+    }
+    if (!valid) return;
+
+    const onboardingData: ClinicOnboardingRequest = {
+      clinicName: data.clinicName,
+      clinicAddress: data.clinicAddress,
+      clinicContactNo: data.clinicContactNo,
+      clinicEmail: data.clinicEmail,
+      websiteClinic: data.websiteClinic,
+      licenseNo: data.licenseNo,
+      adminName: data.adminName,
+    };
+    
+    clinicOnboardingMutation.mutate(onboardingData);
+  };
+
+  // Update URL with current step
+  const updateStepInURL = (newStep: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('step', newStep.toString());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const nextStep = async () => {
+    const fieldsToValidate = ['clinicName', 'clinicAddress', 'clinicContactNo', 'clinicEmail'];
+    const isValid = await trigger(fieldsToValidate as any);
+    if (!isValid) {
+      return; // Stop if validation fails
+    }
+    
+    // Auto-save all current data (including step 2 if exists)
+    const currentData = form.getValues();
+    await clinicOnboardingMutation.mutateAsync(currentData);
+    
+    setStep(2);
+    updateStepInURL(2);
+  };
+
+  const prevStep = () => {
+    if (step > 1) {
+      const newStep = step - 1;
+      setStep(newStep);
+      updateStepInURL(newStep);
+    }
+  };
+
+  const getStepFields = (currentStep: number) => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-1.5 bg-primary/10 rounded-md">
+                  <Building2 className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg text-foreground">Clinic Information</CardTitle>
+                  <CardDescription className="text-muted-foreground text-sm">
+                    Provide your clinic's details to get started
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={control}
+                  name="clinicName"
+                  rules={{
+                    required: "Clinic name is required"
+                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <Building2 className="h-3.5 w-3.5 text-primary" />
+                        Clinic Name
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <FormControl>
+                        <Input placeholder="Enter clinic name" {...field} className="h-9" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="clinicAddress"
+                  rules={{
+                    required: "Clinic address is required"
+                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <MapPin className="h-3.5 w-3.5 text-primary" />
+                        Clinic Address
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <FormControl>
+                        <Input placeholder="Enter clinic address" {...field} className="h-9" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="clinicContactNo"
+                  rules={{
+                    required: "Contact number is required",
+                    pattern: {
+                      value: /^[0-9]{10,15}$/,
+                      message: "Enter a valid contact number (10-15 digits)"
+                    }
+                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <Phone className="h-3.5 w-3.5 text-primary" />
+                        Clinic Contact No.
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="Enter contact number"
+                          maxLength={15}
+                          {...field}
+                          onChange={e => {
+                            const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 15);
+                            field.onChange(value);
+                          }}
+                          className="h-9"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="clinicEmail"
+                  rules={{
+                    required: "Email is required",
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Enter a valid email address"
+                    }
+                  }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium">
+                        <Mail className="h-3.5 w-3.5 text-primary" />
+                        Clinic Email
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <FormControl>
+                        <Input type="email" placeholder="Enter clinic email" {...field} className="h-9" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      case 2:
+        return (
+          <Card className="border-0 shadow-md">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-1.5 bg-primary/10 rounded-md">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg text-foreground">Admin & Licensing Details</CardTitle>
+                  <CardDescription className="text-muted-foreground text-sm">
+                    Please provide licensing information for verification
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={control}
+                name="websiteClinic"
+                render={({ field }) => (
+                  <FormItem>
+                    <Label className="flex items-center gap-1.5 text-sm font-medium">
+                      <Globe className="h-3.5 w-3.5 text-primary" />
+                      Clinic Website
+                    </Label>
+                    <FormControl>
+                      <Input placeholder="Website" {...field} className="h-9" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={control}
+                name="licenseNo"
+                rules={{
+                  required: "License number is required"
+                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <Label className="flex items-center gap-1.5 text-sm font-medium">
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      License No
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <FormControl>
+                      <Input placeholder="Enter license number" {...field} className="h-9" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={control}
+                name="adminName"
+                rules={{
+                  required: "Admin/Owner name is required"
+                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <Label className="flex items-center gap-1.5 text-sm font-medium">
+                      <User className="h-3.5 w-3.5 text-primary" />
+                      Admin & Owner Name
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <FormControl>
+                      <Input placeholder="Enter admin/owner name" {...field} className="h-9" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <OnboardingPage
+          step={step}
+          maxSteps={2}
+          title="Clinic Onboarding"
+          onBack={step > 1 ? prevStep : undefined}
+          onNext={step < 2 ? nextStep : undefined}
+          onSubmit={step === 2 ? handleSubmit(onSubmit) : undefined}
+          isSubmitting={clinicOnboardingMutation.isLoading}
+        >
+          {getStepFields(step)}
+        </OnboardingPage>
+      </form>
+    </Form>
+  );
+}

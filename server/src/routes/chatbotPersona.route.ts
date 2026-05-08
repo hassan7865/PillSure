@@ -3,11 +3,14 @@ import { eq, and } from "drizzle-orm";
 import { db } from "../config/database";
 import { chatbotPersonas, type ChatbotPersonaService, type ChatbotBusinessInfo } from "../schema/chatbotPersonas";
 import { doctors } from "../schema/doctor";
+import { hospitals } from "../schema/hospitals";
+import { hospitalServiceCatalog } from "../schema/hospitalServiceCatalog";
+import { doctorPracticeAffiliations } from "../schema/doctorPracticeAffiliations";
+import { doctorServices } from "../schema/doctorServices";
 import { verifyToken, requireRole } from "../middleware/jwt.handler";
 import { UserRole } from "../core/types";
 import { ApiResponse } from "../core/api-response";
 import { BadRequestError } from "../middleware/error.handler";
-import { suggestedServicesFromDoctorProfile } from "../utils/suggestedChatbotServices";
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.1";
@@ -272,6 +275,37 @@ const savePersona = async (params: {
   return { row, created: true };
 };
 
+const mapHospitalCatalogToPersonaServices = (rows: Array<{
+  serviceName: string;
+  description: string | null;
+  rate: string;
+  durationMinutes: number;
+  currency: string;
+}>): ChatbotPersonaService[] =>
+  rows.map((row) => ({
+    serviceName: row.serviceName,
+    description: row.description || "",
+    price: Number(row.rate || 0),
+    currency: (row.currency || "PKR").toUpperCase(),
+    slotDuration: String(row.durationMinutes || 30),
+    availabilitySlots: [],
+  }));
+
+const mapDoctorServicesToPersonaServices = (rows: Array<{
+  serviceName: string;
+  description: string | null;
+  pricePkr: string;
+  durationMinutes: number;
+}>): ChatbotPersonaService[] =>
+  rows.map((row) => ({
+    serviceName: row.serviceName,
+    description: row.description || "",
+    price: Number(row.pricePkr || 0),
+    currency: "PKR",
+    slotDuration: String(row.durationMinutes || 30),
+    availabilitySlots: [],
+  }));
+
 export class ChatbotPersonaRoute {
   private router: Router;
 
@@ -309,18 +343,56 @@ export class ChatbotPersonaRoute {
 
       let suggestedServices: ChatbotPersonaService[] | null = null;
       if (role === UserRole.DOCTOR) {
-        const docRows = await db
-          .select({
-            feePkr: doctors.feePkr,
-            openingTime: doctors.openingTime,
-            closingTime: doctors.closingTime,
-            availableDays: doctors.availableDays,
-          })
-          .from(doctors)
-          .where(eq(doctors.userId, userId))
-          .limit(1);
+        const docRows = await db.select({ id: doctors.id }).from(doctors).where(eq(doctors.userId, userId)).limit(1);
         if (docRows[0]) {
-          suggestedServices = suggestedServicesFromDoctorProfile(docRows[0]);
+          const privateAffiliation = await db
+            .select({ id: doctorPracticeAffiliations.id })
+            .from(doctorPracticeAffiliations)
+            .where(
+              and(
+                eq(doctorPracticeAffiliations.doctorId, docRows[0].id),
+                eq(doctorPracticeAffiliations.kind, "private"),
+                eq(doctorPracticeAffiliations.status, "active"),
+              ),
+            )
+            .limit(1);
+          if (privateAffiliation[0]) {
+            const privateServices = await db
+              .select({
+                serviceName: doctorServices.serviceName,
+                description: doctorServices.description,
+                pricePkr: doctorServices.pricePkr,
+                durationMinutes: doctorServices.durationMinutes,
+              })
+              .from(doctorServices)
+              .where(
+                and(
+                  eq(doctorServices.doctorId, docRows[0].id),
+                  eq(doctorServices.practiceAffiliationId, privateAffiliation[0].id),
+                  eq(doctorServices.isActive, true),
+                ),
+              );
+            suggestedServices = mapDoctorServicesToPersonaServices(privateServices);
+          }
+        }
+      } else if (role === UserRole.HOSPITAL) {
+        const hospRows = await db
+          .select({ id: hospitals.id })
+          .from(hospitals)
+          .where(eq(hospitals.userId, userId))
+          .limit(1);
+        if (hospRows[0]) {
+          const catalog = await db
+            .select({
+              serviceName: hospitalServiceCatalog.serviceName,
+              description: hospitalServiceCatalog.description,
+              rate: hospitalServiceCatalog.rate,
+              durationMinutes: hospitalServiceCatalog.durationMinutes,
+              currency: hospitalServiceCatalog.currency,
+            })
+            .from(hospitalServiceCatalog)
+            .where(and(eq(hospitalServiceCatalog.hospitalId, hospRows[0].id), eq(hospitalServiceCatalog.isActive, true)));
+          suggestedServices = mapHospitalCatalogToPersonaServices(catalog);
         }
       }
 
@@ -370,6 +442,8 @@ export class ChatbotPersonaRoute {
 
   private generatePersona = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const userId = (req as any).user.userId as string;
+      const role = (req as any).user.role as string;
       const b = req.body || {};
       const businessInfo: ChatbotBusinessInfo = {
         businessName: (b.businessInfo?.businessName as string) || (b.businessName as string),
@@ -381,7 +455,63 @@ export class ChatbotPersonaRoute {
         phoneNumber: (b.businessInfo?.phoneNumber as string) || (b.phoneNumber as string) || "",
       };
 
-      const services = (b.services as ChatbotPersonaService[]) || [];
+      let services = (b.services as ChatbotPersonaService[]) || [];
+      if (role === UserRole.DOCTOR && services.length === 0) {
+        const docRows = await db.select({ id: doctors.id }).from(doctors).where(eq(doctors.userId, userId)).limit(1);
+        if (!docRows.length) {
+          return next(BadRequestError("Doctor profile not found"));
+        }
+        const privateAffiliation = await db
+          .select({ id: doctorPracticeAffiliations.id })
+          .from(doctorPracticeAffiliations)
+          .where(
+            and(
+              eq(doctorPracticeAffiliations.doctorId, docRows[0].id),
+              eq(doctorPracticeAffiliations.kind, "private"),
+              eq(doctorPracticeAffiliations.status, "active"),
+            ),
+          )
+          .limit(1);
+        if (privateAffiliation[0]) {
+          const privateServices = await db
+            .select({
+              serviceName: doctorServices.serviceName,
+              description: doctorServices.description,
+              pricePkr: doctorServices.pricePkr,
+              durationMinutes: doctorServices.durationMinutes,
+            })
+            .from(doctorServices)
+            .where(
+              and(
+                eq(doctorServices.doctorId, docRows[0].id),
+                eq(doctorServices.practiceAffiliationId, privateAffiliation[0].id),
+                eq(doctorServices.isActive, true),
+              ),
+            );
+          services = mapDoctorServicesToPersonaServices(privateServices);
+        }
+      }
+      if (role === UserRole.HOSPITAL) {
+        const hospRows = await db
+          .select({ id: hospitals.id })
+          .from(hospitals)
+          .where(eq(hospitals.userId, userId))
+          .limit(1);
+        if (!hospRows.length) {
+          return next(BadRequestError("Hospital profile not found"));
+        }
+        const catalog = await db
+          .select({
+            serviceName: hospitalServiceCatalog.serviceName,
+            description: hospitalServiceCatalog.description,
+            rate: hospitalServiceCatalog.rate,
+            durationMinutes: hospitalServiceCatalog.durationMinutes,
+            currency: hospitalServiceCatalog.currency,
+          })
+          .from(hospitalServiceCatalog)
+          .where(and(eq(hospitalServiceCatalog.hospitalId, hospRows[0].id), eq(hospitalServiceCatalog.isActive, true)));
+        services = mapHospitalCatalogToPersonaServices(catalog);
+      }
       const preferences = b.preferences as { chatbotTone?: string; language?: string } | undefined;
       const whatsappNumber = (b.whatsappNumber as string) || undefined;
       const businessName = businessInfo.businessName;

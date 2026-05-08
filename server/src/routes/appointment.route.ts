@@ -58,7 +58,10 @@ export class AppointmentRoute {
         return next(BadRequestError("Missing required fields"));
       }
 
-      const doctor = await appointmentService.getDoctorFeeAndName(data.doctorId);
+      const doctor = await appointmentService.getDoctorFeeAndName(
+        data.doctorId,
+        data.practiceAffiliationId ?? null
+      );
       const appointment = await appointmentService.createAppointment(patientId, data);
 
       const session = await safepayService.createAppointmentCheckoutSession({

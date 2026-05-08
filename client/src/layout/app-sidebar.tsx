@@ -73,6 +73,11 @@ function getNavItems(user: AuthUser | null) {
         icon: CalendarClock
       },
       {
+        title: 'My practices',
+        url: '/dashboard/doctor/practices',
+        icon: Layers
+      },
+      {
         title: 'WhatsApp',
         url: '/dashboard/settings/whatsapp',
         icon: MessageCircle
@@ -92,6 +97,16 @@ function getNavItems(user: AuthUser | null) {
         title: 'Doctors',
         url: '/dashboard/hospital/doctors',
         icon: Stethoscope
+      },
+      {
+        title: 'Services',
+        url: '/dashboard/hospital/services',
+        icon: LayoutList
+      },
+      {
+        title: 'WhatsApp',
+        url: '/dashboard/settings/whatsapp',
+        icon: MessageCircle
       }
     ];
   }
@@ -170,7 +185,7 @@ function getNavItems(user: AuthUser | null) {
         title: 'Hospitals',
         url: '/dashboard/admin/hospitals',
         icon: Building2
-      }
+      },
     ];
   }
 

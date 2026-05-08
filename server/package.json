@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "nodemon --exec ts-node index.ts",
     "build": "tsc",
+    "test": "npm run test:whatsapp",
+    "test:whatsapp": "ts-node src/tests/whatsapp-booking.spec.ts",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:upgrade": "ts-node src/migrations/cli.ts upgrade",

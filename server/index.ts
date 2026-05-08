@@ -17,6 +17,7 @@ import { ManufacturerRoute } from "./src/routes/manufacturer.route";
 import { MedicalStoreRoute } from "./src/routes/medicalStore.route";
 import { MarketplaceRoute } from "./src/routes/marketplace.route";
 import { HospitalRoute } from "./src/routes/hospital.route";
+import { DoctorPracticeRoute } from "./src/routes/doctorPractice.route";
 import { errorHandler, notFound } from "./src/middleware/error.handler";
 import { requestLogger } from "./src/middleware/request.logger";
 import { validateS3Config } from "./src/config/s3.config";
@@ -81,6 +82,7 @@ const initializeApp = async () => {
     const medicalStoreRoutes = new MedicalStoreRoute();
     const marketplaceRoutes = new MarketplaceRoute();
     const hospitalRoutes = new HospitalRoute();
+    const doctorPracticeRoutes = new DoctorPracticeRoute();
     const whatsappSettingsRoutes = new WhatsAppSettingsRoute();
     const chatbotPersonaRoutes = new ChatbotPersonaRoute();
 
@@ -99,6 +101,7 @@ const initializeApp = async () => {
     app.use("/api/medical-store", medicalStoreRoutes.getRouter());
     app.use("/api/marketplace", marketplaceRoutes.getRouter());
     app.use("/api/hospital", hospitalRoutes.getRouter());
+    app.use("/api/doctor/practice", doctorPracticeRoutes.getRouter());
     app.use("/api/settings", whatsappSettingsRoutes.getRouter());
     app.use("/api/chatbot", chatbotPersonaRoutes.getRouter());
 

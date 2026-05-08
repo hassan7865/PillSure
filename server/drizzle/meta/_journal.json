@@ -260,6 +260,55 @@
       "when": 1777400000000,
       "tag": "0036_wholesale_order_payment_flow",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1777500000000,
+      "tag": "0037_multi_site_practices",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1777600000000,
+      "tag": "0038_doctor_services",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1777700000000,
+      "tag": "0039_hospital_doctor_service_offers",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1777800000000,
+      "tag": "0040_drop_doctors_hospital_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1777900000000,
+      "tag": "0041_hospital_service_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1778000000000,
+      "tag": "0042_hospital_service_catalog_duration",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1778100000000,
+      "tag": "0043_drop_affiliation_clinic_fee_override",
+      "breakpoints": true
     }
   ]
 }

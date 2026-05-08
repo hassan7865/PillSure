@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../config/database";
 import { whatsappBusinessAccounts } from "../schema/whatsappBusinessAccounts";
 import { doctors } from "../schema/doctor";
+import { hospitals } from "../schema/hospitals";
 import { verifyToken, requireRole } from "../middleware/jwt.handler";
 import { UserRole } from "../core/types";
 import { ApiResponse } from "../core/api-response";
@@ -68,6 +69,7 @@ export class WhatsAppSettingsRoute {
                   wabaId: row.wabaId,
                   doctorId: row.doctorId,
                   hospitalId: row.hospitalId,
+                  defaultPracticeAffiliationId: row.defaultPracticeAffiliationId,
                   allowedDoctorIds: row.allowedDoctorIds,
                   isSetupComplete: row.isSetupComplete,
                 }
@@ -92,8 +94,18 @@ export class WhatsAppSettingsRoute {
       const whatsappAppId = b.whatsappAppId as string | undefined;
       const wabaId = b.wabaId as string | undefined;
       let doctorId = b.doctorId as string | undefined;
-      const hospitalId = b.hospitalId as string | undefined;
-      const allowedDoctorIds = b.allowedDoctorIds as string[] | undefined;
+      const incomingHospitalId = b.hospitalId as string | undefined;
+      const allowedDoctorIdsRaw = b.allowedDoctorIds as string[] | undefined;
+      const defaultPracticeAffiliationId = b.defaultPracticeAffiliationId as string | undefined | null;
+      let hospitalId = incomingHospitalId;
+
+      const allowedDoctorIds = Array.isArray(allowedDoctorIdsRaw)
+        ? [...new Set(
+            allowedDoctorIdsRaw
+              .map((id) => String(id || "").trim())
+              .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
+          )]
+        : undefined;
 
       if (role === UserRole.DOCTOR) {
         const docRows = await db
@@ -102,6 +114,14 @@ export class WhatsAppSettingsRoute {
           .where(eq(doctors.userId, userId))
           .limit(1);
         doctorId = docRows[0]?.id ?? undefined;
+      }
+      if (role === UserRole.HOSPITAL) {
+        const hospitalRows = await db
+          .select({ id: hospitals.id })
+          .from(hospitals)
+          .where(eq(hospitals.userId, userId))
+          .limit(1);
+        hospitalId = hospitalRows[0]?.id ?? null;
       }
 
       if (!phoneNumberId || !whatsappAppId) {
@@ -133,6 +153,10 @@ export class WhatsAppSettingsRoute {
             wabaId: wabaId ?? null,
             doctorId: doctorId ?? null,
             hospitalId: hospitalId ?? null,
+            defaultPracticeAffiliationId:
+              defaultPracticeAffiliationId === undefined
+                ? existing[0].defaultPracticeAffiliationId
+                : defaultPracticeAffiliationId,
             allowedDoctorIds: allowedDoctorIds ?? null,
             isSetupComplete: true,
             updatedAt: new Date(),
@@ -148,6 +172,7 @@ export class WhatsAppSettingsRoute {
           wabaId: wabaId ?? null,
           doctorId: doctorId ?? null,
           hospitalId: hospitalId ?? null,
+          defaultPracticeAffiliationId: defaultPracticeAffiliationId ?? null,
           allowedDoctorIds: allowedDoctorIds ?? null,
           isSetupComplete: true,
         });

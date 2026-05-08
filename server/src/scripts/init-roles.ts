@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { db } from '../config/database';
 import { roles } from '../schema';
 import { UserRole } from '../core/types';

@@ -4,6 +4,7 @@ import {
   AdminStats,
   PaginatedDoctors,
   PaginatedHospitals,
+  PaginatedClinics,
   AdminMonthlyRevenue,
   AdminSpecialization,
 } from './_types';
@@ -30,6 +31,12 @@ export const adminApi = {
   getHospitals: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedHospitals> => {
     const params = buildQueryParams({ page, limit, search: search || undefined });
     const response = await api.get<ApiResponse<PaginatedHospitals>>(`/admin/hospitals?${params}`);
+    return extractApiData(response);
+  },
+
+  getClinics: async (page: number = 1, limit: number = 10, search: string = ''): Promise<PaginatedClinics> => {
+    const params = buildQueryParams({ page, limit, search: search || undefined });
+    const response = await api.get<ApiResponse<PaginatedClinics>>(`/admin/clinics?${params}`);
     return extractApiData(response);
   },
 

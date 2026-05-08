@@ -15,6 +15,10 @@ export interface AdminStats {
     total: number;
     active: number;
   };
+  clinics?: {
+    total: number;
+    active: number;
+  };
   appointments: {
     total: number;
     byStatus: Record<string, number>;
@@ -99,6 +103,29 @@ export interface PaginatedDoctors {
 
 export interface PaginatedHospitals {
   hospitals: Hospital[];
+  pagination: PaginationInfo;
+}
+
+export interface Clinic {
+  id: string;
+  userId: string;
+  clinicName: string;
+  clinicAddress: string;
+  clinicContactNo: string;
+  clinicEmail: string;
+  websiteClinic: string | null;
+  licenseNo: string;
+  adminName: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  userFirstName: string;
+  userLastName: string;
+  userEmail: string;
+}
+
+export interface PaginatedClinics {
+  clinics: Clinic[];
   pagination: PaginationInfo;
 }
 

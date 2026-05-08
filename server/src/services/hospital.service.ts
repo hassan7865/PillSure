@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, ne } from "drizzle-orm";
 import { db } from "../config/database";
 import { appointments } from "../schema/appointments";
 import { doctors } from "../schema/doctor";
@@ -7,10 +7,25 @@ import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
 import { roles } from "../schema/roles";
 import { specializations } from "../schema/specialization";
+import { doctorPracticeAffiliations } from "../schema/doctorPracticeAffiliations";
 import { createError } from "../middleware/error.handler";
 import { appointmentService } from "./appointment.service";
 
 export class HospitalService {
+  private async doctorIdsAffiliatedWithHospital(hospitalId: string): Promise<string[]> {
+    const affRows = await db
+      .select({ doctorId: doctorPracticeAffiliations.doctorId })
+      .from(doctorPracticeAffiliations)
+      .where(
+        and(
+          eq(doctorPracticeAffiliations.hospitalId, hospitalId),
+          eq(doctorPracticeAffiliations.kind, "hospital"),
+          ne(doctorPracticeAffiliations.status, "ended")
+        )
+      );
+    return [...new Set(affRows.map((r) => r.doctorId))];
+  }
+
   private async requireHospitalForUser(
     userId: string,
   ): Promise<{ id: string; hospitalName: string }> {
@@ -34,6 +49,18 @@ export class HospitalService {
     const hospital = await this.requireHospitalForUser(userId);
     const hospitalId = hospital.id;
 
+    const doctorIds = await this.doctorIdsAffiliatedWithHospital(hospitalId);
+    if (!doctorIds.length) {
+      return {
+        hospitalId,
+        hospitalName: hospital.hospitalName,
+        totalAppointments: 0,
+        byStatus: {},
+        totalEarned: 0,
+        currency: "pkr",
+      };
+    }
+
     const statusCounts = await db
       .select({
         status: appointments.status,
@@ -41,7 +68,7 @@ export class HospitalService {
       })
       .from(appointments)
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
-      .where(and(eq(doctors.hospitalId, hospitalId), eq(appointments.isActive, true)))
+      .where(and(inArray(appointments.doctorId, doctorIds), eq(appointments.isActive, true)))
       .groupBy(appointments.status);
 
     const byStatus: Record<string, number> = {};
@@ -58,7 +85,7 @@ export class HospitalService {
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
       .where(
         and(
-          eq(doctors.hospitalId, hospitalId),
+          inArray(appointments.doctorId, doctorIds),
           eq(appointments.isActive, true),
           eq(appointments.status, "completed"),
         ),
@@ -77,6 +104,41 @@ export class HospitalService {
   async getHospitalDoctorsByUserId(userId: string) {
     const hospital = await this.requireHospitalForUser(userId);
     const hospitalId = hospital.id;
+
+    const doctorIds = await this.doctorIdsAffiliatedWithHospital(hospitalId);
+    if (!doctorIds.length) {
+      return {
+        doctors: [],
+        stats: {
+          totalDoctors: 0,
+          activeDoctors: 0,
+          inactiveDoctors: 0,
+          totalAppointments: 0,
+        },
+      };
+    }
+
+    const affMeta = await db
+      .select({
+        doctorId: doctorPracticeAffiliations.doctorId,
+        affiliationId: doctorPracticeAffiliations.id,
+        affiliationStatus: doctorPracticeAffiliations.status,
+      })
+      .from(doctorPracticeAffiliations)
+      .where(
+        and(
+          eq(doctorPracticeAffiliations.hospitalId, hospitalId),
+          eq(doctorPracticeAffiliations.kind, "hospital"),
+          ne(doctorPracticeAffiliations.status, "ended")
+        )
+      );
+    const affByDoctor = new Map<string, { affiliationId: string; affiliationStatus: string }>();
+    for (const row of affMeta) {
+      affByDoctor.set(row.doctorId, {
+        affiliationId: row.affiliationId,
+        affiliationStatus: row.affiliationStatus,
+      });
+    }
 
     const doctorRows = await db
       .select({
@@ -98,7 +160,7 @@ export class HospitalService {
       })
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .where(eq(doctors.hospitalId, hospitalId))
+      .where(inArray(doctors.id, doctorIds))
       .orderBy(desc(doctors.createdAt));
 
     const statsRows = await db
@@ -109,7 +171,7 @@ export class HospitalService {
       })
       .from(appointments)
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
-      .where(and(eq(doctors.hospitalId, hospitalId), eq(appointments.isActive, true)))
+      .where(and(inArray(appointments.doctorId, doctorIds), eq(appointments.isActive, true)))
       .groupBy(appointments.doctorId, appointments.status);
 
     const specializationRows = await db
@@ -130,8 +192,11 @@ export class HospitalService {
       const completedCount = byStatus.completed || 0;
       const fee = Number(d.feePkr || 0);
       const specializationIds = Array.isArray(d.specializationIds) ? (d.specializationIds as number[]) : [];
+      const meta = affByDoctor.get(d.id);
       return {
         ...d,
+        hospitalAffiliationId: meta?.affiliationId ?? null,
+        hospitalAffiliationStatus: meta?.affiliationStatus ?? null,
         specializationIds,
         specializationNames: specializationIds.map((id) => specMap.get(Number(id))).filter(Boolean),
         byStatus,
@@ -140,7 +205,12 @@ export class HospitalService {
       };
     });
 
-    const activeDoctors = doctorsWithStats.filter((d) => d.isActive).length;
+    const activeDoctors = doctorsWithStats.filter((d) => {
+      const st = d.hospitalAffiliationStatus;
+      if (st === "suspended" || st === "ended") return false;
+      if (st === "pending") return false;
+      return d.isActive;
+    }).length;
     return {
       doctors: doctorsWithStats,
       stats: {
@@ -215,13 +285,20 @@ export class HospitalService {
           qualifications: [],
           experienceYears: 0,
           patientSatisfactionRate: "0.00",
-          hospitalId: hospital.id,
           address: "",
           consultationModes: [],
           availableDays: [],
           isActive: true,
         })
         .returning({ id: doctors.id });
+
+      await tx.insert(doctorPracticeAffiliations).values({
+        doctorId: newDoctor.id,
+        kind: "hospital",
+        hospitalId: hospital.id,
+        status: "active",
+        weeklySchedule: null,
+      });
 
       return { userId: newUser.id, doctorId: newDoctor.id };
     });
@@ -232,25 +309,39 @@ export class HospitalService {
   async setHospitalDoctorActiveByUserId(hospitalUserId: string, doctorId: string, isActive: boolean) {
     const hospital = await this.requireHospitalForUser(hospitalUserId);
 
-    const doctorRow = await db
-      .select({ id: doctors.id })
-      .from(doctors)
-      .where(and(eq(doctors.id, doctorId), eq(doctors.hospitalId, hospital.id)))
+    const aff = await db
+      .select({ id: doctorPracticeAffiliations.id })
+      .from(doctorPracticeAffiliations)
+      .where(
+        and(
+          eq(doctorPracticeAffiliations.doctorId, doctorId),
+          eq(doctorPracticeAffiliations.hospitalId, hospital.id),
+          eq(doctorPracticeAffiliations.kind, "hospital"),
+          ne(doctorPracticeAffiliations.status, "ended")
+        )
+      )
       .limit(1);
 
-    if (!doctorRow.length) {
-      throw createError("Doctor not found or not affiliated with this hospital", 404);
+    if (aff.length) {
+      await db
+        .update(doctorPracticeAffiliations)
+        .set({
+          status: isActive ? "active" : "suspended",
+          updatedAt: new Date(),
+        })
+        .where(eq(doctorPracticeAffiliations.id, aff[0].id));
+      return { doctorId, isActive, affiliationStatus: isActive ? "active" : "suspended" };
     }
 
-    await db
-      .update(doctors)
-      .set({ isActive, updatedAt: new Date() })
-      .where(eq(doctors.id, doctorId));
-
-    return { doctorId, isActive };
+    throw createError("Doctor not found or not affiliated with this hospital", 404);
   }
 async getHospitalDoctorAppointmentsByUserId(hospitalUserId: string, doctorId: string) {
     const hospital = await this.requireHospitalForUser(hospitalUserId);
+
+    const allowedIds = await this.doctorIdsAffiliatedWithHospital(hospital.id);
+    if (!allowedIds.includes(doctorId)) {
+      throw createError("Doctor not found or not affiliated with this hospital", 404);
+    }
 
     const doctorRow = await db
       .select({
@@ -264,7 +355,7 @@ async getHospitalDoctorAppointmentsByUserId(hospitalUserId: string, doctorId: st
       })
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .where(and(eq(doctors.id, doctorId), eq(doctors.hospitalId, hospital.id)))
+      .where(eq(doctors.id, doctorId))
       .limit(1);
 
     if (!doctorRow.length) {

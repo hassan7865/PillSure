@@ -1,5 +1,5 @@
 import api from '@/lib/interceptor';
-import { DoctorOnboardingRequest, HospitalOnboardingRequest, PatientOnboardingRequest, ManufacturerOnboardingRequest, MedicalStoreOnboardingRequest } from './_types';
+import { DoctorOnboardingRequest, HospitalOnboardingRequest, ClinicOnboardingRequest, PatientOnboardingRequest, ManufacturerOnboardingRequest, MedicalStoreOnboardingRequest } from './_types';
 import { OnboardingResponseData } from '@/lib/types';
 import { ApiResponse } from '@/lib/types';
 import { extractApiData } from '@/lib/api-utils';
@@ -21,6 +21,11 @@ export const onboardingApi = {
   // Hospital onboarding - handles both create and update
   saveHospitalOnboarding: async (data: HospitalOnboardingRequest): Promise<OnboardingResponseData> => {
     const response = await api.post<ApiResponse<OnboardingResponseData>>('/onboarding/hospital', data);
+    return extractApiData(response);
+  },
+
+  saveClinicOnboarding: async (data: ClinicOnboardingRequest): Promise<OnboardingResponseData> => {
+    const response = await api.post<ApiResponse<OnboardingResponseData>>('/onboarding/clinic', data);
     return extractApiData(response);
   },
 
@@ -47,6 +52,11 @@ export const onboardingApi = {
 
   getHospitalOnboarding: async (): Promise<any> => {
     const response = await api.get('/onboarding/hospital');
+    return extractApiData(response);
+  },
+
+  getClinicOnboarding: async (): Promise<any> => {
+    const response = await api.get('/onboarding/clinic');
     return extractApiData(response);
   },
 

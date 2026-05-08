@@ -3,7 +3,13 @@ import { specializations } from "../schema/specialization";
 import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { hospitals } from "../schema/hospitals";
+import {
+  doctorPracticeAffiliations,
+  type AffiliationWeeklySchedule,
+} from "../schema/doctorPracticeAffiliations";
 import { eq, and, sql, inArray, desc, SQL } from "drizzle-orm";
+import { mergeWeeklySchedule } from "../utils/practiceSchedule.util";
+import { hasAnyDiscreteHalfHourSlots } from "../utils/affiliationHalfHourSlots.util";
 import { createError } from "../middleware/error.handler";
 import { calculatePagination, calculateOffset } from "./utils/pagination.utils";
 import { buildSearchConditions } from "./utils/search.utils";
@@ -25,7 +31,6 @@ function getBaseDoctorSelect() {
     qualifications: doctors.qualifications,
     experienceYears: doctors.experienceYears,
     patientSatisfactionRate: doctors.patientSatisfactionRate,
-    hospitalId: doctors.hospitalId,
     address: doctors.address,
     image: doctors.image,
     feePkr: doctors.feePkr,
@@ -35,13 +40,6 @@ function getBaseDoctorSelect() {
     availableDays: doctors.availableDays,
     createdAt: doctors.createdAt,
     updatedAt: doctors.updatedAt,
-    hospitalName: hospitals.hospitalName,
-    hospitalAddress: hospitals.hospitalAddress,
-    hospitalContactNo: hospitals.hospitalContactNo,
-    hospitalEmail: hospitals.hospitalEmail,
-    hospitalWebsite: hospitals.websiteHospital,
-    hospitalLicenseNo: hospitals.licenseNo,
-    hospitalAdminName: hospitals.adminName,
   };
 }
 
@@ -83,27 +81,90 @@ function transformDoctorWithDetails(
   const primarySpecialization = doctorSpecializations[0];
   const qualifications = (doctor.qualifications as string[]) || [];
 
-  const hospitalInfo =
-    doctor.hospitalId && doctor.hospitalName
-      ? {
-          id: doctor.hospitalId,
-          name: doctor.hospitalName,
-          address: doctor.hospitalAddress || "",
-          contactNo: doctor.hospitalContactNo || "",
-          email: doctor.hospitalEmail || null,
-          website: doctor.hospitalWebsite || null,
-          licenseNo: doctor.hospitalLicenseNo || null,
-          adminName: doctor.hospitalAdminName || null,
-        }
-      : null;
-
   return {
     ...doctor,
     specializations: doctorSpecializations,
     primarySpecialization: primarySpecialization || null,
     qualifications: qualifications,
-    hospital: hospitalInfo,
+    hospital: null,
   };
+}
+
+export type PublicBookablePracticeAffiliation = {
+  id: string;
+  kind: string;
+  label: string;
+  feePkr: string | null;
+  availableDays: string[];
+  openingTime: string | null;
+  closingTime: string | null;
+  /** When set, only these 30-minute starts (HH:mm) per weekday are bookable for this site. */
+  halfHourSlotsByWeekday?: Record<string, string[]> | null;
+};
+
+function buildPracticeAffiliationLabel(row: {
+  kind: string;
+  hospitalName: string | null;
+}): string {
+  if (row.kind === "hospital") return (row.hospitalName || "").trim() || "Hospital";
+  return "Private practice";
+}
+
+type DoctorScheduleFallbackRow = {
+  availableDays: unknown;
+  openingTime: string | null | undefined;
+  closingTime: string | null | undefined;
+  feePkr: string | null | undefined;
+};
+
+async function loadActiveBookableAffiliations(
+  doctorIds: string[],
+  scheduleByDoctorId: Map<string, DoctorScheduleFallbackRow>,
+): Promise<Map<string, PublicBookablePracticeAffiliation[]>> {
+  const out = new Map<string, PublicBookablePracticeAffiliation[]>();
+  for (const id of doctorIds) {
+    out.set(id, []);
+  }
+  if (doctorIds.length === 0) {
+    return out;
+  }
+
+  const affRows = await db
+    .select({
+      id: doctorPracticeAffiliations.id,
+      doctorId: doctorPracticeAffiliations.doctorId,
+      kind: doctorPracticeAffiliations.kind,
+      weeklySchedule: doctorPracticeAffiliations.weeklySchedule,
+      hospitalName: hospitals.hospitalName,
+    })
+    .from(doctorPracticeAffiliations)
+    .leftJoin(hospitals, eq(doctorPracticeAffiliations.hospitalId, hospitals.id))
+    .where(and(inArray(doctorPracticeAffiliations.doctorId, doctorIds), eq(doctorPracticeAffiliations.status, "active")));
+
+  for (const r of affRows) {
+    const docFallback = scheduleByDoctorId.get(r.doctorId);
+    const ws = (r.weeklySchedule as AffiliationWeeklySchedule | null) ?? null;
+    const wsObject = ws && !Array.isArray(ws) ? ws : null;
+    const merged = mergeWeeklySchedule(ws, {
+      availableDays: docFallback?.availableDays ?? [],
+      openingTime: docFallback?.openingTime ?? null,
+      closingTime: docFallback?.closingTime ?? null,
+    });
+    const entry: PublicBookablePracticeAffiliation = {
+      id: r.id,
+      kind: r.kind,
+      label: buildPracticeAffiliationLabel(r),
+      feePkr: docFallback?.feePkr ?? null,
+      availableDays: merged.availableDays,
+      openingTime: merged.openingTime,
+      closingTime: merged.closingTime,
+      halfHourSlotsByWeekday: wsObject && hasAnyDiscreteHalfHourSlots(wsObject) ? wsObject.bookableHalfHourSlotsByWeekday ?? null : null,
+    };
+    const list = out.get(r.doctorId) ?? [];
+    list.push(entry);
+    out.set(r.doctorId, list);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +205,6 @@ export class DoctorService {
       .select(getBaseDoctorSelect())
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
       .where(whereClause)
       .orderBy(
         desc(doctors.patientSatisfactionRate),
@@ -156,7 +216,6 @@ export class DoctorService {
       .select({ count: sql<number>`count(*)` })
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
       .where(whereClause);
 
     const [doctorsResult, countResult] = await Promise.all([query.limit(limit).offset(offset), countQuery]);
@@ -175,10 +234,30 @@ export class DoctorService {
       transformDoctorWithDetails(doctor, specializationMap),
     );
 
+    const scheduleByDoctorId = new Map<string, DoctorScheduleFallbackRow>(
+      doctorsWithSpecializations.map((d: any) => [
+        d.id,
+        {
+          availableDays: d.availableDays,
+          openingTime: d.openingTime,
+          closingTime: d.closingTime,
+          feePkr: d.feePkr,
+        },
+      ]),
+    );
+    const affMap = await loadActiveBookableAffiliations(
+      doctorsWithSpecializations.map((d: any) => d.id),
+      scheduleByDoctorId,
+    );
+    const doctorsWithAffiliations = doctorsWithSpecializations.map((d: any) => ({
+      ...d,
+      bookableAffiliations: affMap.get(d.id) ?? [],
+    }));
+
     const totalCount = countResult[0]?.count || 0;
 
     return {
-      doctors: doctorsWithSpecializations,
+      doctors: doctorsWithAffiliations,
       pagination: calculatePagination(page, limit, totalCount),
     };
   }
@@ -210,7 +289,6 @@ export class DoctorService {
         qualifications: doctors.qualifications,
         experienceYears: doctors.experienceYears,
         patientSatisfactionRate: doctors.patientSatisfactionRate,
-        hospitalId: doctors.hospitalId,
         address: doctors.address,
         image: doctors.image,
         feePkr: doctors.feePkr,
@@ -220,12 +298,9 @@ export class DoctorService {
         closingTime: doctors.closingTime,
         createdAt: doctors.createdAt,
         updatedAt: doctors.updatedAt,
-        hospitalName: hospitals.hospitalName,
-        hospitalAddress: hospitals.hospitalAddress,
       })
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
       .where(and(eq(doctors.userId, userId), eq(doctors.isActive, true)))
       .limit(1);
 
@@ -250,7 +325,6 @@ export class DoctorService {
         qualifications: doctors.qualifications,
         experienceYears: doctors.experienceYears,
         patientSatisfactionRate: doctors.patientSatisfactionRate,
-        hospitalId: doctors.hospitalId,
         address: doctors.address,
         image: doctors.image,
         feePkr: doctors.feePkr,
@@ -260,12 +334,9 @@ export class DoctorService {
         closingTime: doctors.closingTime,
         createdAt: doctors.createdAt,
         updatedAt: doctors.updatedAt,
-        hospitalName: hospitals.hospitalName,
-        hospitalAddress: hospitals.hospitalAddress,
       })
       .from(doctors)
       .innerJoin(users, eq(doctors.userId, users.id))
-      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
       .where(and(eq(doctors.id, doctorId), eq(doctors.isActive, true)))
       .limit(1);
 
@@ -274,6 +345,12 @@ export class DoctorService {
     }
 
     const doctor = result[0];
+
+    let profile: Record<string, unknown> = {
+      ...doctor,
+      specializations: [],
+      primarySpecialization: null,
+    };
 
     if (doctor.specializationIds && Array.isArray(doctor.specializationIds) && doctor.specializationIds.length > 0) {
       const specializationIdsArray = doctor.specializationIds
@@ -290,7 +367,7 @@ export class DoctorService {
         const primarySpecialization =
           doctorSpecializations.find((s: any) => s.id === specializationIdsArray[0]) || null;
 
-        return {
+        profile = {
           ...doctor,
           specializations: doctorSpecializations,
           primarySpecialization,
@@ -298,10 +375,22 @@ export class DoctorService {
       }
     }
 
+    const scheduleMap = new Map<string, DoctorScheduleFallbackRow>([
+      [
+        String(profile.id),
+        {
+          availableDays: profile.availableDays,
+          openingTime: profile.openingTime as string | null | undefined,
+          closingTime: profile.closingTime as string | null | undefined,
+          feePkr: profile.feePkr as string | null | undefined,
+        },
+      ],
+    ]);
+    const affMap = await loadActiveBookableAffiliations([String(profile.id)], scheduleMap);
+
     return {
-      ...doctor,
-      specializations: [],
-      primarySpecialization: null,
+      ...profile,
+      bookableAffiliations: affMap.get(String(profile.id)) ?? [],
     };
   }
 }

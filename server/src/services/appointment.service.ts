@@ -4,11 +4,13 @@ import { doctors } from "../schema/doctor";
 import { users } from "../schema/users";
 import { patients } from "../schema/patient";
 import { hospitals } from "../schema/hospitals";
+import { doctorPracticeAffiliations } from "../schema/doctorPracticeAffiliations";
 import { orders } from "../schema/orders";
 import { orderItems } from "../schema/orderItems";
 import { eq, and, or, desc, sql, inArray } from "drizzle-orm";
 import { createError } from "../middleware/error.handler";
 import { doctorService } from "./doctor.service";
+import { practiceAffiliationService } from "./practiceAffiliation.service";
 import { alias } from "drizzle-orm/pg-core";
 
 import { hmToMinutes } from "../utils/whatsappBookingSlots.util";
@@ -20,6 +22,39 @@ import {
 } from "../utils/clinicTime.util";
 
 export class AppointmentService {
+  async getPatientBookedIntervalsForDate(
+    patientId: string,
+    appointmentDate: string,
+    excludeAppointmentId?: string
+  ): Promise<{ startMin: number; endMin: number }[]> {
+    const rows = await db
+      .select({
+        id: appointments.id,
+        appointmentTime: appointments.appointmentTime,
+        durationMinutes: appointments.durationMinutes,
+      })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.patientId, patientId),
+          eq(appointments.appointmentDate, appointmentDate),
+          eq(appointments.isActive, true),
+          sql`${appointments.status} NOT IN ('cancelled', 'rejected')`
+        )
+      );
+
+    const out: { startMin: number; endMin: number }[] = [];
+    for (const row of rows) {
+      if (excludeAppointmentId && row.id === excludeAppointmentId) continue;
+      const start = hmToMinutes(normalizeHm(row.appointmentTime));
+      if (start == null) continue;
+      const dur = row.durationMinutes != null ? Number(row.durationMinutes) : 30;
+      const safeDur = Number.isFinite(dur) && dur > 0 ? dur : 30;
+      out.push({ startMin: start, endMin: start + safeDur });
+    }
+    return out;
+  }
+
   async getBookedIntervalsForDate(
     doctorId: string,
     appointmentDate: string,
@@ -77,7 +112,31 @@ export class AppointmentService {
     }
   }
 
-  async getDoctorFeeAndName(doctorId: string) {
+  async assertPatientSlotAvailable(
+    patientId: string,
+    appointmentDate: string,
+    appointmentTime: string,
+    opts?: { durationMinutes?: number; excludeAppointmentId?: string }
+  ) {
+    const duration = opts?.durationMinutes ?? 30;
+    const start = hmToMinutes(normalizeHm(appointmentTime));
+    if (start == null) {
+      throw createError("Invalid appointment time", 400);
+    }
+    const end = start + duration;
+    const intervals = await this.getPatientBookedIntervalsForDate(
+      patientId,
+      appointmentDate,
+      opts?.excludeAppointmentId
+    );
+    const { intervalsOverlap } = await import("../utils/whatsappBookingSlots.util");
+    const clash = intervals.some((b) => intervalsOverlap(start, end, b.startMin, b.endMin));
+    if (clash) {
+      throw createError("You already have another appointment at this time", 400);
+    }
+  }
+
+  async getDoctorFeeAndName(doctorId: string, practiceAffiliationId?: string | null) {
     const doctor = await db
       .select({
         feePkr: doctors.feePkr,
@@ -92,8 +151,10 @@ export class AppointmentService {
       throw createError("Doctor not found", 404);
     }
 
-    const feeRaw = doctor[0].feePkr;
-    const feePkr = feeRaw ? Number(feeRaw) : 0;
+    const feePkr = await practiceAffiliationService.getFeePkrForBooking(
+      doctorId,
+      practiceAffiliationId ?? null
+    );
     if (!Number.isFinite(feePkr) || feePkr <= 0) {
       throw createError("Doctor consultation fee is not configured", 400);
     }
@@ -122,7 +183,18 @@ export class AppointmentService {
         ? Math.floor(Number(data.durationMinutes))
         : 30;
 
+    const { practiceAffiliationId } = await practiceAffiliationService.assertAffiliationAllowsBooking({
+      doctorId: data.doctorId,
+      practiceAffiliationId: data.practiceAffiliationId,
+      appointmentDate: data.appointmentDate,
+      appointmentTime: data.appointmentTime,
+      durationMinutes,
+    });
+
     await this.assertSlotAvailable(data.doctorId, data.appointmentDate, data.appointmentTime, {
+      durationMinutes,
+    });
+    await this.assertPatientSlotAvailable(patientId, data.appointmentDate, data.appointmentTime, {
       durationMinutes,
     });
 
@@ -133,6 +205,8 @@ export class AppointmentService {
       .values({
         patientId,
         doctorId: data.doctorId,
+        practiceAffiliationId: practiceAffiliationId ?? null,
+        doctorServiceId: data.doctorServiceId ?? null,
         appointmentDate: data.appointmentDate,
         appointmentTime: data.appointmentTime,
         durationMinutes,
@@ -228,6 +302,9 @@ export class AppointmentService {
         : 30;
 
     await this.assertSlotAvailable(params.doctorId, params.appointmentDate, params.appointmentTime, {
+      durationMinutes,
+    });
+    await this.assertPatientSlotAvailable(params.patientId, params.appointmentDate, params.appointmentTime, {
       durationMinutes,
     });
     const meetingId = this.generateMeetingId(params.consultationMode);
@@ -371,7 +448,11 @@ export class AppointmentService {
       .from(appointments)
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
       .innerJoin(users, eq(doctors.userId, users.id))
-      .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
+      .leftJoin(
+        doctorPracticeAffiliations,
+        eq(appointments.practiceAffiliationId, doctorPracticeAffiliations.id),
+      )
+      .leftJoin(hospitals, eq(doctorPracticeAffiliations.hospitalId, hospitals.id))
       .where(
         and(
           eq(appointments.patientId, patientId),
@@ -444,7 +525,11 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
     .leftJoin(patients, eq(appointments.patientId, patients.userId))
     .leftJoin(doctors, eq(appointments.doctorId, doctors.id))
     .leftJoin(doctorUser, eq(doctors.userId, doctorUser.id))
-    .leftJoin(hospitals, eq(doctors.hospitalId, hospitals.id))
+    .leftJoin(
+      doctorPracticeAffiliations,
+      eq(appointments.practiceAffiliationId, doctorPracticeAffiliations.id),
+    )
+    .leftJoin(hospitals, eq(doctorPracticeAffiliations.hospitalId, hospitals.id))
     .where(and(...conditions))
       .orderBy(desc(appointments.appointmentDate), desc(appointments.appointmentTime));
 
@@ -793,7 +878,20 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
     const totalAppointments = Object.values(byStatus).reduce((sum, v) => sum + v, 0);
     const completedCount = byStatus.completed || 0;
     const doctorFee = doctor.feePkr ? Number(doctor.feePkr) : 0;
-    const isHospitalAffiliated = !!doctor.hospitalId;
+    const activeHospitalAffiliations = await db
+      .select({ hospitalId: doctorPracticeAffiliations.hospitalId })
+      .from(doctorPracticeAffiliations)
+      .where(
+        and(
+          eq(doctorPracticeAffiliations.doctorId, doctor.id),
+          eq(doctorPracticeAffiliations.kind, "hospital"),
+          eq(doctorPracticeAffiliations.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    const hospitalId = activeHospitalAffiliations[0]?.hospitalId ?? null;
+    const isHospitalAffiliated = Boolean(hospitalId);
     const totalEarned = isHospitalAffiliated ? 0 : Number((completedCount * doctorFee).toFixed(2));
 
     return {
@@ -803,7 +901,7 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
       currency: "pkr",
       isHospitalAffiliated,
       doctorId: doctor.id,
-      hospitalId: doctor.hospitalId || null,
+      hospitalId,
     };
   }
 
@@ -829,8 +927,16 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
         count: sql<number>`COUNT(*)`,
       })
       .from(appointments)
-      .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
-      .where(and(eq(doctors.hospitalId, hospitalId), eq(appointments.isActive, true)))
+      .innerJoin(
+        doctorPracticeAffiliations,
+        eq(appointments.practiceAffiliationId, doctorPracticeAffiliations.id),
+      )
+      .where(
+        and(
+          eq(doctorPracticeAffiliations.hospitalId, hospitalId),
+          eq(appointments.isActive, true),
+        ),
+      )
       .groupBy(appointments.status);
 
     const byStatus: Record<string, number> = {};
@@ -846,9 +952,13 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
       })
       .from(appointments)
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+      .innerJoin(
+        doctorPracticeAffiliations,
+        eq(appointments.practiceAffiliationId, doctorPracticeAffiliations.id),
+      )
       .where(
         and(
-          eq(doctors.hospitalId, hospitalId),
+          eq(doctorPracticeAffiliations.hospitalId, hospitalId),
           eq(appointments.isActive, true),
           eq(appointments.status, "completed")
         )
@@ -866,24 +976,26 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
 
   async hasUnpaidUpcomingAppointmentForPatientDoctor(params: {
     patientUserId: string;
-    doctorId: string;
+    doctorId?: string | null;
     timeZone: string;
   }): Promise<boolean> {
+    const conditions = [
+      eq(appointments.patientId, params.patientUserId),
+      eq(appointments.isActive, true),
+      eq(appointments.paymentStatus, "unpaid"),
+      sql`${appointments.status} NOT IN ('cancelled', 'rejected')`,
+    ];
+    if (params.doctorId) {
+      conditions.push(eq(appointments.doctorId, params.doctorId));
+    }
+
     const rows = await db
       .select({
         appointmentDate: appointments.appointmentDate,
         appointmentTime: appointments.appointmentTime,
       })
       .from(appointments)
-      .where(
-        and(
-          eq(appointments.patientId, params.patientUserId),
-          eq(appointments.doctorId, params.doctorId),
-          eq(appointments.isActive, true),
-          eq(appointments.paymentStatus, "unpaid"),
-          sql`${appointments.status} NOT IN ('cancelled', 'rejected')`
-        )
-      );
+      .where(and(...conditions));
 
     for (const r of rows) {
       const raw = r.appointmentDate as unknown;
@@ -900,6 +1012,10 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
     patientUserId: string;
     doctorIdFilter?: string | null;
     allowedDoctorIds?: string[] | null;
+    allowedPracticeAffiliationIds?: string[] | null;
+    scopeMode?: "doctor_private" | "hospital" | null;
+    scopeDoctorId?: string | null;
+    scopeHospitalId?: string | null;
   }) {
     const tz = getWhatsAppClinicTimeZone();
     const conditions = [
@@ -916,6 +1032,24 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
     if (allowed?.length) {
       conditions.push(inArray(appointments.doctorId, allowed));
     }
+    const allowedAffiliations =
+      params.allowedPracticeAffiliationIds && params.allowedPracticeAffiliationIds.length
+        ? [...new Set(params.allowedPracticeAffiliationIds.map((x) => String(x).trim()).filter(Boolean))]
+        : null;
+    if (allowedAffiliations?.length) {
+      conditions.push(inArray(appointments.practiceAffiliationId, allowedAffiliations));
+    }
+    if (params.scopeMode === "doctor_private") {
+      if (params.scopeDoctorId) {
+        conditions.push(eq(doctorPracticeAffiliations.doctorId, params.scopeDoctorId));
+      }
+      conditions.push(eq(doctorPracticeAffiliations.kind, "private"));
+    } else if (params.scopeMode === "hospital") {
+      conditions.push(eq(doctorPracticeAffiliations.kind, "hospital"));
+      if (params.scopeHospitalId) {
+        conditions.push(eq(doctorPracticeAffiliations.hospitalId, params.scopeHospitalId));
+      }
+    }
 
     const rows = await db
       .select({
@@ -931,6 +1065,10 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
         durationMinutes: appointments.durationMinutes,
       })
       .from(appointments)
+      .innerJoin(
+        doctorPracticeAffiliations,
+        eq(appointments.practiceAffiliationId, doctorPracticeAffiliations.id)
+      )
       .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
       .innerJoin(users, eq(doctors.userId, users.id))
       .where(and(...conditions))
@@ -990,12 +1128,24 @@ async getAppointmentsByDoctor(doctorId: string, status?: string) {
           ? Number(apt.durationMinutes)
           : 30;
 
-    await this.assertSlotAvailable(apt.doctorId, params.newDate, params.newTime, {
+    const newHm = normalizeHm(params.newTime);
+
+    await practiceAffiliationService.assertAffiliationAllowsBooking({
+      doctorId: apt.doctorId,
+      practiceAffiliationId: apt.practiceAffiliationId ?? null,
+      appointmentDate: params.newDate,
+      appointmentTime: newHm,
+      durationMinutes: dur,
+    });
+
+    await this.assertSlotAvailable(apt.doctorId, params.newDate, newHm, {
       durationMinutes: dur,
       excludeAppointmentId: apt.id,
     });
-
-    const newHm = normalizeHm(params.newTime);
+    await this.assertPatientSlotAvailable(params.patientUserId, params.newDate, newHm, {
+      durationMinutes: dur,
+      excludeAppointmentId: apt.id,
+    });
     const meetingId = this.generateMeetingId(apt.consultationMode);
 
     await db

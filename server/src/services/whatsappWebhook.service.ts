@@ -96,6 +96,8 @@ export class WhatsAppWebhookService {
           ownerUserId: fresh.ownerUserId,
           defaultDoctorId: fresh.doctorId,
           allowedDoctorIds: allowed,
+          hospitalId: fresh.hospitalId,
+          defaultPracticeAffiliationId: fresh.defaultPracticeAffiliationId,
         });
 
         if (chat.ignored) {

@@ -36,6 +36,9 @@ export default function HospitalDoctorsPage() {
     refetch: refetchDoctors,
   } = useHospitalDoctors();
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
@@ -52,6 +55,31 @@ export default function HospitalDoctorsPage() {
 
   const resetForm = () => {
     setForm({ firstName: "", lastName: "", email: "", password: "" });
+  };
+
+  const handleInviteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) {
+      showError("Missing email", "Enter the doctor account email.");
+      return;
+    }
+    setInviteSubmitting(true);
+    try {
+      const res = await appointmentApi.inviteHospitalDoctor(email);
+      const pending = res.status === "pending";
+      showSuccess(
+        pending ? "Invitation sent" : "Doctor linked",
+        res.message ?? (pending ? "The doctor must accept the invite under My practices." : "They are now affiliated with your hospital."),
+      );
+      setInviteOpen(false);
+      setInviteEmail("");
+      await refetchDoctors();
+    } catch (err) {
+      showError("Invite failed", getErrorMessage(err));
+    } finally {
+      setInviteSubmitting(false);
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -98,12 +126,59 @@ export default function HospitalDoctorsPage() {
         description="Affiliated doctors at your hospital. Register accounts so they can sign in and finish onboarding."
         icon={Stethoscope}
         action={
-          <Button type="button" className="gap-2" onClick={() => setRegisterOpen(true)}>
-            <UserPlus className="h-4 w-4" />
-            Register doctor
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" className="gap-2" onClick={() => setInviteOpen(true)}>
+              Invite existing doctor
+            </Button>
+            <Button type="button" className="gap-2" onClick={() => setRegisterOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Register new doctor
+            </Button>
+          </div>
         }
       />
+
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(open) => {
+          if (inviteSubmitting) return;
+          setInviteOpen(open);
+          if (!open) setInviteEmail("");
+        }}
+      >
+        <AppDialogContent size="sm" className="sm:max-w-md">
+          <form onSubmit={handleInviteSubmit}>
+            <DialogHeader>
+              <DialogTitle>Invite existing doctor</DialogTitle>
+              <DialogDescription>
+                Enter the email of a doctor who already has a PillSure account. They will be linked to your hospital.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-email">Doctor email</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  autoComplete="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  disabled={inviteSubmitting}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setInviteOpen(false)} disabled={inviteSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={inviteSubmitting}>
+                {inviteSubmitting ? "Sending…" : "Send invite"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </AppDialogContent>
+      </Dialog>
 
       <Dialog
         open={registerOpen}
@@ -223,7 +298,7 @@ export default function HospitalDoctorsPage() {
         error={doctorsError ? getErrorMessage(doctorsError) : null}
         isEmpty={!doctorsLoading && !doctorsError && doctors.length === 0}
         empty={
-          <div className={surfaceInsetClass("flex flex-col items-center gap-3 py-10 text-center")}>
+          <div className={surfaceInsetClass("mx-auto flex w-full max-w-sm flex-col items-center gap-3 rounded-xl px-6 py-8 text-center")}>
             <p className="text-sm text-muted-foreground">No affiliated doctors yet.</p>
             <Button type="button" variant="secondary" size="sm" className="gap-2" onClick={() => setRegisterOpen(true)}>
               <UserPlus className="h-4 w-4" />
@@ -238,7 +313,8 @@ export default function HospitalDoctorsPage() {
               <TableRow>
                 <TableHead>Doctor</TableHead>
                 <TableHead className="hidden sm:table-cell">Specializations</TableHead>
-                <TableHead className="w-[160px]">Status</TableHead>
+                <TableHead className="w-[140px]">Profile status</TableHead>
+                <TableHead className="w-[180px]">Invitation status</TableHead>
                 <TableHead className="text-right">Appointments</TableHead>
                 <TableHead className="text-right">Earned (PKR)</TableHead>
               </TableRow>
@@ -262,6 +338,14 @@ export default function HospitalDoctorsPage() {
                   <TableCell className="align-middle">
                     <Badge variant={d.isActive ? "default" : "outline"} className="text-xs font-normal">
                       {d.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="align-middle">
+                    <Badge
+                      variant={d.hospitalAffiliationStatus === "active" ? "default" : "secondary"}
+                      className="text-xs font-normal capitalize"
+                    >
+                      {d.hospitalAffiliationStatus || "unknown"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{d.totalAppointments}</TableCell>

@@ -1,14 +1,19 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "../config/database";
 import {
   chatbotPersonas,
   type ChatbotPersonaService,
 } from "../schema/chatbotPersonas";
+import { hospitalServiceCatalog } from "../schema/hospitalServiceCatalog";
 import {
   whatsappConversations,
   type WhatsAppConversationMessage,
 } from "../schema/whatsappConversations";
+import { doctors } from "../schema/doctor";
+import { doctorPracticeAffiliations } from "../schema/doctorPracticeAffiliations";
 import { appointmentService } from "./appointment.service";
+import { practiceAffiliationService } from "./practiceAffiliation.service";
+import { doctorServiceCatalogService } from "./doctorServiceCatalog.service";
 import { safepayService } from "./safepay.service";
 import { ensureGuestUserForWhatsApp } from "./guestUser.service";
 import {
@@ -20,15 +25,66 @@ import {
   isValidYmd,
   normalizeHm,
 } from "../utils/clinicTime.util";
-import {
-  computeBookableStartTimes,
-  findServiceByNameLoose,
-  isStartAllowedForService,
-  parseDurationMinutes,
-  pickNearestBookable,
-  summarizeHoursWindowsFromSlots,
-  summarizeOfferedWeekdaysFromSlots,
-} from "../utils/whatsappBookingSlots.util";
+import { mergeWeeklySchedule, isYmdOnAvailableWeekday } from "../utils/practiceSchedule.util";
+import { hasAnyDiscreteHalfHourSlots } from "../utils/affiliationHalfHourSlots.util";
+import type { AffiliationWeeklySchedule } from "../schema/doctorPracticeAffiliations";
+
+const WEEKDAY_KEYS_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+/** Human-readable block for system prompt: discrete half-hour grid and/or daily windows. */
+const formatWeeklyScheduleForPrompt = (
+  weekly: AffiliationWeeklySchedule | null | undefined
+): string => {
+  if (!weekly) return "";
+  if (hasAnyDiscreteHalfHourSlots(weekly)) {
+    if (Array.isArray(weekly)) return "";
+    const m = weekly.bookableHalfHourSlotsByWeekday;
+    if (!m || typeof m !== "object") return "";
+    const lines: string[] = [];
+    for (const day of WEEKDAY_KEYS_ORDER) {
+      const arr = m[day];
+      if (!Array.isArray(arr) || arr.length === 0) continue;
+      const sorted = [...new Set(arr.map((x) => normalizeHm(String(x))))].sort();
+      lines.push(`- ${day}: ${sorted.join(", ")}`);
+    }
+    return lines.join("\n");
+  }
+  if (Array.isArray(weekly)) {
+    return weekly
+      .filter((w): w is { day: string; startTime: string; endTime: string } =>
+        Boolean(w?.day && w?.startTime && w?.endTime)
+      )
+      .map(
+        (w) =>
+          `- ${String(w.day).toLowerCase()}: ${normalizeHm(w.startTime)}–${normalizeHm(w.endTime)}`
+      )
+      .join("\n");
+  }
+  if (!Array.isArray(weekly) && typeof weekly === "object") {
+    const w = weekly as AffiliationWeeklySchedule & {
+      availableDays?: unknown;
+      openingTime?: string | null;
+      closingTime?: string | null;
+    };
+    const days = Array.isArray(w.availableDays)
+      ? w.availableDays.map((d: unknown) => String(d).toLowerCase()).join(", ")
+      : "";
+    const open = w.openingTime?.trim();
+    const close = w.closingTime?.trim();
+    if (open && close) {
+      return `- General window: ${days || "scheduled days"} ${normalizeHm(open)}–${normalizeHm(close)}`;
+    }
+  }
+  return "";
+};
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma4:latest";
@@ -55,6 +111,8 @@ type GenerateContext = {
   ownerUserId: string;
   defaultDoctorId: string | null;
   allowedDoctorIds: string[] | null;
+  hospitalId?: string | null;
+  defaultPracticeAffiliationId?: string | null;
 };
 
 export type ChatbotGenerateResult = {
@@ -101,6 +159,49 @@ type IntentAnalysis = {
 };
 
 type BookIntent = NonNullable<IntentAnalysis["books"]>[number];
+
+type ScopedRuntimeService = {
+  doctorId: string;
+  practiceAffiliationId: string;
+  doctorServiceId: string;
+  serviceName: string;
+  durationMinutes: number;
+  pricePkr: number;
+};
+
+type ScopedAffiliation = {
+  id: string;
+  doctorId: string;
+  kind: "private" | "hospital";
+  hospitalId: string | null;
+};
+
+const filterAffiliationsByContext = (
+  rows: ScopedAffiliation[],
+  ctx: GenerateContext
+): ScopedAffiliation[] => {
+  if (ctx.defaultDoctorId) {
+    return rows.filter((r) => r.doctorId === ctx.defaultDoctorId && r.kind === "private");
+  }
+  if (ctx.hospitalId) {
+    return rows.filter((r) => r.kind === "hospital" && r.hospitalId === ctx.hospitalId);
+  }
+  return rows;
+};
+
+type BookingInputValidationResult =
+  | { ok: true }
+  | {
+      ok: false;
+      code:
+        | "needs_explicit_confirmation"
+        | "missing_datetime_mode"
+        | "invalid_consultation_mode"
+        | "invalid_date"
+        | "not_future_slot"
+        | "missing_patient_first_name"
+        | "missing_service_name";
+    };
 
 const extractYmdsFromTexts = (texts: string[]): string[] => {
   const set = new Set<string>();
@@ -151,6 +252,21 @@ const dedupeIntentBooks = (books: BookIntent[]): BookIntent[] => {
     });
   }
   return [...map.values()];
+};
+
+const findDoctorServiceByNameLoose = (
+  services: Array<{ serviceName: string }>,
+  name: string | null | undefined
+): { serviceName: string } | null => {
+  if (!name?.trim()) return null;
+  const q = name.trim().toLowerCase();
+  const exact = services.find((s) => s.serviceName.toLowerCase() === q);
+  if (exact) return exact;
+  return (
+    services.find(
+      (s) => s.serviceName.toLowerCase().includes(q) || q.includes(s.serviceName.toLowerCase())
+    ) ?? null
+  );
 };
 
 const takeSingleBookUnlessMultiRequested = (books: BookIntent[], userMessage: string): BookIntent[] => {
@@ -268,23 +384,133 @@ const servicesToPromptBlock = (services: ChatbotPersonaService[]): string => {
     .join("\n");
 };
 
-const resolveDoctorId = (
-  ctx: GenerateContext,
-  fromModel: string | null | undefined
-): string | null => {
-  if (ctx.defaultDoctorId) {
-    return ctx.defaultDoctorId;
+const runtimeServicesToPromptBlock = (services: ScopedRuntimeService[]): string => {
+  if (!services.length) return "No services configured yet.";
+  const merged = new Map<
+    string,
+    { serviceName: string; durationMinutes: number; minPricePkr: number; doctorCount: number }
+  >();
+  for (const row of services) {
+    const key = row.serviceName.trim().toLowerCase();
+    const prev = merged.get(key);
+    if (!prev) {
+      merged.set(key, {
+        serviceName: row.serviceName,
+        durationMinutes: row.durationMinutes,
+        minPricePkr: row.pricePkr,
+        doctorCount: 1,
+      });
+      continue;
+    }
+    prev.durationMinutes = Math.min(prev.durationMinutes, row.durationMinutes);
+    prev.minPricePkr = Math.min(prev.minPricePkr, row.pricePkr);
+    prev.doctorCount += 1;
   }
-  if (ctx.allowedDoctorIds?.length === 1) {
-    return ctx.allowedDoctorIds[0];
+  return [...merged.values()]
+    .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+    .map(
+      (s) =>
+        `- ${s.serviceName}: duration_minutes: ${s.durationMinutes} | price_from_pkr: ${s.minPricePkr} | available_with_doctors: ${s.doctorCount}`
+    )
+    .join("\n");
+};
+
+const findRuntimeServicesByNameLoose = (
+  services: ScopedRuntimeService[],
+  name: string | null | undefined
+): ScopedRuntimeService[] => {
+  if (!services.length) return [];
+  if (!name?.trim()) return [];
+  const q = name.trim().toLowerCase();
+  const exact = services.filter((s) => s.serviceName.toLowerCase() === q);
+  if (exact.length) return exact;
+  return services.filter(
+    (s) => s.serviceName.toLowerCase().includes(q) || q.includes(s.serviceName.toLowerCase())
+  );
+};
+
+const mapBookingErrorToUserText = (msg: string): string => {
+  const normalized = (msg || "").toLowerCase();
+  if (normalized.includes("outside") || normalized.includes("working hours")) {
+    return "slot_outside_affiliation_hours: that time is outside working hours for the selected practice. Please choose another slot.";
   }
-  if (fromModel && ctx.allowedDoctorIds?.includes(fromModel)) {
-    return fromModel;
+  if (normalized.includes("already booked") || normalized.includes("unavailable during that time")) {
+    return "slot_conflict: that slot is no longer available. Please choose another time.";
   }
-  if (fromModel && /^[0-9a-f-]{36}$/i.test(fromModel)) {
-    return fromModel;
+  if (normalized.includes("unpaid upcoming appointment")) {
+    return "unpaid_upcoming_block: please clear your pending payment first, then request a new booking.";
   }
-  return null;
+  if (normalized.includes("more than one full day")) {
+    return "policy_block_modify_window: this request is too close to appointment time for WhatsApp changes.";
+  }
+  return `could not complete (${msg}).`;
+};
+
+const WEEKDAY_RE =
+  /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b,\s*(\d{4}-\d{2}-\d{2})/gi;
+
+const alignWeekdayLabelsWithYmd = (text: string, clinicTz: string): string =>
+  text.replace(WEEKDAY_RE, (_full, _weekday, ymd) => {
+    const wd = getEnglishWeekdayLongForYmd(String(ymd), clinicTz);
+    if (!wd) return `${_weekday}, ${ymd}`;
+    return `${wd.charAt(0).toUpperCase()}${wd.slice(1)}, ${ymd}`;
+  });
+
+const validateBookingInput = (params: {
+  confidence: number;
+  explicitlyConfirmed: boolean;
+  appointmentDate: string | null | undefined;
+  appointmentTime: string | null | undefined;
+  consultationMode: string | null | undefined;
+  patientFirstName: string | null | undefined;
+  serviceName: string | null | undefined;
+  clinicTz: string;
+}): BookingInputValidationResult => {
+  if (!params.explicitlyConfirmed || params.confidence < BOOKING_CONFIRM_MIN) {
+    return { ok: false, code: "needs_explicit_confirmation" };
+  }
+  if (!params.appointmentDate || !params.appointmentTime || !params.consultationMode) {
+    return { ok: false, code: "missing_datetime_mode" };
+  }
+  if (!["inperson", "online"].includes(String(params.consultationMode))) {
+    return { ok: false, code: "invalid_consultation_mode" };
+  }
+  if (!isValidYmd(params.appointmentDate)) {
+    return { ok: false, code: "invalid_date" };
+  }
+  if (!isStrictlyFutureAppointment(params.appointmentDate, params.appointmentTime, params.clinicTz)) {
+    return { ok: false, code: "not_future_slot" };
+  }
+  if (!params.patientFirstName?.trim()) {
+    return { ok: false, code: "missing_patient_first_name" };
+  }
+  if (!params.serviceName?.trim()) {
+    return { ok: false, code: "missing_service_name" };
+  }
+  return { ok: true };
+};
+
+const isLikelyNewBookingRequest = (text: string): boolean => {
+  const s = (text || "").toLowerCase();
+  if (!s.trim()) return false;
+  const wantsBook =
+    /\b(book|booking|reserve|appointment|schedule)\b/.test(s) &&
+    /\b(another|new|next|book)\b/.test(s);
+  const explicitList = /\b(list|show|see|upcoming|my bookings|my appointments)\b/.test(s);
+  return wantsBook && !explicitList;
+};
+
+const normalizeDoctorCandidateList = (ids: string[]): string[] => {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    const v = String(id || "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(v)) continue;
+    if (seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
 };
 
 const transcriptFromHistory = (
@@ -327,6 +553,227 @@ const MODIFY_DENIED =
   "That appointment is too soon to change on WhatsApp (must be more than one full calendar day away). Please call the clinic.";
 
 export class AgenticChatbotService {
+  private async getScopedDoctorCandidates(ctx: GenerateContext): Promise<string[]> {
+    if (ctx.defaultDoctorId) {
+      return [ctx.defaultDoctorId];
+    }
+    if (ctx.allowedDoctorIds?.length) {
+      return normalizeDoctorCandidateList(ctx.allowedDoctorIds);
+    }
+    if (!ctx.hospitalId) {
+      return [];
+    }
+
+    const affRows = await db
+      .select({ doctorId: doctorPracticeAffiliations.doctorId })
+      .from(doctorPracticeAffiliations)
+      .where(
+        and(
+          eq(doctorPracticeAffiliations.kind, "hospital"),
+          eq(doctorPracticeAffiliations.hospitalId, ctx.hospitalId),
+          eq(doctorPracticeAffiliations.status, "active")
+        )
+      );
+
+    return normalizeDoctorCandidateList(affRows.map((r) => r.doctorId));
+  }
+
+  private async resolveScopedAffiliations(
+    ctx: GenerateContext,
+    doctorCandidates: string[]
+  ): Promise<ScopedAffiliation[]> {
+    if (!doctorCandidates.length) return [];
+    const rows = await db
+      .select({
+        id: doctorPracticeAffiliations.id,
+        doctorId: doctorPracticeAffiliations.doctorId,
+        kind: doctorPracticeAffiliations.kind,
+        hospitalId: doctorPracticeAffiliations.hospitalId,
+      })
+      .from(doctorPracticeAffiliations)
+      .where(
+        and(
+          inArray(doctorPracticeAffiliations.doctorId, doctorCandidates),
+          eq(doctorPracticeAffiliations.status, "active")
+        )
+      );
+
+    return filterAffiliationsByContext(
+      rows.map((r) => ({
+        id: r.id,
+        doctorId: r.doctorId,
+        kind: (r.kind === "hospital" ? "hospital" : "private") as "private" | "hospital",
+        hospitalId: r.hospitalId,
+      })),
+      ctx
+    );
+  }
+
+  private async resolveScopedRuntimeServices(
+    scopedAffiliations: ScopedAffiliation[]
+  ): Promise<ScopedRuntimeService[]> {
+    const out: ScopedRuntimeService[] = [];
+    for (const aff of scopedAffiliations) {
+      const rows = await doctorServiceCatalogService.listActiveForScope(aff.doctorId, aff.id);
+      for (const row of rows) {
+        out.push({
+          doctorId: aff.doctorId,
+          practiceAffiliationId: aff.id,
+          doctorServiceId: row.id,
+          serviceName: row.serviceName,
+          durationMinutes: Number(row.durationMinutes || 30),
+          pricePkr: Number(row.pricePkr || 0),
+        });
+      }
+    }
+    return out;
+  }
+
+  private async buildScopedLiveSchedulePromptBlock(
+    scopedAffiliations: ScopedAffiliation[]
+  ): Promise<string> {
+    if (!scopedAffiliations.length) return "";
+    const ids = scopedAffiliations.map((a) => a.id);
+    const rows = await db
+      .select({
+        id: doctorPracticeAffiliations.id,
+        kind: doctorPracticeAffiliations.kind,
+        weeklySchedule: doctorPracticeAffiliations.weeklySchedule,
+      })
+      .from(doctorPracticeAffiliations)
+      .where(inArray(doctorPracticeAffiliations.id, ids));
+
+    const parts: string[] = [];
+    for (const r of rows) {
+      const label = r.kind === "hospital" ? "Hospital practice site" : "Private practice site";
+      const body = formatWeeklyScheduleForPrompt((r.weeklySchedule as AffiliationWeeklySchedule | null) ?? null);
+      if (body.trim()) {
+        parts.push(`${label}:\n${body}`);
+      }
+    }
+    return parts.join("\n\n");
+  }
+
+  private async computeBookableStartsForScopedAffiliation(params: {
+    practiceAffiliationId: string;
+    doctorId: string;
+    ymd: string;
+    clinicTz: string;
+  }): Promise<string[]> {
+    const [affRows, docRows] = await Promise.all([
+      db
+        .select({ weeklySchedule: doctorPracticeAffiliations.weeklySchedule })
+        .from(doctorPracticeAffiliations)
+        .where(eq(doctorPracticeAffiliations.id, params.practiceAffiliationId))
+        .limit(1),
+      db
+        .select({
+          availableDays: doctors.availableDays,
+          openingTime: doctors.openingTime,
+          closingTime: doctors.closingTime,
+        })
+        .from(doctors)
+        .where(eq(doctors.id, params.doctorId))
+        .limit(1),
+    ]);
+    if (!affRows.length || !docRows.length) return [];
+    const weekly = (affRows[0].weeklySchedule as AffiliationWeeklySchedule | null) ?? null;
+    const doc = docRows[0];
+    const merged = mergeWeeklySchedule(weekly, doc);
+    if (!isYmdOnAvailableWeekday(params.ymd, merged.availableDays, params.clinicTz)) {
+      return [];
+    }
+    if (!hasAnyDiscreteHalfHourSlots(weekly) || Array.isArray(weekly) || !weekly?.bookableHalfHourSlotsByWeekday) {
+      return [];
+    }
+    const wd = getEnglishWeekdayLongForYmd(params.ymd, params.clinicTz);
+    if (!wd) return [];
+    const arr = weekly.bookableHalfHourSlotsByWeekday[wd];
+    if (!Array.isArray(arr) || arr.length === 0) return [];
+    return [...new Set(arr.map((s) => normalizeHm(String(s))))].sort();
+  }
+
+  private async resolveHospitalCatalogFallback(ctx: GenerateContext): Promise<ChatbotPersonaService[]> {
+    if (!ctx.hospitalId) return [];
+    const rows = await db
+      .select({
+        serviceName: hospitalServiceCatalog.serviceName,
+        description: hospitalServiceCatalog.description,
+        durationMinutes: hospitalServiceCatalog.durationMinutes,
+        rate: hospitalServiceCatalog.rate,
+        currency: hospitalServiceCatalog.currency,
+      })
+      .from(hospitalServiceCatalog)
+      .where(
+        and(
+          eq(hospitalServiceCatalog.hospitalId, ctx.hospitalId),
+          eq(hospitalServiceCatalog.isActive, true)
+        )
+      );
+    return rows.map((r) => ({
+      serviceName: r.serviceName,
+      description: r.description || "",
+      slotDuration: String(r.durationMinutes || 30),
+      price: Number(r.rate || 0),
+      currency: (r.currency || "PKR").toUpperCase(),
+      availabilitySlots: [],
+    }));
+  }
+
+  private async resolveAvailableServiceNamesForDate(
+    runtimeServices: ScopedRuntimeService[],
+    ymd: string,
+    clinicTz: string
+  ): Promise<string[]> {
+    if (!runtimeServices.length || !isValidYmd(ymd)) return [];
+    const uniqueAffIds = [...new Set(runtimeServices.map((s) => s.practiceAffiliationId))];
+    const uniqueDoctorIds = [...new Set(runtimeServices.map((s) => s.doctorId))];
+    if (!uniqueAffIds.length || !uniqueDoctorIds.length) return [];
+
+    const [affRows, docRows] = await Promise.all([
+      db
+        .select({
+          id: doctorPracticeAffiliations.id,
+          doctorId: doctorPracticeAffiliations.doctorId,
+          weeklySchedule: doctorPracticeAffiliations.weeklySchedule,
+        })
+        .from(doctorPracticeAffiliations)
+        .where(inArray(doctorPracticeAffiliations.id, uniqueAffIds)),
+      db
+        .select({
+          id: doctors.id,
+          availableDays: doctors.availableDays,
+          openingTime: doctors.openingTime,
+          closingTime: doctors.closingTime,
+        })
+        .from(doctors)
+        .where(inArray(doctors.id, uniqueDoctorIds)),
+    ]);
+
+    const affById = new Map(affRows.map((r) => [r.id, r]));
+    const docById = new Map(docRows.map((r) => [r.id, r]));
+    const weekday = getEnglishWeekdayLongForYmd(ymd, clinicTz);
+    if (!weekday) return [];
+
+    const available = new Set<string>();
+    for (const row of runtimeServices) {
+      const aff = affById.get(row.practiceAffiliationId);
+      const doc = docById.get(row.doctorId);
+      if (!aff || !doc) continue;
+      const weekly = (aff.weeklySchedule as AffiliationWeeklySchedule | null) ?? null;
+      const merged = mergeWeeklySchedule(weekly, doc);
+      if (!isYmdOnAvailableWeekday(ymd, merged.availableDays, clinicTz)) continue;
+
+      if (hasAnyDiscreteHalfHourSlots(weekly)) {
+        if (Array.isArray(weekly) || !weekly?.bookableHalfHourSlotsByWeekday) continue;
+        const daySlots = weekly.bookableHalfHourSlotsByWeekday[weekday];
+        if (!Array.isArray(daySlots) || daySlots.length === 0) continue;
+      }
+      available.add(row.serviceName);
+    }
+    return [...available].sort((a, b) => a.localeCompare(b));
+  }
+
   async generateResponse(
     userMessage: string,
     customerPhone: string,
@@ -348,7 +795,19 @@ export class AgenticChatbotService {
     }
 
     const persona = personaRows[0];
-    const services = (persona.services as ChatbotPersonaService[]) || [];
+    const scopedDoctors = await this.getScopedDoctorCandidates(ctx);
+    const scopedAffiliations = await this.resolveScopedAffiliations(ctx, scopedDoctors);
+    const runtimeScopedServices = await this.resolveScopedRuntimeServices(scopedAffiliations);
+    const personaServices = (persona.services as ChatbotPersonaService[]) || [];
+    const hospitalCatalogFallback =
+      !runtimeScopedServices.length && !personaServices.length
+        ? await this.resolveHospitalCatalogFallback(ctx)
+        : [];
+    const promptServiceBlock = runtimeScopedServices.length
+      ? runtimeServicesToPromptBlock(runtimeScopedServices)
+      : servicesToPromptBlock(personaServices.length ? personaServices : hospitalCatalogFallback);
+
+    const liveScheduleFacts = await this.buildScopedLiveSchedulePromptBlock(scopedAffiliations);
 
     const convRows = await db
       .select()
@@ -398,8 +857,13 @@ export class AgenticChatbotService {
 You are chatting on WhatsApp to help patients book, list, reschedule, and cancel appointments.
 
 Services and availability (respect slot windows; do not invent times outside them when slots are listed):
-${servicesToPromptBlock(services)}
+${promptServiceBlock}
 
+${
+  liveScheduleFacts.trim()
+    ? `LIVE_SCHEDULE (clinic TZ ${clinicTz}) — authoritative bookable times for this WhatsApp line; use only these when suggesting slots. If this block is non-empty, never tell the patient that live slot data is unavailable or unloaded — quote the relevant weekday line(s) and HH:mm starts.\n${liveScheduleFacts}\n`
+    : ""
+}
 ${calendarFactsLine ? `${calendarFactsLine}\n` : ""}
 If a slot row names a weekday, that day uses those hours. If slots only show hours (no weekday) but the description says Mon–Fri (or similar), treat those weekdays as open; do not call a weekday "closed" if it is inside that described range unless the text explicitly excludes it.
 For any YYYY-MM-DD you mention, the weekday must match the calendar facts line above (clinic TZ ${clinicTz}). If there is no fact line for a date, do not guess the weekday—use the date only.
@@ -438,6 +902,7 @@ UTC now (reference): ${new Date().toISOString()}.`;
     );
 
     assistantReply = stripHostedStripeCheckoutUrls((assistantReply || "").trim());
+    assistantReply = alignWeekdayLabelsWithYmd(assistantReply, clinicTz);
 
     if (!assistantReply) {
       assistantReply = "I could not process that just now. Could you please repeat your request?";
@@ -445,6 +910,38 @@ UTC now (reference): ${new Date().toISOString()}.`;
 
     let bookingResult: ChatbotGenerateResult["bookingResult"];
     const extras: string[] = [];
+    const requestedYmds = extractYmdsFromTexts([userMessage]);
+    for (const ymd of requestedYmds) {
+      if (!isValidYmd(ymd)) continue;
+      const availableNames = await this.resolveAvailableServiceNamesForDate(
+        runtimeScopedServices,
+        ymd,
+        clinicTz
+      );
+      if (runtimeScopedServices.length > 0 && availableNames.length === 0) {
+        const wd = getEnglishWeekdayLongForYmd(ymd, clinicTz);
+        const titleWd = wd ? `${wd.charAt(0).toUpperCase()}${wd.slice(1)}` : "That day";
+        extras.push(
+          `Schedule check: no scoped services are available on ${titleWd}, ${ymd}. Please pick another date.`
+        );
+        assistantReply = `I checked the live schedule and there are no services available on ${titleWd}, ${ymd}. Please choose another date and I will suggest valid slots.`;
+      } else if (scopedAffiliations.length === 1 && runtimeScopedServices.length > 0) {
+        const aff = scopedAffiliations[0];
+        const starts = await this.computeBookableStartsForScopedAffiliation({
+          practiceAffiliationId: aff.id,
+          doctorId: aff.doctorId,
+          ymd,
+          clinicTz,
+        });
+        if (starts.length) {
+          const wd = getEnglishWeekdayLongForYmd(ymd, clinicTz);
+          const titleWd = wd ? `${wd.charAt(0).toUpperCase()}${wd.slice(1)}` : ymd;
+          extras.push(
+            `Verified 30-minute bookable start times on ${titleWd} ${ymd} (clinic TZ ${clinicTz}, reply with HH:MM): ${starts.join(", ")}`
+          );
+        }
+      }
+    }
 
     const transcript = transcriptFromHistory(slice, userMessage);
     const intentPrompt = `You analyze a WhatsApp clinic conversation. Return JSON only (no markdown).
@@ -480,7 +977,8 @@ Rules:
 - confidence < ${CONFIDENCE_MIN} => treat wants as false. For books: also require confidence >= ${BOOKING_CONFIRM_MIN} AND explicitlyConfirmed true to create an appointment; otherwise the assistant should only ask for missing details.
 - explicitlyConfirmed true ONLY when the user clearly confirms the booking with intent like "yes, book it", "confirm booking", "go ahead and book" — not vague phrases like "ok", "do it", or "sure" alone.
 - Map 12h times to 24h.
-- If unsure between list vs book, prefer lower confidence so the assistant can clarify.`;
+- If unsure between list vs book, prefer lower confidence so the assistant can clarify.
+- If user says they want to book another/new appointment, prefer books over listAppointments unless they explicitly ask to show/list their existing bookings.`;
 
     let parsedIntent: IntentAnalysis = {};
     try {
@@ -503,6 +1001,8 @@ Rules:
       (parsedIntent.cancel?.wants && (parsedIntent.cancel?.confidence ?? 0) >= CONFIDENCE_MIN) || false;
     const rescheduleHigh =
       (parsedIntent.reschedule?.wants && (parsedIntent.reschedule?.confidence ?? 0) >= CONFIDENCE_MIN) || false;
+    const bookingHigh =
+      (parsedIntent.books && parsedIntent.books.some((b) => (b.confidence ?? 0) >= CONFIDENCE_MIN)) || false;
     let skipCancelAndRescheduleTogether = false;
     if (cancelHigh && rescheduleHigh) {
       skipCancelAndRescheduleTogether = true;
@@ -511,12 +1011,20 @@ Rules:
     const prevMeta = (convRows[0]?.metadata as Record<string, unknown>) || {};
     let meta: Record<string, unknown> = { ...prevMeta };
 
+    const forceBookingMode = isLikelyNewBookingRequest(userMessage);
+
     const needsPatient =
       (parsedIntent.listAppointments?.wants &&
         (parsedIntent.listAppointments?.confidence ?? 0) >= CONFIDENCE_MIN) ||
       (parsedIntent.books && parsedIntent.books.some((b) => (b.confidence ?? 0) >= CONFIDENCE_MIN)) ||
       (parsedIntent.reschedule?.wants && (parsedIntent.reschedule?.confidence ?? 0) >= CONFIDENCE_MIN) ||
       (parsedIntent.cancel?.wants && (parsedIntent.cancel?.confidence ?? 0) >= CONFIDENCE_MIN);
+    const listIntentHighRaw =
+      (parsedIntent.listAppointments?.wants &&
+        (parsedIntent.listAppointments?.confidence ?? 0) >= CONFIDENCE_MIN) ||
+      false;
+    const listIntentHigh =
+      listIntentHighRaw && !forceBookingMode && !bookingHigh && !cancelHigh && !rescheduleHigh;
 
     let patientUserId: string | null = null;
     if (needsPatient) {
@@ -528,7 +1036,12 @@ Rules:
     }
 
     const doctorFilter = ctx.defaultDoctorId || undefined;
-    const allowedDocs = ctx.allowedDoctorIds;
+    const allowedDocs = scopedDoctors.length ? scopedDoctors : ctx.allowedDoctorIds;
+    const allowedAffiliationIds = scopedAffiliations.length
+      ? scopedAffiliations.map((a) => a.id)
+      : null;
+    const scopeMode =
+      ctx.defaultDoctorId ? "doctor_private" : ctx.hospitalId ? "hospital" : null;
 
     if (
       patientUserId &&
@@ -540,6 +1053,10 @@ Rules:
           patientUserId,
           doctorIdFilter: doctorFilter ?? null,
           allowedDoctorIds: allowedDocs,
+          allowedPracticeAffiliationIds: allowedAffiliationIds,
+          scopeMode,
+          scopeDoctorId: ctx.defaultDoctorId ?? null,
+          scopeHospitalId: ctx.hospitalId ?? null,
         });
         if (!rows.length) {
           extras.push("I do not see any upcoming appointments on file for this number.");
@@ -568,153 +1085,75 @@ Rules:
       }
     }
 
+    // For appointment list requests, always respond using verified backend rows only.
+    if (listIntentHigh) {
+      assistantReply = "Here are your upcoming appointments from our system:";
+    }
+
     if (patientUserId && parsedIntent.books?.length) {
-      const doctorId = resolveDoctorId(ctx, null);
-      if (!doctorId) {
-        extras.push("I need to know which doctor to book with. Please contact the clinic to link this WhatsApp number to a doctor.");
+      const doctorCandidates = scopedDoctors;
+      if (!doctorCandidates.length) {
+        extras.push("I could not find an active doctor scope for this WhatsApp number yet. Please contact support to complete setup.");
         bookingResult = { success: false, message: "no_doctor" };
       } else {
+        const uniqueServiceNames = [
+          ...new Set(
+            runtimeScopedServices
+              .map((s) => s.serviceName.trim())
+              .filter(Boolean)
+              .sort((a, b) => a.localeCompare(b))
+          ),
+        ];
+        const serviceListText = uniqueServiceNames.length
+          ? uniqueServiceNames.join(", ")
+          : "no active services";
         let bookIndex = 0;
         for (const b of parsedIntent.books) {
           bookIndex += 1;
           if ((b.confidence ?? 0) < CONFIDENCE_MIN) continue;
-          if (!b.explicitlyConfirmed || (b.confidence ?? 0) < BOOKING_CONFIRM_MIN) {
-            extras.push(
-              `Booking #${bookIndex}: I need everything confirmed first: service, date, time, online or in-person, your first name, and a clear "yes, book it" before I can reserve a slot.`
-            );
-            continue;
-          }
-          if (!b.appointmentDate || !b.appointmentTime || !b.consultationMode) {
-            extras.push(`Booking #${bookIndex}: I still need a clear date, time, and whether you want online or in-person.`);
-            continue;
-          }
-          if (!["inperson", "online"].includes(String(b.consultationMode))) {
-            extras.push(`Booking #${bookIndex}: Please say if you prefer an online or in-person visit.`);
-            continue;
-          }
-          if (!isValidYmd(b.appointmentDate)) {
-            extras.push(`Booking #${bookIndex}: The date did not look valid. Please use YYYY-MM-DD.`);
-            continue;
-          }
-          if (!isStrictlyFutureAppointment(b.appointmentDate, b.appointmentTime, clinicTz)) {
-            extras.push(
-              `Booking #${bookIndex}: Appointments must be in the future. Pick a later date or time.`
-            );
-            continue;
-          }
-          if (!b.patientFirstName?.trim()) {
-            extras.push(`Booking #${bookIndex}: What first name should I put on the booking?`);
-            continue;
-          }
-
-          let service = findServiceByNameLoose(services, b.serviceName || null);
-          if (!service && services.length === 1) {
-            service = services[0];
-          }
-          if (!service) {
-            const names = services.map((s) => s.serviceName).join(", ");
-            extras.push(
-              `Booking #${bookIndex}: Which service do you want? Available: ${names || "none configured — please call the clinic"}.`
-            );
-            continue;
-          }
-
-          const intervals = await appointmentService.getBookedIntervalsForDate(doctorId, b.appointmentDate);
-          const openDaysPhrase = summarizeOfferedWeekdaysFromSlots(service.availabilitySlots);
-          const hoursPhrase = summarizeHoursWindowsFromSlots(service.availabilitySlots);
-          const hoursHint = hoursPhrase ? ` Typical hours in our schedule: ${hoursPhrase}.` : "";
-
-          let allowed = isStartAllowedForService(
-            service,
-            b.appointmentDate,
-            b.appointmentTime,
-            intervals,
-            clinicTz
-          );
-          if (!allowed.ok) {
-            if (allowed.reason === "weekday_not_available") {
-              const dowRaw = getEnglishWeekdayLongForYmd(b.appointmentDate, clinicTz);
-              const dowCap = dowRaw ? `${dowRaw.charAt(0).toUpperCase()}${dowRaw.slice(1)}` : "that day";
-              if (openDaysPhrase) {
-                extras.push(
-                  `Booking #${bookIndex}: We're closed on ${dowCap} for ${service.serviceName}. We're open on ${openDaysPhrase}.${hoursHint} Please send a new date (YYYY-MM-DD) on one of those days.`
-                );
-              } else {
-                extras.push(
-                  `Booking #${bookIndex}: ${service.serviceName} is not offered on ${dowCap}.${hoursHint} Please choose a different date (YYYY-MM-DD) that matches our service description and hours.`
-                );
-              }
-              continue;
-            }
-            if (allowed.reason === "outside_booking_hours") {
-              const dur = parseDurationMinutes(service.slotDuration);
-              const bookable = computeBookableStartTimes(
-                service.availabilitySlots,
-                dur,
-                intervals,
-                b.appointmentDate,
-                clinicTz
+          const validation = validateBookingInput({
+            confidence: b.confidence ?? 0,
+            explicitlyConfirmed: Boolean(b.explicitlyConfirmed),
+            appointmentDate: b.appointmentDate,
+            appointmentTime: b.appointmentTime,
+            consultationMode: b.consultationMode,
+            patientFirstName: b.patientFirstName,
+            serviceName: b.serviceName,
+            clinicTz,
+          });
+          if (!validation.ok) {
+            if (validation.code === "needs_explicit_confirmation") {
+              extras.push(
+                `Booking #${bookIndex}: I need everything confirmed first: service, date, time, online or in-person, your first name, and a clear "yes, book it" before I can reserve a slot.`
               );
-              const pick = pickNearestBookable(b.appointmentTime, bookable);
-              if ("match" in pick) {
-                b.appointmentTime = pick.match;
-              } else if (pick.suggestions.length) {
-                extras.push(
-                  `Booking #${bookIndex}: That time is outside our available slots for ${service.serviceName} on that date.${hoursHint} Please try one of these times instead: ${pick.suggestions.join(", ")} (24h HH:MM), or pick another time inside those hours.`
-                );
-                continue;
-              } else {
-                extras.push(
-                  `Booking #${bookIndex}: That time is outside our available slots for ${service.serviceName} on that date.${hoursHint} Please choose a different time within those hours (24h HH:MM).`
-                );
-                continue;
-              }
-            } else if (allowed.reason === "slot_taken") {
-              const dur = parseDurationMinutes(service.slotDuration);
-              const bookable = computeBookableStartTimes(
-                service.availabilitySlots,
-                dur,
-                intervals,
-                b.appointmentDate,
-                clinicTz
+            } else if (validation.code === "missing_datetime_mode") {
+              extras.push(`Booking #${bookIndex}: I still need a clear date, time, and whether you want online or in-person.`);
+            } else if (validation.code === "invalid_consultation_mode") {
+              extras.push(`Booking #${bookIndex}: Please say if you prefer an online or in-person visit.`);
+            } else if (validation.code === "invalid_date") {
+              extras.push(`Booking #${bookIndex}: The date did not look valid. Please use YYYY-MM-DD.`);
+            } else if (validation.code === "not_future_slot") {
+              extras.push(
+                `Booking #${bookIndex}: Appointments must be in the future. Pick a later date or time.`
               );
-              const pick = pickNearestBookable(b.appointmentTime, bookable);
-              if ("match" in pick) {
-                b.appointmentTime = pick.match;
-              } else if (pick.suggestions.length) {
-                extras.push(
-                  `Booking #${bookIndex}: That time is already booked for ${service.serviceName}.${hoursHint} Here are nearby times that are still free: ${pick.suggestions.join(", ")}. Reply with one of these (24h HH:MM) or another free slot the same day.`
-                );
-                continue;
-              } else {
-                extras.push(
-                  `Booking #${bookIndex}: That time is already booked.${hoursHint} Please pick a different time on the same day, or choose another open day${openDaysPhrase ? ` (${openDaysPhrase})` : ""}.`
-                );
-                continue;
-              }
-            } else {
-              extras.push(`Booking #${bookIndex}: I could not read the time. Please send it as HH:MM (24h).`);
-              continue;
+            } else if (validation.code === "missing_patient_first_name") {
+              extras.push(`Booking #${bookIndex}: What first name should I put on the booking?`);
+            } else if (validation.code === "missing_service_name") {
+              extras.push(
+                `Booking #${bookIndex}: Please confirm the exact service name first. Available services in this scope: ${serviceListText}.`
+              );
             }
-          }
-
-          let validated = isStartAllowedForService(
-            service,
-            b.appointmentDate,
-            b.appointmentTime,
-            intervals,
-            clinicTz
-          );
-          if (!validated.ok) {
-            extras.push(`Booking #${bookIndex}: I could not confirm that slot. Please try another time.`);
             continue;
           }
-
-          const durationMinutes = validated.durationMinutes;
+          const bookingDate = b.appointmentDate as string;
+          const bookingTime = b.appointmentTime as string;
+          const bookingMode = b.consultationMode as "inperson" | "online";
+          const patientFirstName = b.patientFirstName as string;
+          const patientLastName = b.patientLastName?.trim() || undefined;
 
           const hasUnpaid = await appointmentService.hasUnpaidUpcomingAppointmentForPatientDoctor({
             patientUserId,
-            doctorId,
+            doctorId: null,
             timeZone: clinicTz,
           });
           if (hasUnpaid) {
@@ -724,16 +1163,73 @@ Rules:
             continue;
           }
 
+          let doctorId: string | null = null;
+          let practiceAffiliationId: string | null = null;
+          let chosenService:
+            | { id: string; serviceName: string; durationMinutes: number; pricePkr: unknown }
+            | null = null;
+          const matchedCandidates =
+            findRuntimeServicesByNameLoose(runtimeScopedServices, b.serviceName || null) ||
+            [];
+          const resolvedCandidates =
+            matchedCandidates.length === 0 && uniqueServiceNames.length === 1
+              ? runtimeScopedServices.filter((s) => s.serviceName.trim() === uniqueServiceNames[0])
+              : matchedCandidates;
+          if (!resolvedCandidates.length) {
+            extras.push(
+              `Booking #${bookIndex}: I could not match that service in this scope. Please choose one of: ${serviceListText}.`
+            );
+            continue;
+          }
+
+          for (const candidate of resolvedCandidates) {
+            try {
+              await practiceAffiliationService.assertAffiliationAllowsBooking({
+                doctorId: candidate.doctorId,
+                practiceAffiliationId: candidate.practiceAffiliationId,
+                appointmentDate: bookingDate,
+                appointmentTime: bookingTime,
+                durationMinutes: Number(candidate.durationMinutes || 30),
+              });
+              await appointmentService.assertSlotAvailable(
+                candidate.doctorId,
+                bookingDate,
+                bookingTime,
+                { durationMinutes: Number(candidate.durationMinutes || 30) }
+              );
+              doctorId = candidate.doctorId;
+              practiceAffiliationId = candidate.practiceAffiliationId;
+              chosenService = {
+                id: candidate.doctorServiceId,
+                serviceName: candidate.serviceName,
+                durationMinutes: candidate.durationMinutes,
+                pricePkr: candidate.pricePkr,
+              };
+              break;
+            } catch {
+              continue;
+            }
+          }
+
+          if (!doctorId || !practiceAffiliationId || !chosenService) {
+            extras.push(
+              `Booking #${bookIndex}: I could not find an available doctor/service slot in this scope at that date and time. Please choose another time or service.`
+            );
+            continue;
+          }
+
+          const durationMinutes = Number(chosenService.durationMinutes || 30);
+
           try {
             const guestId = await ensureGuestUserForWhatsApp({
               phoneE164: customerPhone,
-              firstName: b.patientFirstName.trim(),
-              lastName: b.patientLastName?.trim() || undefined,
+              firstName: patientFirstName.trim(),
+              lastName: patientLastName,
             });
 
             const patientNotes = [
-              service.serviceName ? `Service: ${service.serviceName}` : "",
-              `Client: ${b.patientFirstName.trim()}${b.patientLastName?.trim() ? ` ${b.patientLastName.trim()}` : ""}`,
+              chosenService.serviceName ? `Service: ${chosenService.serviceName}` : "",
+              `Client: ${patientFirstName.trim()}${patientLastName ? ` ${patientLastName}` : ""}`,
               "Booked via WhatsApp",
             ]
               .filter(Boolean)
@@ -741,14 +1237,23 @@ Rules:
 
             const apt = await appointmentService.createAppointment(guestId, {
               doctorId,
-              appointmentDate: b.appointmentDate,
-              appointmentTime: validated.normalizedTime,
-              consultationMode: b.consultationMode,
+              practiceAffiliationId,
+              doctorServiceId: chosenService.id,
+              appointmentDate: bookingDate,
+              appointmentTime: normalizeHm(bookingTime),
+              consultationMode: bookingMode,
               patientNotes,
               durationMinutes,
             });
 
-            const fee = await appointmentService.getDoctorFeeAndName(doctorId);
+            const doctorInfo = await appointmentService.getDoctorFeeAndName(
+              doctorId,
+              practiceAffiliationId
+            );
+            const fee = {
+              doctorName: doctorInfo.doctorName,
+              feePkr: Number(chosenService.pricePkr || 0),
+            };
             const session = await safepayService.createAppointmentCheckoutSession({
               amountPkr: fee.feePkr,
               orderId: `apt_${apt.id}`,
@@ -762,13 +1267,24 @@ Rules:
             };
 
             extras.push(
-              `Booking #${bookIndex} (${service.serviceName}): hold created — payment confirms it. Pay here: ${session.url || "(link unavailable)"}`
+              `Booking #${bookIndex} (${chosenService.serviceName}) with ${fee.doctorName}: hold created — payment confirms it. Pay here: ${session.url || "(link unavailable)"}`
             );
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            extras.push(`Booking #${bookIndex}: could not complete (${msg}).`);
+            extras.push(`Booking #${bookIndex}: ${mapBookingErrorToUserText(msg)}`);
           }
         }
+      }
+    }
+
+    // For booking requests, keep final wording anchored to verified backend outcome (extras),
+    // so model text cannot incorrectly claim success/failure.
+    if (bookingHigh) {
+      const bookingSucceeded = extras.some((x) => /hold created/i.test(x));
+      if (bookingSucceeded) {
+        assistantReply = "Your booking request has been processed. Please use the verified details below:";
+      } else {
+        assistantReply = "I checked your booking request. Please follow the verified update below:";
       }
     }
 
@@ -895,3 +1411,14 @@ Rules:
 }
 
 export const agenticChatbotService = new AgenticChatbotService();
+
+export const __agenticChatbotTestables = {
+  runtimeServicesToPromptBlock,
+  findRuntimeServicesByNameLoose,
+  mapBookingErrorToUserText,
+  validateBookingInput,
+  alignWeekdayLabelsWithYmd,
+  filterAffiliationsByContext,
+  formatWeeklyScheduleForPrompt,
+  isLikelyNewBookingRequest,
+};
