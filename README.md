@@ -1,140 +1,96 @@
-# PillSure Monorepo
+# PillSure
 
-A healthcare management platform built with Next.js frontend and Node.js/Express backend.
+Healthcare management platform for patients, doctors, medical stores, and manufacturers. PillSure combines appointment booking, medicine marketplace/wholesale flows, LiveKit video visits, and WhatsApp chatbot tooling in a single npm workspaces monorepo.
 
-## Project Structure
+## Features
+
+- **Patient & doctor flows** — auth/onboarding, doctor search, appointments, and dashboard experiences
+- **Medicine marketplace** — browse medicines, cart, and orders scoped to medical stores
+- **Medical store & manufacturer tooling** — store catalogs, pack images, wholesale orders, and manufacturer listings
+- **Live consultations** — LiveKit-powered video sessions from the Next.js client and Express API
+- **WhatsApp agent** — business accounts, conversations, message history, and chatbot personas
+- **RAG / recommendations** — server-side RAG query routes and recommendation UI components
+- **Payments** — payment routes integrated with the order flow
+- **Auth** — Firebase on the client; JWT + role initialization on the server
+
+## Tech stack
+
+| Layer | Stack |
+|-------|--------|
+| Frontend (`client/`) | Next.js 15, React 19, TypeScript, Tailwind CSS, Radix UI, Firebase, LiveKit, Leaflet, Recharts |
+| Backend (`server/`) | Express 5, TypeScript, Drizzle ORM, PostgreSQL, JWT, bcrypt, LiveKit server SDK, AWS S3, Multer |
+| Database | PostgreSQL (Docker Compose in `server/`), Drizzle migrations under `server/drizzle/` |
+| Tooling | npm workspaces, nodemon/ts-node, drizzle-kit |
+
+## Project structure
 
 ```
-pillsure-monorepo/
-├── client/          # Next.js frontend application
-├── server/          # Node.js/Express backend API
-├── package.json     # Root package.json with workspace configuration
-└── README.md        # This file
+PillSure/
+├── client/                 # Next.js App Router frontend (port 3000)
+│   └── src/app/            # appointments, auth, dashboard, doctor, medicine, cart, orders, marketplace, …
+├── server/                 # Express API (port 3001)
+│   ├── index.ts            # API entry
+│   ├── docker-compose.yml  # local Postgres
+│   ├── drizzle/            # SQL migrations
+│   └── src/
+│       ├── routes/         # auth, doctor, appointments, marketplace, orders, whatsapp, livekit, …
+│       ├── schema/         # Drizzle table definitions
+│       ├── services/       # business logic
+│       └── migrations/     # migration CLI
+├── docs/                   # notes (e.g. WhatsApp bot test flow)
+└── package.json            # workspace scripts
 ```
 
-## Prerequisites
+## Getting started
 
-- Node.js (>= 18.0.0)
-- npm (>= 8.0.0)
-- Docker Desktop (for PostgreSQL database)
+### Prerequisites
 
-## Getting Started
+- Node.js ≥ 18 and npm ≥ 8
+- Docker (for local PostgreSQL)
 
-### 1. Install Dependencies
-
-Install all dependencies for both frontend and backend:
+### Install
 
 ```bash
-npm run install:all
+npm install
+# or install each workspace:
+npm install --workspace=client
+npm install --workspace=server
 ```
 
-### 2. Environment Setup
+### Environment
 
-Run the setup script to create environment files:
+Create `client/.env.local` and `server/.env` with your Firebase, database, JWT, LiveKit, S3, and payment settings. Do not commit secrets. The server Docker Compose DB defaults (for local only) are defined in `server/docker-compose.yml`.
 
-```bash
-npm run setup
-```
-
-This creates:
-- `client/.env.local` - Frontend environment variables
-- `server/.env` - Backend environment variables with Docker database config
-
-### 3. Development
-
-Start the complete development environment (Docker + Backend + Frontend):
+### Database
 
 ```bash
-npm run dev
-```
-
-This will start:
-- **Docker PostgreSQL**: Database container (port 5432)
-- **Backend**: Express.js API server (port 3001)
-- **Frontend**: Next.js application (port 3000)
-
-### 4. Database Setup
-
-After starting the development environment, run database migrations:
-
-```bash
-npm run db:migrate
+cd server && docker compose up -d
+# from repo root:
+npm run db:upgrade
 npm run init:roles
 ```
 
-### 5. Individual Development
+Other DB helpers: `npm run db:generate`, `npm run db:studio`, `npm run db:current`, `npm run db:pending`.
 
-To run only the frontend:
+### Run
+
 ```bash
-npm run dev:client
+# both apps (API + Next.js)
+npm run dev
+
+# individually
+npm run dev:client   # http://localhost:3000
+npm run dev:server   # Express on port 3001 (see server config)
 ```
 
-To run only the backend:
+### Build / production
+
 ```bash
-npm run dev:server
+npm run build
+npm run start
 ```
 
-## Available Scripts
+## Notes
 
-### Root Level Scripts
-
-- `npm run dev` - Start both frontend and backend in development mode
-- `npm run build` - Build both applications
-- `npm run start` - Start both applications in production mode
-- `npm run install:all` - Install dependencies for all workspaces
-- `npm run clean` - Clean node_modules and build artifacts
-
-### Database Scripts
-
-- `npm run db:generate` - Generate database migrations
-- `npm run db:migrate` - Run database migrations
-- `npm run db:studio` - Open Drizzle Studio
-- `npm run init:roles` - Initialize user roles
-
-### Docker Scripts
-
-- `npm run docker:up` - Start PostgreSQL container
-- `npm run docker:down` - Stop PostgreSQL container
-- `npm run docker:logs` - View container logs
-- `npm run docker:restart` - Restart PostgreSQL container
-
-## Technology Stack
-
-### Frontend (client/)
-- Next.js 15
-- React 19
-- TypeScript
-- Tailwind CSS
-- Radix UI
-- TanStack Query
-- Firebase Authentication
-
-### Backend (server/)
-- Node.js
-- Express.js
-- TypeScript
-- Drizzle ORM
-- PostgreSQL
-- JWT Authentication
-- bcryptjs
-
-## Development Workflow
-
-1. Make changes to either frontend or backend code
-2. Both applications will hot-reload automatically
-3. Frontend runs on port 3000, backend on port 3001
-4. API calls from frontend are proxied to backend
-
-## Production Deployment
-
-1. Build both applications: `npm run build`
-2. Start both applications: `npm run start`
-3. Configure environment variables for production
-4. Set up reverse proxy (nginx) to serve frontend and route API calls to backend
-
-## Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Test both frontend and backend
-4. Submit a pull request
+- Root scripts orchestrate workspaces via `npm-run-all`; there is no separate `install:all` / `setup` script in the current `package.json`.
+- Schema coverage includes users/roles, patients, doctors, hospitals, medicines, medical stores, manufacturers, carts/orders, WhatsApp tables, RAG queries, and appointments.
